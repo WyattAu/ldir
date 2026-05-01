@@ -1,0 +1,15 @@
+[package]
+name = "ldir-link"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR IR linker — merges multiple S-IR v2 modules into one"
+
+[[bin]]
+name = "ldir-link"
+path = "src/main.rs"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"

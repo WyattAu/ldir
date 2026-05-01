@@ -1,0 +1,10 @@
+[package]
+name = "ldir-docx-reader"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR DOCX reader — converts DOCX (.docx) to S-IR v2"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }
+flate2 = "1"

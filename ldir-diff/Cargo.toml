@@ -1,0 +1,16 @@
+[package]
+name = "ldir-diff"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR IR structural diff tool"
+
+[[bin]]
+name = "ldir-diff"
+path = "src/main.rs"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

@@ -1,0 +1,11 @@
+[package]
+name = "ldir-html"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR HTML backend — converts S-IR v2 to semantic HTML5"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }
+
+[dev-dependencies]

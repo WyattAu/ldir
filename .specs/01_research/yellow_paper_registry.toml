@@ -1,0 +1,174 @@
+# Yellow Paper Registry
+# Tracks all Yellow Papers and their relationships
+
+[metadata]
+last_updated = "2026-04-23T00:00:00Z"
+total_papers = 7
+
+[[yellow_paper]]
+id = "YP-IR-SEMANTICS-001"
+title = "IR Type Semantics and Well-Formedness"
+status = "APPROVED"
+version = "1.0.0"
+created = "2026-04-23"
+author = "DeepThought"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Compiler Architecture"
+algorithms = ["ALG-COMPILE-001"]
+theorems = ["THM-WF-SIR-DECIDABLE", "THM-WF-GIR-DECIDABLE", "THM-COMPILE-TERMINATES", "THM-ENTITY-UNIQUE-SOUNDNESS", "THM-ROOT-UNIQUENESS"]
+test_vector_file = "test_vectors_ir.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = ["BP-IR-COMPILER-001"]
+
+[[yellow_paper]]
+id = "YP-NUMERICAL-FIXEDPOINT-001"
+title = "26.6 Fixed-Point Arithmetic"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-04-23"
+author = "DeepThought"
+confidence_level = 0.90
+tqa_level = 3
+
+[yellow_paper.scope]
+domain = "Numerical Methods"
+algorithms = ["ALG-FP-MUL", "ALG-FP-DIV", "ALG-FP-SQRT"]
+theorems = ["THM-FP-ADD-EXACT", "THM-FP-MUL-ROUND", "THM-FP-SATURATION", "THM-FP-COMPARISON", "THM-FP-ACCUMULATION", "THM-FP-DETERMINISM"]
+test_vector_file = "test_vectors_numerical.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+
+[[yellow_paper]]
+id = "YP-LAYOUT-KNUTHPLASS-001"
+title = "Knuth-Plass Line Breaking Algorithm"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-04-23"
+author = "DeepThought"
+confidence_level = 0.95
+tqa_level = 4
+
+[yellow_paper.scope]
+domain = "Typography"
+algorithms = ["ALG-KP-BREAK", "ALG-KP-DEMERITS", "ALG-KP-PRUNE", "ALG-KP-CJK"]
+theorems = ["THM-KP-OPTIMALITY", "THM-KP-TERMINATION", "THM-KP-DETERMINISM", "THM-KP-SINGLE-PASS"]
+test_vector_file = "test_vectors_linebreak.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["YP-NUMERICAL-FIXEDPOINT-001"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+
+[[yellow_paper]]
+id = "YP-LAYOUT-PAGINATION-001"
+title = "Page Breaking and Float Placement"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-04-23"
+author = "DeepThought"
+confidence_level = 0.85
+tqa_level = 3
+
+[yellow_paper.scope]
+domain = "Typography"
+algorithms = ["ALG-PG-BREAK", "ALG-PG-FLOAT", "ALG-PG-BALANCE"]
+theorems = ["THM-PG-TERMINATION", "THM-PG-COMPLETENESS", "THM-PG-NO-OVERLAP", "THM-PG-DETERMINISM", "THM-PG-NO-WIDOW-ORPHAN"]
+test_vector_file = "test_vectors_pagination.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["YP-NUMERICAL-FIXEDPOINT-001"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+
+[[yellow_paper]]
+id = "YP-CONSTRAINT-CASSOWARY-001"
+title = "Cassowary Constraint Solver (Fixed-Point Adaptation)"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-04-23"
+author = "DeepThought"
+confidence_level = 0.85
+tqa_level = 3
+
+[yellow_paper.scope]
+domain = "Constraint Solving"
+algorithms = ["ALG-CS-INIT", "ALG-CS-SOLVE", "ALG-CS-PIVOT", "ALG-CS-ADD", "ALG-CS-REMOVE", "ALG-CS-EDIT"]
+theorems = ["THM-CS-OPTIMALITY", "THM-CS-TERMINATION", "THM-CS-INCREMENTAL", "THM-CS-FIXEDPOINT", "THM-CS-DETERMINISM", "THM-CS-FEASIBILITY-DETECTION"]
+test_vector_file = "test_vectors_constraint.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["YP-NUMERICAL-FIXEDPOINT-001"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+
+[[yellow_paper]]
+id = "YP-MEMORY-ECS-001"
+title = "Entity Component System Memory Architecture"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-04-23"
+author = "DeepThought"
+confidence_level = 0.90
+tqa_level = 3
+
+[yellow_paper.scope]
+domain = "Systems Architecture"
+algorithms = ["ALG-ECS-CREATE", "ALG-ECS-DESTROY", "ALG-ECS-QUERY", "ALG-ECS-ITERATE"]
+theorems = ["THM-ECS-CACHE-FRIENDLY", "THM-ECS-MEMORY-OVERHEAD", "THM-ECS-ACCESS", "THM-ECS-DETERMINISM", "THM-ECS-CAPACITY"]
+test_vector_file = "test_vectors_ecs.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = []
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+
+[[yellow_paper]]
+id = "YP-CONCURRENCY-DETERM-001"
+title = "Deterministic Concurrency via Work-Stealing"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-04-23"
+author = "DeepThought"
+confidence_level = 0.85
+tqa_level = 3
+
+[yellow_paper.scope]
+domain = "Concurrent Systems"
+algorithms = ["ALG-DC-DECOMPOSE", "ALG-DC-SCHEDULE", "ALG-DC-MERGE"]
+theorems = ["THM-DC-DETERMINISM", "THM-DC-TERMINATION", "THM-DC-SCALABILITY", "THM-DC-NO-RACE", "THM-DC-MEMORY-BOUND"]
+test_vector_file = "test_vectors_concurrency.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["YP-MEMORY-ECS-001"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []

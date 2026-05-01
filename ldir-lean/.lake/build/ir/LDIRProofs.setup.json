@@ -1,0 +1,9 @@
+{"plugins": [],
+ "package": "LDIRProofs",
+ "options": {"autoImplicit": false},
+ "name": "LDIRProofs",
+ "isModule": false,
+ "importArts":
+ {"LDIRProofs.proof_ir_wellformedness":
+  ["/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/lib/lean/LDIRProofs/proof_ir_wellformedness.olean"]},
+ "dynlibs": []}

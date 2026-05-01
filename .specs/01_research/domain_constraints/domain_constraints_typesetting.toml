@@ -1,0 +1,252 @@
+# Domain Constraints Specification Schema v1.0.0
+# LDIR Typesetting Engine Constraints
+
+[metadata]
+domain = "Typesetting & Document Layout"
+derivation_date = "2026-04-23T00:00:00Z"
+confidence = 0.95
+sources = ["Knuth - The TeXbook (1986)", "FreeType API Reference", "PDF 2.0 (ISO 32000-2:2020)", "Knuth-Plass (1981)"]
+
+[constraints.numerical]
+[[constraints.numerical.item]]
+id = "NC-001"
+name = "Maximum entities per document"
+description = "Maximum number of entity IDs in a single S-IR document, limited by 32-bit generation index"
+value = 4294967295
+unit = "entities"
+source = "REQ-1.1.3 / REQ-3.1.6"
+derivation = "2^32 - 1, the maximum value of a uint32"
+validation_method = "Entity count check during S-IR validation"
+
+[[constraints.numerical.item]]
+id = "NC-002"
+name = "Maximum nesting depth"
+description = "Practical maximum depth of block nesting (paragraphs inside lists inside sections, etc.)"
+value = 65535
+unit = "levels"
+source = "Engineering judgment based on TeX max depth"
+derivation = "2^16 - 1; prevents stack overflow in traversal"
+validation_method = "Stack depth check during traversal"
+
+[[constraints.numerical.item]]
+id = "NC-003"
+name = "26.6 fixed-point range (minimum)"
+description = "Minimum representable value in 26.6 signed fixed-point format"
+value = -33554432.0
+unit = "scaled points"
+source = "REQ-3.2.6 / FreeType internal format"
+derivation = "-2^25 = -33554432.0 (25 integer bits + 1 sign bit)"
+validation_method = "Bounds check on all coordinate assignments"
+
+[[constraints.numerical.item]]
+id = "NC-004"
+name = "26.6 fixed-point range (maximum)"
+description = "Maximum representable value in 26.6 signed fixed-point format"
+value = 33554431.984375
+unit = "scaled points"
+source = "REQ-3.2.6 / FreeType internal format"
+derivation = "2^25 - 2^(-6) = 33554431.984375"
+validation_method = "Bounds check on all coordinate assignments"
+
+[[constraints.numerical.item]]
+id = "NC-005"
+name = "Fixed-point quantization error"
+description = "Maximum rounding error when converting a real number to 26.6 fixed-point"
+value = 0.0078125
+unit = "scaled points"
+source = "REQ-3.2.7"
+derivation = "1/2^6 = 1/128 ≈ 0.0078125 scaled points"
+validation_method = "Verify round(v * 64) is within ±0.5 of v * 64"
+
+[[constraints.numerical.item]]
+id = "NC-006"
+name = "Scaled point to printer's point conversion"
+description = "1 scaled point (sp) = 1/65536 printer's point"
+value = 0.0000152587890625
+unit = "pt"
+source = "The TeXbook, Chapter 10"
+derivation = "1/65536 pt per sp"
+validation_method = "Unit conversion test"
+
+[[constraints.numerical.item]]
+id = "NC-007"
+name = "Knuth-Plass badness overflow threshold"
+description = "Badness values exceeding this are clamped to infinity (penalized break)"
+value = 10000
+unit = "badness units (dimensionless)"
+source = "Knuth-Plass (1981), equation 4"
+derivation = "b = 100 * (w-t)^3 / s^3; when |w-t| > 10*s, badness > 10000, treated as infinite"
+validation_method = "Badness calculation unit test"
+
+[[constraints.numerical.item]]
+id = "NC-008"
+name = "Maximum line stretch ratio"
+description = "Maximum allowable stretch/compression ratio before a line break is considered infeasible"
+value = 2.0
+unit = "ratio (dimensionless)"
+source = "Knuth-Plass (1981)"
+derivation = "Conventional typesetting tolerance; |w-t|/s > 2.0 → infinite penalty"
+validation_method = "Line break feasibility test"
+
+[[constraints.numerical.item]]
+id = "NC-009"
+name = "SIMD lane width for Knuth-Plass"
+description = "Number of line-break candidates evaluated simultaneously"
+value = 8
+unit = "candidates"
+source = "REQ-4.3.2.3"
+derivation = "256-bit SIMD / 32-bit per candidate = 8 lanes"
+validation_method = "Static analysis of SIMD kernel"
+
+[[constraints.numerical.item]]
+id = "NC-010"
+name = "WASM fuel limit"
+description = "Maximum number of WASM instructions per macro execution before trap"
+value = 100000
+unit = "instructions"
+source = "REQ-7.3"
+derivation = "Engineering requirement to prevent infinite loops"
+validation_method = "Fuel counter check in WASM runtime"
+
+[constraints.timing]
+[[constraints.timing.item]]
+id = "TC-001"
+name = "Paragraph re-layout latency"
+description = "Maximum time to re-layout a single changed paragraph in a 500-page document"
+value = 1.0
+unit = "ms"
+type = "hard"
+source = "REQ-11.1.2"
+derivation = "User-perceptible latency threshold for live editing"
+margin_percent = 20
+
+[[constraints.timing.item]]
+id = "TC-002"
+name = "Incremental update latency"
+description = "Maximum time to update a single word in a 1000-page document and refresh viewer"
+value = 5.0
+unit = "ms"
+type = "hard"
+source = "REQ-11.1.3"
+derivation = "Interactive responsiveness requirement"
+margin_percent = 20
+
+[[constraints.timing.item]]
+id = "TC-003"
+name = "Full document compilation"
+description = "Maximum time to compile War and Peace (plain text to PDF)"
+value = 100.0
+unit = "ms"
+type = "hard"
+source = "REQ-11.1.1"
+derivation = "Engineering target for competitive performance"
+margin_percent = 10
+
+[[constraints.timing.item]]
+id = "TC-004"
+name = "Full re-pagination"
+description = "Maximum time for full document re-pagination (500 pages)"
+value = 50.0
+unit = "ms"
+type = "hard"
+source = "REQ-11.1.4"
+derivation = "Derived from paragraph latency × estimated paragraphs"
+margin_percent = 20
+
+[[constraints.timing.item]]
+id = "TC-005"
+name = "GPU frame budget"
+description = "Maximum frame time for 144Hz pan/zoom rendering"
+value = 6.944
+unit = "ms"
+type = "hard"
+source = "REQ-6.1.3"
+derivation = "1000ms / 144Hz ≈ 6.944ms"
+margin_percent = 5
+
+[[constraints.timing.item]]
+id = "TC-006"
+name = "Source reverse mapping"
+description = "Maximum time to resolve pixel coordinate to source file:line"
+value = 2.0
+unit = "ms"
+type = "hard"
+source = "REQ-5.3.3"
+derivation = "Hover responsiveness requirement"
+margin_percent = 50
+
+[[constraints.timing.item]]
+id = "TC-007"
+name = "TeX lexer throughput"
+description = "Minimum token processing speed for TeX lexer"
+value = 500.0
+unit = "MB/s"
+type = "hard"
+source = "REQ-5.1.3"
+derivation = "Engineering target for large document parsing"
+margin_percent = 10
+
+[constraints.memory]
+[[constraints.memory.item]]
+id = "MC-001"
+name = "Hot layout pass allocation"
+description = "Dynamic heap allocations during the hot layout pass"
+value = 0
+unit = "bytes"
+allocation_type = "heap"
+source = "REQ-4.1.1"
+derivation = "Zero allocation requirement for deterministic performance"
+validation_method = "Valgrind/ASAN allocation tracking"
+
+[[constraints.memory.item]]
+id = "MC-002"
+name = "S-IR mmap capacity"
+description = "Maximum S-IR file size that can be memory-mapped"
+value = 1073741824
+unit = "bytes"
+allocation_type = "static"
+source = "REQ-3.1.5"
+derivation = "1GB practical limit for mmap on 64-bit systems"
+validation_method = "File size check before mmap"
+
+[[constraints.memory.item]]
+id = "MC-003"
+name = "Cache line alignment"
+description = "Alignment for SoA attribute arrays"
+value = 64
+unit = "bytes"
+allocation_type = "static"
+source = "REQ-4.1.3"
+derivation = "Standard cache line size for x86-64 and AArch64"
+validation_method = "Pointer alignment check"
+
+[constraints.hardware]
+[[constraints.hardware.item]]
+id = "HC-001"
+name = "SIMD register width"
+description = "Minimum SIMD register width for vectorized operations"
+value = 256
+unit = "bits"
+source = "REQ-4.3.2.3"
+derivation = "AVX2 (x86-64) / NEON (AArch64) minimum"
+validation_method = "CPU feature detection at runtime"
+
+[[constraints.hardware.item]]
+id = "HC-002"
+name = "Entity ID width"
+description = "Width of entity identifiers in the wire format"
+value = 32
+unit = "bits"
+source = "REQ-3.1.2"
+derivation = "4 bytes per EntityID in 13-byte header"
+validation_method = "Static type check"
+
+[conflicts]
+[[conflicts.item]]
+id = "CONF-001"
+constraint_1 = "NC-003"
+constraint_2 = "TC-003"
+description = "Fixed-point range limits maximum page dimensions, which affects compilation time for very large pages"
+impact = "Extremely large page sizes may require coordinate clamping"
+resolution = "Define maximum page dimensions in scaled points; clamp coordinates during compilation"
+adr_reference = "ADR-011"

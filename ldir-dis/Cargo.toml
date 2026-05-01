@@ -1,0 +1,15 @@
+[package]
+name = "ldir-dis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR IR disassembler — converts binary S-IR to human-readable text"
+
+[[bin]]
+name = "ldir-dis"
+path = "src/main.rs"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"

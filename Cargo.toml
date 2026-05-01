@@ -1,0 +1,94 @@
+[workspace]
+resolver = "3"
+members = [
+    "ldir-core",
+    "ldir-ir",
+    "ldir-tex",
+    "ldir-md",
+    "ldir-pdf",
+    "ldir-html",
+    "ldir-vello",
+    "ldir-wasm",
+    "ldc",
+    "ldir-dis",
+    "ldir-as",
+    "ldir-diff",
+    "ldir-validate",
+    "ldir-epub",
+    "ldir-txt",
+    "ldir-docx",
+    "ldir-typst",
+    "ldir-html-reader",
+    "ldir-adoc",
+    "ldir-org",
+    "ldir-docx-reader",
+    "ldir-opt",
+    "ldir-link",
+    "ldir-lsp",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.85"
+repository = "https://github.com/WyattAu/ldir"
+description = "A low-level document intermediate representation language for deterministic typesetting"
+
+[workspace.dependencies]
+# Internal
+ldir-core = { path = "ldir-core", version = "0.1.0" }
+ldir-ir = { path = "ldir-ir", version = "0.1.0" }
+ldir-tex = { path = "ldir-tex", version = "0.1.0" }
+ldir-md = { path = "ldir-md", version = "0.1.0" }
+ldir-pdf = { path = "ldir-pdf", version = "0.1.0" }
+ldir-vello = { path = "ldir-vello", version = "0.1.0" }
+ldir-wasm = { path = "ldir-wasm", version = "0.1.0" }
+
+# Serialization (REQ-2.3)
+rkyv = { version = "0.8", features = ["bytecheck"] }
+
+# Fixed-point & math
+fixed = "1.28"
+
+# Text shaping (REQ-4.3.1)
+harfbuzz-sys = "0.6"
+
+# Font technology (REQ-6.2.4)
+ttf-parser = "0.25"
+fontdb = "0.21"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+bitflags = "2.0"
+
+# Tracing (REQ-8.1)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+tracing-chrome = "0.7"
+
+# Testing & fuzzing
+proptest = "1.6"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# PDF
+pdf-writer = "0.11"
+
+# GPU rendering
+vello = "0.3"
+parley = "0.3"
+wgpu = "23"
+
+# WASM
+wasmtime = "28"
+
+# ECS reference
+shipyard = "0.11"
+
+# Concurrency
+crossbeam = "0.8"

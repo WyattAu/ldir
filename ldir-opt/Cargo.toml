@@ -1,0 +1,15 @@
+[package]
+name = "ldir-opt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR IR optimizer — applies transformation passes to S-IR v2 modules"
+
+[[bin]]
+name = "ldir-opt"
+path = "src/main.rs"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"

@@ -1,0 +1,109 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "LaTeX (ldir)",
+  "scopeName": "text.latex.ldir",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#math" },
+    { "include": "#environments" },
+    { "include": "#sections" },
+    { "include": "#labels" },
+    { "include": "#commands" },
+    { "include": "#braces" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "match": "%.*$",
+          "name": "comment.line.percentage.latex"
+        }
+      ]
+    },
+    "math": {
+      "patterns": [
+        {
+          "name": "markup.raw.inline.latex",
+          "begin": "(?<!\\$)\\$(?!\\$)",
+          "end": "(?<!\\$)\\$(?!\\$)",
+          "patterns": [
+            { "include": "#math-content" }
+          ]
+        },
+        {
+          "name": "markup.raw.block.latex",
+          "begin": "\\$\\$",
+          "end": "\\$\\$",
+          "patterns": [
+            { "include": "#math-content" }
+          ]
+        }
+      ]
+    },
+    "math-content": {
+      "patterns": [
+        {
+          "match": "\\\\[a-zA-Z]+",
+          "name": "support.function.math.latex"
+        }
+      ]
+    },
+    "environments": {
+      "patterns": [
+        {
+          "match": "\\\\begin\\{([a-zA-Z]*\\*?)\\}",
+          "captures": {
+            "0": { "name": "entity.name.tag.begin.latex" },
+            "1": { "name": "entity.name.tag.latex" }
+          }
+        },
+        {
+          "match": "\\\\end\\{([a-zA-Z]*\\*?)\\}",
+          "captures": {
+            "0": { "name": "entity.name.tag.end.latex" },
+            "1": { "name": "entity.name.tag.latex" }
+          }
+        }
+      ]
+    },
+    "sections": {
+      "patterns": [
+        {
+          "match": "\\\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\\b",
+          "name": "markup.heading.latex"
+        }
+      ]
+    },
+    "labels": {
+      "patterns": [
+        {
+          "match": "\\\\(label|ref|eqref|cite|pageref|autoref)\\{[^}]*\\}",
+          "captures": {
+            "0": { "name": "variable.other.latex" },
+            "1": { "name": "variable.other.label.latex" }
+          }
+        }
+      ]
+    },
+    "commands": {
+      "patterns": [
+        {
+          "match": "\\\\[a-zA-Z]+",
+          "name": "support.function.latex"
+        }
+      ]
+    },
+    "braces": {
+      "patterns": [
+        {
+          "match": "[{}]",
+          "name": "punctuation.bracket.latex"
+        },
+        {
+          "match": "[\\[\\]]",
+          "name": "punctuation.bracket.latex"
+        }
+      ]
+    }
+  }
+}

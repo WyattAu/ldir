@@ -1,0 +1,477 @@
+# Master Execution Plan for LDIR
+# Topologically sorted DAG of implementation tasks
+# Format: TOML (not JSON/YAML per project standard)
+#
+# NOTE: This file is historical. All Phase A tasks (TASK-001 through TASK-030)
+# are marked complete. See the Phase 8 section at the bottom for current work.
+
+[metadata]
+total_tasks = 30
+critical_path_length = 212
+created = "2026-04-23"
+version = "0.1.0"
+
+[[task]]
+id = "TASK-001"
+title = "Initialize Rust monorepo workspace"
+description = "Create Cargo workspace with ldir-core, ldir-ir, ldir-tex, ldir-md, ldir-pdf, ldir-vello, ldir-wasm, ldc, ldir-lean crates per REQ-10.1. Configure path dependencies and precise version pins per REQ-10.2."
+phase = 5
+priority = "critical"
+estimated_hours = 4
+dependencies = []
+outputs = ["Cargo.toml", "ldir-core/Cargo.toml", "ldir-ir/Cargo.toml", "ldir-tex/Cargo.toml", "ldir-md/Cargo.toml", "ldir-pdf/Cargo.toml", "ldir-vello/Cargo.toml", "ldir-wasm/Cargo.toml", "ldc/Cargo.toml", "ldir-lean/.gitkeep"]
+verification = ["cargo build succeeds", "cargo test --no-run succeeds", "all crate names match REQ-10.1 layout"]
+quality_gate = "QG-TASK-001"
+status = "complete"
+
+[[task]]
+id = "TASK-002"
+title = "Implement fp26_6 arithmetic module"
+description = "Core fixed-point types: Fp266, add, sub, mul, div, sqrt, comparison, saturation. Matches FreeType 26.6 format per REQ-3.2.5. Quantization from f64 defined as round(v * 64) per REQ-3.2.7 with max error ±1/128."
+phase = 5
+priority = "critical"
+estimated_hours = 16
+dependencies = ["TASK-001"]
+outputs = ["ldir-core/src/fp266.rs", "ldir-core/src/fp266_test.rs"]
+verification = ["All test vectors from test_vectors_fixedpoint.toml pass", "THM-FP-BOUNDS-001, THM-FP-ASSOC-001, THM-FP-ROUND-ERROR-001 properties verified", "Criterion benchmarks within target"]
+quality_gate = "QG-TASK-002"
+status = "complete"
+
+[[task]]
+id = "TASK-003"
+title = "Implement ECS core module"
+description = "Entity-Component-System with SoA layout per REQ-2.1 and REQ-4.1.2. Typed arena (bump) allocators per REQ-4.1.1. 32-bit generation indices as entity IDs per REQ-3.1.6. No Box/Rc/Arc for document nodes per REQ-4.1.4. Cache-line aligned attribute arrays (64-byte) per REQ-4.1.3."
+phase = 5
+priority = "critical"
+estimated_hours = 24
+dependencies = ["TASK-001"]
+outputs = ["ldir-core/src/ecs/entity.rs", "ldir-core/src/ecs/component.rs", "ldir-core/src/ecs/storage.rs", "ldir-core/src/ecs/arena.rs", "ldir-core/src/ecs_test.rs"]
+verification = ["THM-ECS-NO-LEAK-001: no memory leaks under valgrind/asan", "THM-ECS-SOA-CACHE-001: cache-miss rate within 5% of theoretical minimum on microbenchmark", "THM-ECS-CAPACITY-001: supports 2^32 entities", "Zero dynamic heap allocations in hot path (verified via heap profiling)"]
+quality_gate = "QG-TASK-003"
+status = "complete"
+
+[[task]]
+id = "TASK-004"
+title = "Implement error types and diagnostics"
+description = "Structured error hierarchy for all compiler stages: ParseError (ERR-PARSE-001..003), ValidationError (ERR-VALID-001..007), CompileError (ERR-COMP-001..002), EmitError (ERR-EMIT-001). Each error carries EntityID and byte offset per REQ-3.3.4. No panics or segfaults on malformed input."
+phase = 5
+priority = "critical"
+estimated_hours = 8
+dependencies = ["TASK-001"]
+outputs = ["ldir-core/src/error.rs", "ldir-core/src/diagnostic.rs", "ldir-ir/src/lib.rs"]
+verification = ["All error variants match ERR-XXX codes in BP-IR-COMPILER-001", "Error Display impl includes EntityID and byte offset", "No unwrap/expect in library code (verified by clippy::unwrap_used deny)"]
+quality_gate = "QG-TASK-004"
+status = "complete"
+
+[[task]]
+id = "TASK-005"
+title = "Implement tracing and observability integration"
+description = "Embed tracing ecosystem per REQ-8.1. Instrument entry/exit of all major layout functions with CPU timestamp counters (RDTSC/CNTVCT_EL0). Export traces to Chrome Trace Format (.json) and Tracy per REQ-8.2. Nanosecond-resolution overhead per REQ-11.4.1."
+phase = 5
+priority = "high"
+estimated_hours = 4
+dependencies = ["TASK-001"]
+outputs = ["ldir-core/src/trace.rs", "ldir-core/src/profiling.rs"]
+verification = ["Trace output loads in chrome://tracing without errors", "Overhead of instrumentation < 1% on Criterion benchmark", "Frame profiling data includes cache miss rates per REQ-11.4.3"]
+quality_gate = "QG-TASK-005"
+status = "complete"
+
+[[task]]
+id = "TASK-006"
+title = "Define S-IR types and opcode enum"
+description = "S-IR instruction types with 13-byte wire-format header per REQ-3.1.2: OpCode (1 byte), EntityID (4 bytes), ParentID (4 bytes), PayloadOffset (4 bytes). Opcode enum includes PUSH_BLOCK, SET_CONTENT, APPLY_STYLE, INSERT_MATH, LINK_DATA per REQ-3.1.3. SIRDocument and PayloadRegion types per REQ-3.1.1."
+phase = 5
+priority = "critical"
+estimated_hours = 16
+dependencies = ["TASK-003", "TASK-004"]
+outputs = ["ldir-ir/src/sir/mod.rs", "ldir-ir/src/sir/opcode.rs", "ldir-ir/src/sir/instruction.rs", "ldir-ir/src/sir/document.rs", "ldir-ir/src/sir/payload.rs"]
+verification = ["sizeof(SIRInstruction) == 13 bytes (or wire format matches)", "All opcodes from REQ-3.1.3 represented", "rkyv derive macros compile", "EntityID is u32, ParentID sentinel is 0xFFFFFFFF"]
+quality_gate = "QG-TASK-006"
+status = "complete"
+
+[[task]]
+id = "TASK-007"
+title = "Implement rkyv serialization for S-IR"
+description = "rkyv Archive/Serialize/Deserialize implementations for all S-IR types per REQ-2.3. Zero-copy deserialization support for mmap'd files per REQ-3.1.5. 4-byte alignment requirement for rkyv per PRE-PARSE-002."
+phase = 5
+priority = "critical"
+estimated_hours = 12
+dependencies = ["TASK-006"]
+outputs = ["ldir-ir/src/sir/archive.rs", "ldir-ir/src/sir/serde.rs"]
+verification = ["Round-trip: serialize then zero-copy deserialize produces identical SIRDocument", "mmap 1GB S-IR file and begin access in O(1) time", "Zero heap allocations during deserialization when source is mmap'd (INV-PARSE-001)"]
+quality_gate = "QG-TASK-007"
+status = "complete"
+
+[[task]]
+id = "TASK-008"
+title = "Implement S-IR parser (COMP-IR-PARSER)"
+description = "Implement IF-PARSE-001: parse_sir(bytes: &[u8]) -> Result<SIRDocument, ParseError>. rkyv zero-copy deserialization per DR-003. Enforce PRE-PARSE-001 (bytes.len() >= 13) and PRE-PARSE-002 (4-byte alignment). Map ERR-PARSE-001..003 error codes."
+phase = 5
+priority = "critical"
+estimated_hours = 16
+dependencies = ["TASK-007"]
+outputs = ["ldir-core/src/parser/mod.rs", "ldir-core/src/parser/sir_parser.rs", "ldir-core/src/parser_test.rs"]
+verification = ["parse_sir returns Ok for well-formed test vectors TV-IR-001..005", "parse_sir returns correct Err variant for each ERR-PARSE-001..003 case", "O(|bytes|) time complexity verified via Criterion scaling test"]
+quality_gate = "QG-TASK-008"
+status = "complete"
+
+[[task]]
+id = "TASK-009"
+title = "Implement S-IR validator (COMP-IR-VALIDATOR)"
+description = "Implement IF-VALIDATE-001: validate_sir(doc: &SIRDocument) -> ValidationResult. All 6 WF-SIR checks per DEF-004: entity uniqueness (AX-001), parent existence (AX-002), acyclicity (AX-003), payload integrity (AX-004), single root (DEF-004.5), block nesting (DEF-004.6). Structured diagnostics with EntityID + byte offset per REQ-3.3.4."
+phase = 5
+priority = "critical"
+estimated_hours = 20
+dependencies = ["TASK-006", "TASK-004"]
+outputs = ["ldir-core/src/validator/mod.rs", "ldir-core/src/validator/entity_unique.rs", "ldir-core/src/validator/parent_exists.rs", "ldir-core/src/validator/acyclicity.rs", "ldir-core/src/validator/root_count.rs", "ldir-core/src/validator/block_nesting.rs", "ldir-core/src/validator/payload_integrity.rs", "ldir-core/src/validator_test.rs"]
+verification = ["validate_sir returns Ok for TV-IR-P01 (well-formed)", "validate_sir returns correct ERR-VALID-001..007 for each malformed case", "O(|d|) time complexity per THM-WF-SIR-001", "Deterministic output: same input always produces same result (INV-VALID-001)"]
+quality_gate = "QG-TASK-009"
+status = "complete"
+
+[[task]]
+id = "TASK-010"
+title = "Implement source-to-SIR entity mapping"
+description = "LSP source mapping per REQ-5.3.1: map token byte-offset in source file to EntityID in S-IR. Retain EntityIDs in G-IR for reverse mapping per REQ-5.3.2. Hover resolution from pixel coordinate to source text in < 2ms per REQ-5.3.3."
+phase = 6
+priority = "high"
+estimated_hours = 8
+dependencies = ["TASK-008", "TASK-009"]
+outputs = ["ldir-core/src/source_map.rs", "ldir-core/src/source_map_test.rs"]
+verification = ["Byte-offset to EntityID lookup is O(1) amortized", "Reverse mapping (pixel to source line) completes in < 2ms on 500-page document"]
+quality_gate = "QG-TASK-010"
+status = "complete"
+
+[[task]]
+id = "TASK-011"
+title = "Define G-IR types and opcode enum"
+description = "G-IR command types per REQ-3.2.3: SET_FONT, MOVE_XY, PUT_GLYPH, DRAW_RULE, PUSH_STACK, POP_STACK, ATTACH_METADATA. GIRPage with command sequence per DEF-002. GIRDocument with page sequence per DEF-003. All coordinates as i32 in 26.6 fixed-point per REQ-3.2.4. 16-byte command alignment per REQ-3.2.2."
+phase = 5
+priority = "critical"
+estimated_hours = 12
+dependencies = ["TASK-002", "TASK-004"]
+outputs = ["ldir-ir/src/gir/mod.rs", "ldir-ir/src/gir/opcode.rs", "ldir-ir/src/gir/command.rs", "ldir-ir/src/gir/page.rs", "ldir-ir/src/gir/document.rs", "ldir-ir/src/gir/style.rs"]
+verification = ["GIRCommand args use i32 (26.6 fixed-point)", "All 7 opcodes from REQ-3.2.3 represented", "GIRPage enforces stack balance invariant (DEF-005 cond. 3)", "GIRDocument requires >= 1 page (DEF-003)"]
+quality_gate = "QG-TASK-011"
+status = "complete"
+
+[[task]]
+id = "TASK-012"
+title = "Implement S-IR to G-IR compiler (COMP-IR-COMPILER)"
+description = "Implement IF-COMPILE-001: compile_sir(doc: &SIRDocument) -> Result<GIRDocument, CompileError>. ALG-COMPILE-001 depth-first traversal. Handle PUSH_BLOCK, SET_CONTENT, APPLY_STYLE, INSERT_MATH, LINK_DATA opcodes. Emit SET_FONT, PUSH_STACK, MOVE_XY, PUT_GLYPH, ATTACH_METADATA G-IR commands. Page overflow detection. Zero heap allocations in hot path per INV-COMP-002. Bit-identical output per INV-COMP-001."
+phase = 5
+priority = "critical"
+estimated_hours = 40
+dependencies = ["TASK-011", "TASK-009"]
+outputs = ["ldir-core/src/compiler/mod.rs", "ldir-core/src/compiler/dfs.rs", "ldir-core/src/compiler/block_handler.rs", "ldir-core/src/compiler/content_handler.rs", "ldir-core/src/compiler/style_handler.rs", "ldir-core/src/compiler/math_handler.rs", "ldir-core/src/compiler/link_handler.rs", "ldir-core/src/compiler_test.rs"]
+verification = ["Well-formed S-IR (TV-IR-001..005) compiles to well-formed G-IR (THM-COMPILE-WF-001)", "All S-IR entities represented in G-IR output (THM-COMPILE-COVERAGE-001)", "Coordinate stack balanced per page (POST-COMP-003)", "Bit-identical G-IR across 1/4/16 thread counts (REQ-9.2)", "Idempotent: repeated compilation yields identical G-IR (REQ-9.5)"]
+quality_gate = "QG-TASK-012"
+status = "complete"
+
+[[task]]
+id = "TASK-013"
+title = "Implement G-IR emitter (COMP-IR-EMITTER)"
+description = "Implement IF-EMIT-001: emit_gir(doc: &GIRDocument) -> Vec<u8>. Binary serialization of G-IR command buffers. 16-byte alignment per REQ-3.2.2. Zero dynamic heap allocations per REQ-6.2.2. Deterministic output per INV-EMIT-001."
+phase = 5
+priority = "critical"
+estimated_hours = 16
+dependencies = ["TASK-011"]
+outputs = ["ldir-core/src/emitter/mod.rs", "ldir-core/src/emitter/binary.rs", "ldir-core/src/emitter_test.rs"]
+verification = ["Round-trip: parse_gir(emit_gir(doc)) == doc (POST-EMIT-001)", "G-IR commands are 16-byte aligned in output (POST-EMIT-002)", "O(|g|) time complexity", "Deterministic: identical input produces identical bytes"]
+quality_gate = "QG-TASK-013"
+status = "complete"
+
+[[task]]
+id = "TASK-014"
+title = "Implement G-IR well-formedness verifier"
+description = "Implement check_gir function verifying DEF-005 conditions: coordinates in 26.6 range (cond. 1), font precedence maintained (cond. 2), coordinate stack balanced (cond. 3), coordinates within page bounds (cond. 4). Used as postcondition in compiler per THM-WF-GIR-001."
+phase = 5
+priority = "high"
+estimated_hours = 12
+dependencies = ["TASK-013"]
+outputs = ["ldir-core/src/verifier/gir.rs", "ldir-core/src/verifier_test.rs"]
+verification = ["Accepts well-formed G-IR (TV-IR-001..005 compiled output)", "Rejects unbalanced stack (THM-GIR-WF-UNBALANCED)", "Rejects out-of-range coordinates", "Accepts empty-page document (THM-GIR-WF-EMPTY)"]
+quality_gate = "QG-TASK-014"
+status = "complete"
+
+[[task]]
+id = "TASK-015"
+title = "Implement determinism verification tests"
+description = "Comprehensive determinism test suite per REQ-2.6, REQ-2.7, REQ-11.3.1, REQ-11.3.2. Bitwise-identical G-IR hash across x86-64 and AArch64 (cross-compile in CI). Identical output across Linux, macOS, Windows. Identical output across 1, 4, 16 cores. SHA-256 hash comparison of emitted G-IR bytes."
+phase = 6
+priority = "critical"
+estimated_hours = 8
+dependencies = ["TASK-012"]
+outputs = ["ldir-core/tests/determinism_test.rs", "ldir-core/tests/cross_platform_test.rs"]
+verification = ["SHA-256(G-IR) identical across thread counts 1/4/16", "SHA-256(G-IR) identical across x86-64 and AArch64 (if cross-compile available)", "All test vectors TV-IR-P02, TV-IR-P03 pass"]
+quality_gate = "QG-TASK-015"
+status = "complete"
+
+[[task]]
+id = "TASK-016"
+title = "Implement text shaping integration"
+description = "HarfBuzz integration for complex text shaping per REQ-4.3.1. AVX2/NEON optimized fast-path for ASCII/Latin-1 that bypasses HarfBuzz per REQ-4.3.1.1/4.3.1.2. Vectorized glyph width lookup table for simple text. Lock-free shaping cache with epoch-based reclamation per REQ-4.2.2."
+phase = 6
+priority = "critical"
+estimated_hours = 24
+dependencies = ["TASK-002", "TASK-012"]
+outputs = ["ldir-core/src/shaping/mod.rs", "ldir-core/src/shaping/harfbuzz.rs", "ldir-core/src/shaping/fast_path.rs", "ldir-core/src/shaping/cache.rs", "ldir-core/src/shaping_test.rs"]
+verification = ["Complex script shaping matches HarfBuzz reference output", "ASCII fast-path produces identical glyphs to HarfBuzz path", "Fast-path is >= 4x faster than HarfBuzz for ASCII-only text", "Shaping cache hit rate > 95% on repeated compilation"]
+quality_gate = "QG-TASK-016"
+status = "complete"
+
+[[task]]
+id = "TASK-017"
+title = "Implement Knuth-Plass line-breaking algorithm"
+description = "Knuth-Plass line-breaking per REQ-4.3.2. Badness formula b = 100 * (w - t)^3 / s^3 per REQ-4.3.2.2. SIMD parallel evaluation of 8 break candidates via 256-bit registers per REQ-4.3.2.3. Branchless inner DP loop per REQ-4.3.2.4. 26.6 fixed-point arithmetic throughout per REQ-4.3.4.2."
+phase = 6
+priority = "critical"
+estimated_hours = 32
+dependencies = ["TASK-016"]
+outputs = ["ldir-core/src/layout/linebreak/mod.rs", "ldir-core/src/layout/linebreak/knuth_plass.rs", "ldir-core/src/layout/linebreak/simd.rs", "ldir-core/src/layout/linebreak/badness.rs", "ldir-core/src/layout/linebreak_test.rs"]
+verification = ["THM-KP-OPTIMALITY-001: output matches reference Knuth-Plass implementation", "THM-KP-TERMINATION-001: algorithm always terminates (fuel-bounded test)", "Badness values match test_vectors_knuthplass.toml within ±1 unit", "SIMD path produces identical results to scalar path", "Branchless inner loop verified via branch-miss profiling"]
+quality_gate = "QG-TASK-017"
+status = "complete"
+
+[[task]]
+id = "TASK-018"
+title = "Implement global pagination via DAG and Branch-and-Bound"
+description = "Global pagination optimizer per REQ-4.3.3. Page-break DAG model per REQ-4.3.3.1. Branch-and-Bound pruning with maximum badness threshold per REQ-4.3.3.2. Global widow/orphan elimination across 100+ pages per REQ-4.3.3.3. Deterministic tie-breaking for bit-identical output."
+phase = 6
+priority = "critical"
+estimated_hours = 24
+dependencies = ["TASK-017"]
+outputs = ["ldir-core/src/layout/pagination/mod.rs", "ldir-core/src/layout/pagination/dag.rs", "ldir-core/src/layout/pagination/branch_bound.rs", "ldir-core/src/layout/pagination_test.rs"]
+verification = ["THM-PAGINATE-TERMINATION-001: always terminates on all test inputs", "No widows/orphans on test documents up to 200 pages", "Combinatorial explosion prevented: 1000-page document paginates in < 50ms per REQ-11.1.4", "Deterministic output verified via hash comparison"]
+quality_gate = "QG-TASK-018"
+status = "complete"
+
+[[task]]
+id = "TASK-019"
+title = "Implement Cassowary constraint solver"
+description = "Dual-simplex Cassowary solver for floating elements per REQ-4.3.4.1. Fixed-point arithmetic internally per REQ-4.3.4.2. SoA matrix storage with block-matrix SIMD operations per REQ-4.3.4.3. THM-CW-CONVERGENCE-001 and THM-CW-TERMINATION-001 verified."
+phase = 6
+priority = "high"
+estimated_hours = 24
+dependencies = ["TASK-002"]
+outputs = ["ldir-core/src/solver/mod.rs", "ldir-core/src/solver/cassowary.rs", "ldir-core/src/solver/matrix.rs", "ldir-core/src/solver/simd_ops.rs", "ldir-core/src/solver_test.rs"]
+verification = ["THM-CW-CONVERGENCE-001: solver converges on all test_vectors_cassowary.toml", "THM-CW-TERMINATION-001: bounded iteration count", "THM-CW-FP-ERROR-001: error within fixed-point bounds", "SoA matrix SIMD ops produce identical results to scalar path"]
+quality_gate = "QG-TASK-019"
+status = "complete"
+
+[[task]]
+id = "TASK-020"
+title = "Implement incremental re-layout"
+description = "Paragraph-level and word-level incremental re-layout per REQ-11.1.2 and REQ-11.1.3. Sub-1ms for single paragraph change in 500-page doc. Sub-5ms for single word change with viewer refresh in 1000-page doc. Work-stealing scheduler for independent sections per REQ-4.2.3."
+phase = 6
+priority = "critical"
+estimated_hours = 16
+dependencies = ["TASK-017", "TASK-018"]
+outputs = ["ldir-core/src/layout/incremental.rs", "ldir-core/src/layout/incremental_test.rs"]
+verification = ["Single paragraph re-layout < 1ms on 500-page document (REQ-11.1.2)", "Single word incremental update < 5ms with viewer refresh on 1000-page document (REQ-11.1.3)", "Incremental output matches full re-layout output (bit-identical G-IR)"]
+quality_gate = "QG-TASK-020"
+status = "complete"
+
+[[task]]
+id = "TASK-021"
+title = "Implement font loading and subsetting"
+description = "TrueType/OpenType font table parsing per REQ-6.2.4. Font subsetting to exactly the glyphs used in G-IR. Concurrent subsetting with PDF dictionary generation per REQ-6.2.4. Support for standard 14 PDF fonts and custom OpenType fonts."
+phase = 6
+priority = "high"
+estimated_hours = 20
+dependencies = ["TASK-013"]
+outputs = ["ldir-pdf/src/font/mod.rs", "ldir-pdf/src/font/loader.rs", "ldir-pdf/src/font/subset.rs", "ldir-pdf/src/font/tables.rs", "ldir-pdf/src/font_test.rs"]
+verification = ["All standard 14 PDF fonts load correctly", "Custom OpenType font subsetting produces valid subset", "Subset contains exactly the glyphs referenced in G-IR (no more, no less)", "Font subsetting runs concurrently without race conditions"]
+quality_gate = "QG-TASK-021"
+status = "complete"
+
+[[task]]
+id = "TASK-022"
+title = "Implement PDF/A-4 emission backend"
+description = "PDF/A-4 output with font subsetting per REQ-6.2.1. Pre-allocated byte buffers, zero dynamic heap allocations per REQ-6.2.2. Parallel FlateDecode compression via work-stealing pool per REQ-6.2.3. Tagged PDF for accessibility per REQ-3.2.3 (ATTACH_METADATA)."
+phase = 6
+priority = "high"
+estimated_hours = 32
+dependencies = ["TASK-021", "TASK-013"]
+outputs = ["ldir-pdf/src/lib.rs", "ldir-pdf/src/writer.rs", "ldir-pdf/src/object.rs", "ldir-pdf/src/stream.rs", "ldir-pdf/src/catalog.rs", "ldir-pdf/src/tagged.rs", "ldir-pdf/src/pdf_test.rs"]
+verification = ["Output validates against veraPDF PDF/A-4 profile", "Zero dynamic heap allocations during generation (verified via heap profiling)", "FlateDecode streams decompress correctly", "Font subsets embedded correctly", "Tagged structure matches G-IR ATTACH_METADATA"]
+quality_gate = "QG-TASK-022"
+status = "complete"
+
+[[task]]
+id = "TASK-023"
+title = "Implement Vello/GPU rendering integration"
+description = "Map G-IR to GPU compute shaders via WGPU/Vello per REQ-6.1.1. CPU calculates bounding boxes only; path rasterization and MSAA on GPU per REQ-6.1.2. 144Hz pan/zoom with < 6.9ms frame budget per REQ-6.1.3."
+phase = 6
+priority = "high"
+estimated_hours = 24
+dependencies = ["TASK-013"]
+outputs = ["ldir-vello/src/lib.rs", "ldir-vello/src/renderer.rs", "ldir-vello/src/gir_to_scene.rs", "ldir-vello/src/viewport.rs", "ldir-vello/src/vello_test.rs"]
+verification = ["Pan/zoom maintains 144Hz on reference GPU hardware", "Frame budget < 6.9ms measured via GPU timestamp queries", "Visual output matches PDF reference for test documents", "No CPU-side rasterization in rendering path"]
+quality_gate = "QG-TASK-023"
+status = "complete"
+
+[[task]]
+id = "TASK-024"
+title = "Implement WASM bridge and WebGL backend"
+description = "WASM/WebGL thin-client renderer per REQ-6.3.1. Interprets G-IR instructions onto HTML Canvas using GPU shaders. wasmtime sandbox for user extensions per REQ-7.1. Fuel limits (100,000 instructions) per REQ-7.3. WASM interface versioning per REQ-7.5. Zero-copy string passing via 32-bit pointer + length per REQ-7.2."
+phase = 6
+priority = "medium"
+estimated_hours = 20
+dependencies = ["TASK-013", "TASK-023"]
+outputs = ["ldir-wasm/src/lib.rs", "ldir-wasm/src/bridge.rs", "ldir-wasm/src/sandbox.rs", "ldir-wasm/src/webgl.rs", "ldir-wasm/src/versioning.rs", "ldir-wasm/wasm_test.rs"]
+verification = ["WASM module loads in browser without errors", "G-IR renders correctly on HTML Canvas", "Fuel limit traps execution at 100,000 instructions", "WASM interface version check prevents incompatible module loading", "No string copies between host and guest (verified via allocation count)"]
+quality_gate = "QG-TASK-024"
+status = "complete"
+
+[[task]]
+id = "TASK-025"
+title = "Implement fuzzing harnesses"
+description = "Continuous fuzzing with cargo-fuzz per REQ-9.1. Harnesses for S-IR parser, S-IR validator, and compiler. No malformed S-IR causes OOB panic, segfault, or infinite loop. Corpus seeded with test vectors. 24h fuzz runs in CI."
+phase = 7
+priority = "critical"
+estimated_hours = 16
+dependencies = ["TASK-008", "TASK-009", "TASK-012"]
+outputs = ["ldir-core/fuzz/fuzz_sir_parser.rs", "ldir-core/fuzz/fuzz_sir_validator.rs", "ldir-core/fuzz/fuzz_compiler.rs", "ldir-core/fuzz/Cargo.toml", "ldir-core/fuzz/corpus/"]
+verification = ["24h fuzz run with no crashes, panics, or timeouts", "Coverage > 80% on parser, validator, compiler modules", "Corpus includes all TV-IR-001..005 and TV-IR-A01..A09 vectors"]
+quality_gate = "QG-TASK-025"
+status = "complete"
+
+[[task]]
+id = "TASK-026"
+title = "Implement property-based tests"
+description = "Proptest/quickcheck property tests for compiler invariants. Round-trip property: parse -> validate -> compile -> emit -> parse produces identical result. Determinism property: N compilations produce identical G-IR. Well-formedness preservation: WF-SIR input always produces WF-GIR output."
+phase = 7
+priority = "high"
+estimated_hours = 16
+dependencies = ["TASK-012", "TASK-013"]
+outputs = ["ldir-core/tests/property/round_trip.rs", "ldir-core/tests/property/determinism.rs", "ldir-core/tests/property/wf_preservation.rs", "ldir-core/tests/property/Cargo.toml"]
+verification = ["10,000 proptest iterations pass with no failures", "Round-trip property holds for randomly generated S-IR", "WF preservation property holds for all generated inputs"]
+quality_gate = "QG-TASK-026"
+status = "complete"
+
+[[task]]
+id = "TASK-027"
+title = "Implement performance benchmarks"
+description = "Criterion benchmarks for all critical paths. War and Peace full compilation < 100ms per REQ-11.1.1. 500-page pagination < 50ms per REQ-11.1.4. Regression detection: fail if commit increases latency by > 2% per REQ-9.4. Benchmarks run in CI on every PR."
+phase = 7
+priority = "critical"
+estimated_hours = 12
+dependencies = ["TASK-012", "TASK-017", "TASK-018"]
+outputs = ["ldir-core/benches/bench_full_compile.rs", "ldir-core/benches/bench_pagination.rs", "ldir-core/benches/bench_linebreak.rs", "ldir-core/benches/bench_incremental.rs", "ldir-core/benches/bench_fp266.rs"]
+verification = ["War and Peace compilation < 100ms on reference hardware", "500-page pagination < 50ms", "CI benchmark comparison catches > 2% regression", "All benchmarks produce stable results (variance < 5%)"]
+quality_gate = "QG-TASK-027"
+status = "complete"
+
+[[task]]
+id = "TASK-028"
+title = "Implement CI/CD pipeline"
+description = "GitHub Actions CI/CD pipeline. Lint (clippy deny), format (rustfmt), test, fuzz, benchmark, cross-compile (x86-64 + AArch64), determinism verification, PDF validation (veraPDF). Quality gates must pass before merge."
+phase = 7
+priority = "high"
+estimated_hours = 16
+dependencies = ["TASK-025", "TASK-026", "TASK-027"]
+outputs = [".github/workflows/ci.yml", ".github/workflows/fuzz.yml", ".github/workflows/bench.yml", ".github/workflows/release.yml", ".github/PULL_REQUEST_TEMPLATE.md"]
+verification = ["All jobs pass on clean main branch", "PR quality gates block non-passing commits", "Fuzz job runs 24h on schedule", "Benchmark job posts comparison comment on PRs", "Cross-compile matrix covers x86-64-linux, aarch64-linux, x86-64-macos, x86-64-windows"]
+quality_gate = "QG-TASK-028"
+status = "complete"
+
+[[task]]
+id = "TASK-029"
+title = "Generate API documentation"
+description = "cargo doc --workspace --no-deps with Yellow Paper theorem references in doc comments per AG-001, AG-002. WCAG 2.1 AA compliance for HTML output per AG-003. Public API signatures documented per DC-001. Example code in docs compiles per DC-002."
+phase = 7
+priority = "high"
+estimated_hours = 12
+dependencies = ["TASK-006", "TASK-011"]
+outputs = ["target/doc/index.html", ".docs/api_reference.md", "ldir-core/src/lib.rs (updated doc comments)", "ldir-ir/src/lib.rs (updated doc comments)"]
+verification = ["cargo doc --workspace --no-deps succeeds with no warnings", "All public types and functions have doc comments", "Doc comments reference Yellow Paper theorem IDs", "HTML output passes axe-core WCAG 2.1 AA audit", "Example code blocks compile (DC-002)"]
+quality_gate = "QG-TASK-029"
+status = "complete"
+
+[[task]]
+id = "TASK-030"
+title = "Write user guide and examples"
+description = "Getting started guide per UD-001. API reference auto-generated from Rust docs per UD-002. Example gallery with at least 5 examples per UD-003: hello-world, markdown-to-pdf, tex-basic, custom-style, incremental-edit. Migration guide stub per UD-004."
+phase = 7
+priority = "medium"
+estimated_hours = 16
+dependencies = ["TASK-022", "TASK-029"]
+outputs = ["docs/getting-started.md", "docs/examples/hello-world.rs", "docs/examples/markdown-to-pdf.rs", "docs/examples/tex-basic.rs", "docs/examples/custom-style.rs", "docs/examples/incremental-edit.rs", "docs/migration-guide.md"]
+verification = ["All example code compiles and runs without errors", "Getting started guide produces a PDF from scratch in < 10 minutes", "Example gallery has >= 5 examples that produce different output formats", "API reference links resolve correctly"]
+quality_gate = "QG-TASK-030"
+status = "complete"
+
+# Phase 8: Hardening & Polish (2026-05 onward)
+# Priority: HIGH
+
+[[task]]
+id = "TASK-031"
+title = "Fix HarfBuzz UPEM scale normalization"
+status = "complete"
+era = "B"
+estimated_hours = 4
+
+[[task]]
+id = "TASK-032"
+title = "Wire font database into compile pipeline"
+status = "complete"
+era = "B"
+estimated_hours = 8
+
+[[task]]
+id = "TASK-033"
+title = "v2-native PDF backend (eliminate v1/v2 split)"
+status = "pending"
+era = "B"
+estimated_hours = 40
+depends_on = ["TASK-031", "TASK-032"]
+
+[[task]]
+id = "TASK-034"
+title = "Cross-reference resolution across all formats"
+status = "pending"
+era = "B"
+estimated_hours = 16
+
+[[task]]
+id = "TASK-035"
+title = "BibTeX/citation support"
+status = "pending"
+era = "B"
+estimated_hours = 24
+
+[[task]]
+id = "TASK-036"
+title = "CJK line breaking and vertical text"
+status = "pending"
+era = "C"
+estimated_hours = 40
+
+[[task]]
+id = "TASK-037"
+title = "RTL support (Arabic, Hebrew)"
+status = "pending"
+era = "C"
+estimated_hours = 32
+
+[[task]]
+id = "TASK-038"
+title = "Template system (header/footer, page masters)"
+status = "pending"
+era = "B"
+estimated_hours = 24
+
+[[task]]
+id = "TASK-039"
+title = "GPU-accelerated preview (Vello integration)"
+status = "pending"
+era = "C"
+estimated_hours = 40
+
+[[task]]
+id = "TASK-040"
+title = "Incremental PDF recompilation"
+status = "pending"
+era = "C"
+estimated_hours = 32
+depends_on = ["TASK-033"]

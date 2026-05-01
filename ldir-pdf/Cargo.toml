@@ -1,0 +1,13 @@
+[package]
+name = "ldir-pdf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR PDF/A-4 output backend"
+
+[dependencies]
+ldir-core = { workspace = true }
+ldir-ir = { workspace = true }
+pdf-writer = { workspace = true }
+ttf-parser = { workspace = true }
+flate2 = "1"

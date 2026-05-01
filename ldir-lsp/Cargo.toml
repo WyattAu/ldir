@@ -1,0 +1,28 @@
+[package]
+name = "ldir-lsp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "LDIR Language Server Protocol server for Markdown, TeX, and Typst"
+
+[[bin]]
+name = "ldir-lsp"
+path = "src/main.rs"
+
+[dependencies]
+ldir-core = { path = "../ldir-core" }
+ldir-md = { path = "../ldir-md" }
+ldir-tex = { path = "../ldir-tex" }
+ldir-typst = { path = "../ldir-typst" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["io-std", "io-util", "rt", "rt-multi-thread", "macros", "sync"] }
+tower-lsp = "0.20"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+url = "2"
+
+[dev-dependencies]
+url = "2"

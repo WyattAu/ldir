@@ -1,0 +1,9 @@
+[package]
+name = "ldir-typst"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR Typst frontend — converts Typst (.typ) to S-IR v2"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }

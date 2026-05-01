@@ -1,0 +1,7 @@
+{"plugins": [],
+ "package": "LDIRProofs",
+ "options": {"autoImplicit": false},
+ "name": "LDIRProofs.proof_ir_wellformedness",
+ "isModule": false,
+ "importArts": {},
+ "dynlibs": []}

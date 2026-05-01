@@ -1,0 +1,33 @@
+# Blue Paper Registry
+# Tracks all Blue Papers and their relationships
+
+[metadata]
+last_updated = "2026-04-23T00:00:00Z"
+total_papers = 1
+
+[[blue_paper]]
+id = "BP-IR-COMPILER-001"
+title = "S-IR to G-IR Compiler Component"
+status = "DRAFT"
+version = "0.1.0"
+ieee_1016_compliant = true
+created = "2026-04-23"
+author = "Construct"
+
+[blue_paper.scope]
+component_id = "COMP-IR-COMPILER"
+component_type = "Module"
+interfaces = ["IF-PARSE-001", "IF-VALIDATE-001", "IF-COMPILE-001", "IF-EMIT-001"]
+
+[blue_paper.dependencies]
+yellow_papers = ["YP-IR-SEMANTICS-001"]
+blue_papers = []
+external_libs = ["rkyv"]
+
+[blue_paper.verification]
+proof_file = "proofs/ProofIRWellformedness.lean"
+proof_status = "PARTIAL"
+test_coverage_critical = 0.0
+test_coverage_overall = 0.0
+sorry_count = 2
+sorry_reason = "Mathlib lacks List.eraseDups lemmas (brecOn-based definition)"

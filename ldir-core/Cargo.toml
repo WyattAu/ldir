@@ -1,0 +1,65 @@
+[package]
+name = "ldir-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR core: fp26_6 arithmetic, ECS, S-IR validator, compiler, and G-IR emitter"
+
+[dependencies]
+ldir-ir = { workspace = true }
+rkyv = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+ttf-parser = { workspace = true }
+fontdb = { workspace = true }
+bumpalo = { version = "3.16", features = ["collections"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+harfbuzz-sys = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+quickcheck = { workspace = true }
+criterion = { workspace = true }
+serde_json = "1"
+
+[[bench]]
+name = "bench_fp266"
+harness = false
+
+[[bench]]
+name = "bench_compile"
+harness = false
+
+[[bench]]
+name = "bench_validate"
+harness = false
+
+[[bench]]
+name = "bench_emit"
+harness = false
+
+[[bench]]
+name = "arena_bench"
+harness = false
+
+[[example]]
+name = "hello-world"
+path = "../docs/examples/hello-world.rs"
+
+[[example]]
+name = "custom-style"
+path = "../docs/examples/custom-style.rs"
+
+[[example]]
+name = "incremental-edit"
+path = "../docs/examples/incremental-edit.rs"
+
+[[example]]
+name = "markdown-to-pdf"
+path = "../docs/examples/markdown-to-pdf.rs"
+
+[[example]]
+name = "tex-basic"
+path = "../docs/examples/tex-basic.rs"

@@ -1,0 +1,9 @@
+[package]
+name = "ldir-docx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR DOCX backend — converts S-IR v2 to DOCX (OOXML)"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }

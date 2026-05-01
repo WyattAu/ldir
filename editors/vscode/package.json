@@ -1,0 +1,87 @@
+{
+  "name": "ldir",
+  "displayName": "ldir",
+  "description": "Language Server and tooling for ldir — the LLVM of documents",
+  "version": "0.1.0",
+  "publisher": "ldir",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": [
+    "onLanguage:ldir-tex",
+    "onLanguage:ldir-typst",
+    "onCommand:ldir.compile",
+    "onCommand:ldir.showPreview"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ldir-tex",
+        "aliases": ["LaTeX (ldir)", "TeX (ldir)"],
+        "extensions": [".tex"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "ldir-typst",
+        "aliases": ["Typst (ldir)"],
+        "extensions": [".typ"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ldir-tex",
+        "scopeName": "text.latex.ldir",
+        "path": "./syntaxes/ldir-tex.tmLanguage.json",
+        "injectTo": ["source.tex"]
+      },
+      {
+        "language": "ldir-typst",
+        "scopeName": "source.typst.ldir",
+        "path": "./syntaxes/ldir-typst.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "ldir.compile",
+        "title": "ldir: Compile Document"
+      },
+      {
+        "command": "ldir.showPreview",
+        "title": "ldir: Show PDF Preview"
+      },
+      {
+        "command": "ldir.showIR",
+        "title": "ldir: Show S-IR"
+      }
+    ],
+    "configuration": {
+      "title": "ldir",
+      "properties": {
+        "ldir.serverPath": {
+          "type": "string",
+          "default": "ldir-lsp",
+          "description": "Path to the ldir-lsp binary"
+        },
+        "ldir.compilerPath": {
+          "type": "string",
+          "default": "ldc",
+          "description": "Path to the ldc compiler binary"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  }
+}

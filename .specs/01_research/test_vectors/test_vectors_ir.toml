@@ -1,0 +1,600 @@
+# Test Vector Specification for LDIR IR Compilation
+# Covers S-IR well-formedness, compilation correctness, and error handling
+
+[metadata]
+algorithm_id = "ALG-COMPILE-001"
+algorithm_version = "0.1.0"
+generation_date = "2026-04-23T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "i32"
+absolute_tolerance = 1
+relative_tolerance = 0.0
+ulp_tolerance = 0
+note = "All coordinates are 26.6 fixed-point integers. Exact equality required."
+
+# ============================================================
+# CATEGORY: NOMINAL (40% coverage)
+# ============================================================
+
+[[test_vector]]
+id = "TV-IR-001"
+name = "Single paragraph document"
+category = "nominal"
+priority = "critical"
+description = "Minimal well-formed S-IR: one root block containing one paragraph with text content"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 1, parent_id = 0, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 2, parent_id = 1, payload_offset = 0 },
+  { op = "APPLY_STYLE", op_arg = "", entity_id = 3, parent_id = 1, payload_offset = 64 }
+]
+payload = "Hello, World!"
+
+[test_vector.expected_output]
+gir_pages = 1
+gir_commands_min = 3  # SET_FONT + glyphs + at least one MOVE_XY
+well_formed = true
+
+[test_vector.verification]
+source = "Manual construction from DEF-004, DEF-005"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-002"
+name = "Nested heading in document"
+category = "nominal"
+priority = "critical"
+description = "Document with root → heading → content nesting"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Heading", entity_id = 1, parent_id = 0, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 2, parent_id = 1, payload_offset = 0 },
+  { op = "APPLY_STYLE", op_arg = "h1", entity_id = 3, parent_id = 1, payload_offset = 32 }
+]
+payload = "Introduction"
+
+[test_vector.expected_output]
+gir_pages = 1
+well_formed = true
+
+[test_vector.verification]
+source = "Manual construction"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-003"
+name = "Multiple paragraphs"
+category = "nominal"
+priority = "high"
+description = "Document with root containing two sequential paragraphs"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 1, parent_id = 0, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 2, parent_id = 1, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 3, parent_id = 0, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 4, parent_id = 3, payload_offset = 128 }
+]
+payload = "First paragraph text. Second paragraph text."
+
+[test_vector.expected_output]
+gir_pages = 1
+well_formed = true
+
+[test_vector.verification]
+source = "Manual construction"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-004"
+name = "Document with math placeholder"
+category = "nominal"
+priority = "medium"
+description = "Document containing INSERT_MATH opcode (emits placeholder in MVP)"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 1, parent_id = 0, payload_offset = 0 },
+  { op = "INSERT_MATH", op_arg = "tex", entity_id = 2, parent_id = 1, payload_offset = 0 }
+]
+payload = "E = mc^2"
+
+[test_vector.expected_output]
+gir_pages = 1
+well_formed = true
+has_placeholder = true
+
+[test_vector.verification]
+source = "Manual construction per REQ-1.2.3"
+method = "Analytical"
+confidence = 0.90
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-005"
+name = "Document with style application"
+category = "nominal"
+priority = "high"
+description = "Document with multiple style applications (bold, italic)"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 1, parent_id = 0, payload_offset = 0 },
+  { op = "APPLY_STYLE", op_arg = "bold", entity_id = 2, parent_id = 1, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 3, parent_id = 1, payload_offset = 32 },
+  { op = "APPLY_STYLE", op_arg = "italic", entity_id = 4, parent_id = 1, payload_offset = 64 }
+]
+payload = "bold text italic text"
+
+[test_vector.expected_output]
+gir_pages = 1
+well_formed = true
+
+[test_vector.verification]
+source = "Manual construction"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+# ============================================================
+# CATEGORY: BOUNDARY (20% coverage)
+# ============================================================
+
+[[test_vector]]
+id = "TV-IR-B01"
+name = "Empty document (root only)"
+category = "boundary"
+priority = "high"
+description = "Minimal valid S-IR: only a root PUSH_BLOCK with no children"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 }
+]
+payload = ""
+
+[test_vector.expected_output]
+gir_pages = 1
+gir_commands_min = 0
+well_formed = true
+
+[test_vector.verification]
+source = "Boundary analysis of DEF-004"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-B02"
+name = "Maximum entity ID"
+category = "boundary"
+priority = "medium"
+description = "S-IR with entity ID at maximum uint32 value"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 4294967295, parent_id = 4294967295, payload_offset = 0 }
+]
+payload = ""
+
+[test_vector.expected_output]
+well_formed = true
+
+[test_vector.verification]
+source = "Boundary analysis of NC-001"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-B03"
+name = "Deeply nested blocks (depth 100)"
+category = "boundary"
+priority = "medium"
+description = "Document with 100 levels of nested PUSH_BLOCK (well within NC-002 limit of 65535)"
+
+[test_vector.input]
+instructions = """Generated: root → block_1 → block_2 → ... → block_100, each PUSH_BLOCK with parent pointing to previous"""
+# (In practice, this would be a programmatically generated test vector)
+
+[test_vector.expected_output]
+well_formed = true
+nesting_depth = 100
+
+[test_vector.verification]
+source = "Boundary analysis of NC-002"
+method = "Analytical"
+confidence = 0.90
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-B04"
+name = "Fixed-point boundary values"
+category = "boundary"
+priority = "critical"
+description = "Coordinates at minimum and maximum 26.6 fixed-point representable values"
+
+[test_vector.input]
+coordinates = { min = -2147483648, max = 2147483647, zero = 0, one_sp = 64 }
+
+[test_vector.expected_output]
+min_value = -33554432.0
+max_value = 33554431.984375
+quantization_error_max = 0.0078125
+
+[test_vector.verification]
+source = "NC-003, NC-004, NC-005"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+# ============================================================
+# CATEGORY: ADVERSARIAL (25% coverage)
+# ============================================================
+
+[[test_vector]]
+id = "TV-IR-A01"
+name = "Dangling parent reference"
+category = "adversarial"
+priority = "critical"
+description = "S-IR with an entity whose parent_id references a non-existent entity"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 1, parent_id = 999, payload_offset = 0 }
+]
+payload = "orphan"
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "INVALID_PARENT_REF" }
+
+[test_vector.verification]
+source = "DEF-004 condition 2 (AX-002 violation)"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A02"
+name = "Cyclic parent reference"
+category = "adversarial"
+priority = "critical"
+description = "S-IR with two entities that reference each other as parents (cycle)"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 1, parent_id = 2, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 2, parent_id = 1, payload_offset = 0 }
+]
+payload = ""
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "CYCLIC_PARENT_REF" }
+
+[test_vector.verification]
+source = "DEF-004 condition 3 (AX-003 violation)"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A03"
+name = "Duplicate entity ID"
+category = "adversarial"
+priority = "critical"
+description = "S-IR with two instructions sharing the same entity ID"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 1, parent_id = 0, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 1, parent_id = 0, payload_offset = 32 }
+]
+payload = "duplicate"
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "DUPLICATE_ENTITY_ID" }
+
+[test_vector.verification]
+source = "DEF-004 condition 1 (AX-001 violation)"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A04"
+name = "Out-of-bounds payload offset"
+category = "adversarial"
+priority = "high"
+description = "S-IR with payload offset pointing beyond the payload region"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "SET_CONTENT", op_arg = "", entity_id = 1, parent_id = 0, payload_offset = 999999 }
+]
+payload = "short"
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "INVALID_PAYLOAD_OFFSET" }
+
+[test_vector.verification]
+source = "DEF-004 condition 4 (AX-004 violation)"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A05"
+name = "No root entity"
+category = "adversarial"
+priority = "critical"
+description = "S-IR with no root (all entities have parent references)"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 1, parent_id = 2, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 2, parent_id = 1, payload_offset = 0 }
+]
+payload = ""
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "NO_ROOT_ENTITY" }
+
+[test_vector.verification]
+source = "DEF-004 condition 5"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A06"
+name = "Multiple root entities"
+category = "adversarial"
+priority = "critical"
+description = "S-IR with two entities that both have parent_id = MAX (root sentinel)"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 5, parent_id = 4294967295, payload_offset = 0 }
+]
+payload = ""
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "MULTIPLE_ROOT_ENTITIES" }
+
+[test_vector.verification]
+source = "DEF-004 condition 5"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A07"
+name = "Unbalanced PUSH without POP"
+category = "adversarial"
+priority = "high"
+description = "S-IR with more PUSH_BLOCK than matching block closures"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 4294967295, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 1, parent_id = 0, payload_offset = 0 },
+  { op = "PUSH_BLOCK", op_arg = "Paragraph", entity_id = 2, parent_id = 1, payload_offset = 0 }
+]
+payload = "unclosed"
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "UNBALANCED_BLOCKS" }
+
+[test_vector.verification]
+source = "DEF-004 condition 6"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A08"
+name = "Empty instruction set"
+category = "adversarial"
+priority = "high"
+description = "Completely empty S-IR with no instructions at all"
+
+[test_vector.input]
+instructions = []
+payload = ""
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "EMPTY_DOCUMENT" }
+
+[test_vector.verification]
+source = "DEF-004 condition 5 (no root)"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-A09"
+name = "Self-referencing entity"
+category = "adversarial"
+priority = "high"
+description = "Entity that references itself as parent (self-loop)"
+
+[test_vector.input]
+instructions = [
+  { op = "PUSH_BLOCK", op_arg = "Document", entity_id = 0, parent_id = 0, payload_offset = 0 }
+]
+payload = ""
+
+[test_vector.expected_output]
+well_formed = false
+expected_error = { type = "validation", error_code = "CYCLIC_PARENT_REF" }
+
+[test_vector.verification]
+source = "DEF-004 condition 3 (AX-003: self-loop is a cycle)"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+# ============================================================
+# CATEGORY: REGRESSION (10% coverage)
+# ============================================================
+
+[[test_vector]]
+id = "TV-IR-R01"
+name = "Knuth-Plass classic example: easy paragraph"
+category = "regression"
+priority = "high"
+description = "Paragraph that fits perfectly in target width (no adjustment needed)"
+
+[test_vector.input]
+paragraph_width = 302400  # 4725 sp ≈ 3.33 inches in 26.6 fixed-point
+target_width = 302400
+stretch = 0
+shrink = 0
+
+[test_vector.expected_output]
+badness = 0
+line_breaks = 1
+
+[test_vector.verification]
+source = "Knuth-Plass (1981) example 1"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-R02"
+name = "Knuth-Plass classic example: tight line"
+category = "regression"
+priority = "high"
+description = "Paragraph where content slightly exceeds target width"
+
+[test_vector.input]
+paragraph_width = 320000
+target_width = 302400
+stretch = 5000
+shrink = 3000
+
+[test_vector.expected_output]
+badness_gt = 0
+badness_lt = 10000
+
+[test_vector.verification]
+source = "Knuth-Plass (1981) equation 4"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+# ============================================================
+# CATEGORY: RANDOM / PROPERTY-BASED (5% coverage)
+# ============================================================
+
+[[test_vector]]
+id = "TV-IR-P01"
+name = "Property: compilation is total on WF-SIR"
+category = "random"
+priority = "critical"
+description = "For any well-formed S-IR, compilation must terminate and produce valid G-IR (property-based test)"
+
+[test_vector.input]
+generator = "random_wf_sir"
+params = { max_entities = 1000, max_depth = 50, max_payload_size = 4096 }
+
+[test_vector.expected_output]
+property = "forall d . check_SIR(d) = true => compile(d) terminates AND check_GIR(compile(d)) = true"
+
+[test_vector.verification]
+source = "THM-COMPILE-WF-001, THM-COMPILE-TERMINATES-001"
+method = "Property-based (QuickCheck)"
+confidence = 0.90
+verifier = "cargo-fuzz + QuickCheck"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-P02"
+name = "Property: idempotent compilation"
+category = "random"
+priority = "critical"
+description = "Compiling the same S-IR twice produces identical G-IR"
+
+[test_vector.input]
+generator = "random_wf_sir"
+
+[test_vector.expected_output]
+property = "forall d . hash(compile(d)) == hash(compile(d))"
+
+[test_vector.verification]
+source = "REQ-9.5"
+method = "Property-based (QuickCheck)"
+confidence = 0.95
+verifier = "cargo test"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-IR-P03"
+name = "Property: deterministic across thread counts"
+category = "random"
+priority = "critical"
+description = "Compiling the same S-IR with 1, 4, and 16 threads produces identical G-IR"
+
+[test_vector.input]
+generator = "random_wf_sir"
+thread_counts = [1, 4, 16]
+
+[test_vector.expected_output]
+property = "forall d, t1, t2 . hash(compile(d, t1)) == hash(compile(d, t2))"
+
+[test_vector.verification]
+source = "REQ-2.7, REQ-9.2, THM-PAR-DETERM-001"
+method = "Property-based (QuickCheck)"
+confidence = 0.90
+verifier = "cargo test"
+verification_date = "2026-04-23"

@@ -1,0 +1,10 @@
+[package]
+name = "ldir-md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR Markdown input format parser"
+
+[dependencies]
+ldir-ir = { workspace = true }
+pulldown-cmark = "0.12"

@@ -1,0 +1,5 @@
+[build]
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+atomics"]

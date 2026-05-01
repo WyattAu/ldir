@@ -1,0 +1,10 @@
+[package]
+name = "ldir-epub"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "LDIR EPUB backend — converts S-IR v2 to EPUB 3"
+
+[dependencies]
+ldir-ir = { path = "../ldir-ir" }
+ldir-html = { path = "../ldir-html" }

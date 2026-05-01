@@ -1,0 +1,84 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Typst (ldir)",
+  "scopeName": "source.typst.ldir",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#headings" },
+    { "include": "#bold" },
+    { "include": "#italic" },
+    { "include": "#code" },
+    { "include": "#math" },
+    { "include": "#labels" },
+    { "include": "#functions" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "match": "//.*$",
+          "name": "comment.line.double-slash.typst"
+        }
+      ]
+    },
+    "headings": {
+      "patterns": [
+        {
+          "match": "^={1,6}\\s+.+$",
+          "name": "markup.heading.typst"
+        }
+      ]
+    },
+    "bold": {
+      "patterns": [
+        {
+          "name": "markup.bold.typst",
+          "begin": "(?<!\\*)\\*(?!\\*)",
+          "end": "(?<!\\*)\\*(?!\\*)"
+        }
+      ]
+    },
+    "italic": {
+      "patterns": [
+        {
+          "name": "markup.italic.typst",
+          "begin": "(?<!_)_(?!_)",
+          "end": "(?<!_)_(?!_)"
+        }
+      ]
+    },
+    "code": {
+      "patterns": [
+        {
+          "name": "markup.raw.inline.typst",
+          "match": "`[^`]+`"
+        }
+      ]
+    },
+    "math": {
+      "patterns": [
+        {
+          "name": "markup.raw.math.typst",
+          "begin": "(?<!\\$)\\$(?!\\$)",
+          "end": "(?<!\\$)\\$(?!\\$)"
+        }
+      ]
+    },
+    "labels": {
+      "patterns": [
+        {
+          "match": "<[a-zA-Z][a-zA-Z0-9_-]*>",
+          "name": "variable.other.label.typst"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "match": "#[a-zA-Z][a-zA-Z0-9_-]*(?=[\\s(\\[{])",
+          "name": "support.function.typst"
+        }
+      ]
+    }
+  }
+}
