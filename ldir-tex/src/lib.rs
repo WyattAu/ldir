@@ -117,9 +117,7 @@ mod tests {
 
     #[test]
     fn test_multiple_sections() {
-        let doc = parse_tex(
-            r"\section{One}\section{Two}\section{Three}",
-        );
+        let doc = parse_tex(r"\section{One}\section{Two}\section{Three}");
         let text = collect_all_text(&doc);
         assert!(text.contains("One"));
         assert!(text.contains("Two"));
@@ -206,9 +204,7 @@ mod tests {
 
     #[test]
     fn test_itemize_list() {
-        let doc = parse_tex(
-            r"\begin{itemize}\item first\item second\end{itemize}",
-        );
+        let doc = parse_tex(r"\begin{itemize}\item first\item second\end{itemize}");
         assert!(find_block_type(&doc, BlockType::List));
         assert!(find_content(&doc, "first"));
         assert!(find_content(&doc, "second"));
@@ -216,9 +212,7 @@ mod tests {
 
     #[test]
     fn test_enumerate_list() {
-        let doc = parse_tex(
-            r"\begin{enumerate}\item one\item two\end{enumerate}",
-        );
+        let doc = parse_tex(r"\begin{enumerate}\item one\item two\end{enumerate}");
         assert!(find_block_type(&doc, BlockType::List));
         assert!(find_content(&doc, "one"));
     }
@@ -283,8 +277,14 @@ mod tests {
     fn test_label_ref_passthrough() {
         let doc = parse_tex(r"\section{Intro}\label{sec:intro}See \ref{sec:intro}");
         let text = collect_all_text(&doc);
-        assert!(text.contains("\\label{sec:intro}"), "should pass \\label through");
-        assert!(text.contains("\\ref{sec:intro}"), "should pass \\ref through");
+        assert!(
+            text.contains("\\label{sec:intro}"),
+            "should pass \\label through"
+        );
+        assert!(
+            text.contains("\\ref{sec:intro}"),
+            "should pass \\ref through"
+        );
     }
 
     #[test]
@@ -335,8 +335,14 @@ mod tests {
         );
         assert!(find_block_type(&doc, BlockType::Math));
         let text = collect_all_text(&doc);
-        assert!(text.contains("\\begin{cases}"), "cases env should be preserved, got: {text}");
-        assert!(text.contains("\\end{cases}"), "end cases should be preserved");
+        assert!(
+            text.contains("\\begin{cases}"),
+            "cases env should be preserved, got: {text}"
+        );
+        assert!(
+            text.contains("\\end{cases}"),
+            "end cases should be preserved"
+        );
     }
 
     #[test]
@@ -346,29 +352,34 @@ mod tests {
         );
         assert!(find_block_type(&doc, BlockType::Math));
         let text = collect_all_text(&doc);
-        assert!(text.contains("\\begin{pmatrix}"), "pmatrix should be preserved, got: {text}");
+        assert!(
+            text.contains("\\begin{pmatrix}"),
+            "pmatrix should be preserved, got: {text}"
+        );
         assert!(text.contains("\\end{pmatrix}"));
     }
 
     #[test]
     fn test_left_right_passthrough() {
-        let doc = parse_tex(
-            r"\begin{equation}\left( \frac{a}{b} \right)\end{equation}",
-        );
+        let doc = parse_tex(r"\begin{equation}\left( \frac{a}{b} \right)\end{equation}");
         assert!(find_block_type(&doc, BlockType::Math));
         let text = collect_all_text(&doc);
-        assert!(text.contains("\\left("), "left paren should be preserved, got: {text}");
+        assert!(
+            text.contains("\\left("),
+            "left paren should be preserved, got: {text}"
+        );
         assert!(text.contains("\\right)"));
     }
 
     #[test]
     fn test_left_right_braces_passthrough() {
-        let doc = parse_tex(
-            r"\begin{equation}\left\{ x \right.\end{equation}",
-        );
+        let doc = parse_tex(r"\begin{equation}\left\{ x \right.\end{equation}");
         assert!(find_block_type(&doc, BlockType::Math));
         let text = collect_all_text(&doc);
-        assert!(text.contains("\\left{"), "left brace should be preserved, got: {text}");
+        assert!(
+            text.contains("\\left{"),
+            "left brace should be preserved, got: {text}"
+        );
         assert!(text.contains("\\right."));
     }
 
@@ -412,11 +423,67 @@ mod tests {
 
     #[test]
     fn test_footnote_in_paragraph() {
-        let doc = parse_tex(
-            r"\begin{document}This is text\footnote{A note.} and more.\end{document}",
-        );
+        let doc =
+            parse_tex(r"\begin{document}This is text\footnote{A note.} and more.\end{document}");
         assert!(find_content(&doc, "\\fnmark{1}"));
         assert_eq!(doc.footnotes.len(), 1);
     }
-}
 
+    #[test]
+    fn test_figure_environment() {
+        let doc = parse_tex(
+            r"\begin{figure}\centering\includegraphics{img.png}\caption{A figure}\end{figure}",
+        );
+        assert!(find_block_type(&doc, BlockType::Figure));
+        assert!(find_block_type(&doc, BlockType::Image));
+        assert!(find_content(&doc, "A figure"));
+    }
+
+    #[test]
+    fn test_figure_with_includegraphics() {
+        let doc = parse_tex(
+            r"\begin{figure}\includegraphics{photo.jpg}\caption{Photo caption}\end{figure}",
+        );
+        assert!(find_block_type(&doc, BlockType::Figure));
+        assert!(find_block_type(&doc, BlockType::Image));
+    }
+
+    #[test]
+    fn test_table_environment_with_tabular() {
+        let doc = parse_tex(
+            r"\begin{table}\centering\begin{tabular}{lcr}A & B & C \\ D & E & F\end{tabular}\caption{A table}\end{table}",
+        );
+        assert!(find_block_type(&doc, BlockType::Table));
+        assert!(find_content(&doc, "A table"));
+    }
+
+    #[test]
+    fn test_table_with_hline_header() {
+        let doc = parse_tex(
+            r"\begin{tabular}{lcr}\hline A & B \\ C & D\end{tabular}",
+        );
+        assert!(find_block_type(&doc, BlockType::TableRow));
+        assert!(find_block_type(&doc, BlockType::TableCell));
+    }
+
+    #[test]
+    fn test_enumerate_list_with_content() {
+        let doc = parse_tex(
+            r"\begin{enumerate}\item first item\item second item\item third item\end{enumerate}",
+        );
+        assert!(find_block_type(&doc, BlockType::List));
+        assert!(find_content(&doc, "first item"));
+        assert!(find_content(&doc, "second item"));
+        assert!(find_content(&doc, "third item"));
+    }
+
+    #[test]
+    fn test_itemize_with_styled_content() {
+        let doc = parse_tex(
+            r"\begin{itemize}\item \textbf{bold item}\item \textit{italic item}\end{itemize}",
+        );
+        assert!(find_block_type(&doc, BlockType::List));
+        assert!(find_content(&doc, "bold item"));
+        assert!(find_content(&doc, "italic item"));
+    }
+}

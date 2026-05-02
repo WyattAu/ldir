@@ -3,10 +3,10 @@
 //! Extracts `word/document.xml` from the ZIP archive, parses OOXML,
 //! and converts to S-IR v2 document structure.
 
-use std::io::{Read, Cursor};
 use flate2::read::ZlibDecoder;
-use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, Node, NodeType};
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, Node, NodeType};
+use std::io::{Cursor, Read};
 
 pub fn parse_docx(data: &[u8]) -> SIRModuleV2 {
     let document_xml = extract_document_xml(data);
@@ -65,7 +65,12 @@ impl<R: Read> SimpleZip<R> {
                 && data[pos + 2] == 0x05
                 && data[pos + 3] == 0x06
             {
-                let cd_offset = u32::from_le_bytes([data[pos + 16], data[pos + 17], data[pos + 18], data[pos + 19]]) as u64;
+                let cd_offset = u32::from_le_bytes([
+                    data[pos + 16],
+                    data[pos + 17],
+                    data[pos + 18],
+                    data[pos + 19],
+                ]) as u64;
                 let cd_entries = u16::from_le_bytes([data[pos + 10], data[pos + 11]]) as u64;
 
                 let mut cd_pos = cd_offset as usize;
@@ -73,17 +78,40 @@ impl<R: Read> SimpleZip<R> {
                     if cd_pos + 46 > data.len() {
                         break;
                     }
-                    if data[cd_pos] != 0x50 || data[cd_pos + 1] != 0x4B || data[cd_pos + 2] != 0x01 || data[cd_pos + 3] != 0x02 {
+                    if data[cd_pos] != 0x50
+                        || data[cd_pos + 1] != 0x4B
+                        || data[cd_pos + 2] != 0x01
+                        || data[cd_pos + 3] != 0x02
+                    {
                         break;
                     }
 
-                    let compression_method = u16::from_le_bytes([data[cd_pos + 10], data[cd_pos + 11]]);
-                    let compressed_size = u32::from_le_bytes([data[cd_pos + 20], data[cd_pos + 21], data[cd_pos + 22], data[cd_pos + 23]]) as u64;
-                    let uncompressed_size = u32::from_le_bytes([data[cd_pos + 24], data[cd_pos + 25], data[cd_pos + 26], data[cd_pos + 27]]) as u64;
-                    let name_len = u16::from_le_bytes([data[cd_pos + 28], data[cd_pos + 29]]) as usize;
-                    let extra_len = u16::from_le_bytes([data[cd_pos + 30], data[cd_pos + 31]]) as usize;
-                    let comment_len = u16::from_le_bytes([data[cd_pos + 32], data[cd_pos + 33]]) as usize;
-                    let local_header_offset = u32::from_le_bytes([data[cd_pos + 42], data[cd_pos + 43], data[cd_pos + 44], data[cd_pos + 45]]) as u64;
+                    let compression_method =
+                        u16::from_le_bytes([data[cd_pos + 10], data[cd_pos + 11]]);
+                    let compressed_size = u32::from_le_bytes([
+                        data[cd_pos + 20],
+                        data[cd_pos + 21],
+                        data[cd_pos + 22],
+                        data[cd_pos + 23],
+                    ]) as u64;
+                    let uncompressed_size = u32::from_le_bytes([
+                        data[cd_pos + 24],
+                        data[cd_pos + 25],
+                        data[cd_pos + 26],
+                        data[cd_pos + 27],
+                    ]) as u64;
+                    let name_len =
+                        u16::from_le_bytes([data[cd_pos + 28], data[cd_pos + 29]]) as usize;
+                    let extra_len =
+                        u16::from_le_bytes([data[cd_pos + 30], data[cd_pos + 31]]) as usize;
+                    let comment_len =
+                        u16::from_le_bytes([data[cd_pos + 32], data[cd_pos + 33]]) as usize;
+                    let local_header_offset = u32::from_le_bytes([
+                        data[cd_pos + 42],
+                        data[cd_pos + 43],
+                        data[cd_pos + 44],
+                        data[cd_pos + 45],
+                    ]) as u64;
 
                     let name_start = cd_pos + 46;
                     let name_end = (name_start + name_len).min(data.len());
@@ -91,8 +119,12 @@ impl<R: Read> SimpleZip<R> {
 
                     let local_pos = local_header_offset as usize;
                     let file_data_offset = if local_pos + 30 <= data.len() {
-                        let local_name_len = u16::from_le_bytes([data[local_pos + 26], data[local_pos + 27]]) as usize;
-                        let local_extra_len = u16::from_le_bytes([data[local_pos + 28], data[local_pos + 29]]) as usize;
+                        let local_name_len =
+                            u16::from_le_bytes([data[local_pos + 26], data[local_pos + 27]])
+                                as usize;
+                        let local_extra_len =
+                            u16::from_le_bytes([data[local_pos + 28], data[local_pos + 29]])
+                                as usize;
                         local_pos + 30 + local_name_len + local_extra_len
                     } else {
                         0
@@ -114,7 +146,11 @@ impl<R: Read> SimpleZip<R> {
             i -= 1;
         }
 
-        Ok(Self { _reader: reader, data, entries })
+        Ok(Self {
+            _reader: reader,
+            data,
+            entries,
+        })
     }
 
     fn read_entry(&self, entry: &ZipEntry) -> Option<Vec<u8>> {
@@ -149,9 +185,16 @@ impl<R: Read> SimpleZip<R> {
 
 #[derive(Debug, Clone, PartialEq)]
 enum XmlEvent {
-    Open { tag: String, attrs: Vec<(String, String)> },
-    Close { tag: String },
-    Text { content: String },
+    Open {
+        tag: String,
+        attrs: Vec<(String, String)>,
+    },
+    Close {
+        tag: String,
+    },
+    Text {
+        content: String,
+    },
     Eof,
 }
 
@@ -185,7 +228,9 @@ fn tokenize_xml(input: &str) -> Vec<XmlEvent> {
                     let cdata_start = i + 9;
                     let cdata_content = &input[cdata_start..i + end];
                     if !cdata_content.is_empty() {
-                        tokens.push(XmlEvent::Text { content: cdata_content.to_string() });
+                        tokens.push(XmlEvent::Text {
+                            content: cdata_content.to_string(),
+                        });
                     }
                     i += end + 3;
                 } else {
@@ -204,17 +249,25 @@ fn tokenize_xml(input: &str) -> Vec<XmlEvent> {
             };
 
             let tag_start = i;
-            while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b':' || bytes[i] == b'_') {
+            while i < bytes.len()
+                && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b':' || bytes[i] == b'_')
+            {
                 i += 1;
             }
             let tag_name = input[tag_start..i].to_string();
 
             if tag_name.is_empty() {
-                tokens.push(XmlEvent::Text { content: "<".to_string() });
+                tokens.push(XmlEvent::Text {
+                    content: "<".to_string(),
+                });
                 continue;
             }
 
-            let local_tag = tag_name.split(':').next_back().unwrap_or(&tag_name).to_string();
+            let local_tag = tag_name
+                .split(':')
+                .next_back()
+                .unwrap_or(&tag_name)
+                .to_string();
 
             if is_closing {
                 tokens.push(XmlEvent::Close { tag: local_tag });
@@ -281,17 +334,28 @@ fn tokenize_xml(input: &str) -> Vec<XmlEvent> {
                         val
                     } else {
                         let val_start = i;
-                        while i < bytes.len() && bytes[i] != b'>' && bytes[i] != b' ' && bytes[i] != b'/' {
+                        while i < bytes.len()
+                            && bytes[i] != b'>'
+                            && bytes[i] != b' '
+                            && bytes[i] != b'/'
+                        {
                             i += 1;
                         }
                         input[val_start..i].to_string()
                     };
-                    let local_attr_name = attr_name.split(':').next_back().unwrap_or(&attr_name).to_string();
+                    let local_attr_name = attr_name
+                        .split(':')
+                        .next_back()
+                        .unwrap_or(&attr_name)
+                        .to_string();
                     attrs.push((local_attr_name, attr_value));
                 }
             }
 
-            tokens.push(XmlEvent::Open { tag: local_tag.clone(), attrs });
+            tokens.push(XmlEvent::Open {
+                tag: local_tag.clone(),
+                attrs,
+            });
 
             if self_closing {
                 tokens.push(XmlEvent::Close { tag: local_tag });
@@ -303,7 +367,9 @@ fn tokenize_xml(input: &str) -> Vec<XmlEvent> {
             }
             let raw = &input[text_start..i];
             if !raw.is_empty() {
-                tokens.push(XmlEvent::Text { content: raw.to_string() });
+                tokens.push(XmlEvent::Text {
+                    content: raw.to_string(),
+                });
             }
         }
     }
@@ -356,7 +422,10 @@ fn build_dom(tokens: &[XmlEvent]) -> XmlNode {
             }
             XmlEvent::Text { content } => {
                 if let Some(current) = stack.last_mut() {
-                    current.text.get_or_insert_with(String::new).push_str(content);
+                    current
+                        .text
+                        .get_or_insert_with(String::new)
+                        .push_str(content);
                 }
             }
             XmlEvent::Eof => break,
@@ -372,7 +441,10 @@ fn build_dom(tokens: &[XmlEvent]) -> XmlNode {
 }
 
 fn xml_attr(attrs: &[(String, String)], name: &str) -> Option<String> {
-    attrs.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone())
+    attrs
+        .iter()
+        .find(|(k, _)| k == name)
+        .map(|(_, v)| v.clone())
 }
 
 struct DocxConverter {
@@ -383,10 +455,7 @@ struct DocxConverter {
 impl DocxConverter {
     fn new() -> Self {
         let module = SIRModuleV2::from_source("docx", "<input>");
-        Self {
-            module,
-            next_id: 1,
-        }
+        Self { module, next_id: 1 }
     }
 
     fn alloc_id(&mut self) -> u32 {
@@ -396,8 +465,8 @@ impl DocxConverter {
     }
 
     fn convert(&mut self, dom: &XmlNode) {
-        let body_children: Vec<XmlNode> = find_body_recursive(dom)
-            .unwrap_or_else(|| dom.children.clone());
+        let body_children: Vec<XmlNode> =
+            find_body_recursive(dom).unwrap_or_else(|| dom.children.clone());
 
         let doc_id = self.alloc_id();
         self.module.body.push(Node::new(doc_id, NodeType::Document));
@@ -411,7 +480,8 @@ impl DocxConverter {
 
                 if is_heading {
                     let text = collect_run_text(child);
-                    let level: u8 = style.as_ref()
+                    let level: u8 = style
+                        .as_ref()
                         .and_then(|s| s.strip_prefix("Heading"))
                         .and_then(|rest| rest.chars().next())
                         .and_then(|c| c.to_digit(10))
@@ -443,14 +513,18 @@ impl DocxConverter {
                 }
 
                 let para_id = self.alloc_id();
-                self.module.body.push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
+                self.module
+                    .body
+                    .push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
                 if let Some(doc) = self.module.body.get_mut(doc_id) {
                     doc.add_child(para_id);
                 }
 
                 for node_type in run_nodes {
                     let child_id = self.alloc_id();
-                    self.module.body.push(Node::new(child_id, node_type).with_parent(para_id));
+                    self.module
+                        .body
+                        .push(Node::new(child_id, node_type).with_parent(para_id));
                     if let Some(para) = self.module.body.get_mut(para_id) {
                         para.add_child(child_id);
                     }
@@ -458,10 +532,13 @@ impl DocxConverter {
             } else if tag == "tbl" {
                 let table_id = self.alloc_id();
                 self.module.body.push(
-                    Node::new(table_id, NodeType::Table {
-                        col_specs: Vec::new(),
-                        num_cols: 0,
-                    })
+                    Node::new(
+                        table_id,
+                        NodeType::Table {
+                            col_specs: Vec::new(),
+                            num_cols: 0,
+                        },
+                    )
                     .with_parent(doc_id),
                 );
                 if let Some(doc) = self.module.body.get_mut(doc_id) {
@@ -471,9 +548,15 @@ impl DocxConverter {
                 let num_cols = count_table_columns(child);
                 if let Some(tbl) = self.module.body.get_mut(table_id) {
                     let col_specs: Vec<ColSpec> = (0..num_cols)
-                        .map(|_| ColSpec { align: ColumnAlign::Left, width: None })
+                        .map(|_| ColSpec {
+                            align: ColumnAlign::Left,
+                            width: None,
+                        })
                         .collect();
-                    tbl.node_type = NodeType::Table { col_specs, num_cols };
+                    tbl.node_type = NodeType::Table {
+                        col_specs,
+                        num_cols,
+                    };
                 }
 
                 let mut row_idx = 0;
@@ -484,8 +567,13 @@ impl DocxConverter {
                     let in_header_row = row_idx == 0;
                     let row_id = self.alloc_id();
                     self.module.body.push(
-                        Node::new(row_id, NodeType::TableRow { is_header: in_header_row })
-                            .with_parent(table_id),
+                        Node::new(
+                            row_id,
+                            NodeType::TableRow {
+                                is_header: in_header_row,
+                            },
+                        )
+                        .with_parent(table_id),
                     );
                     if let Some(tbl) = self.module.body.get_mut(table_id) {
                         tbl.add_child(row_id);
@@ -497,8 +585,14 @@ impl DocxConverter {
                         }
                         let tc_id = self.alloc_id();
                         self.module.body.push(
-                            Node::new(tc_id, NodeType::TableCell { colspan: 1, rowspan: 1 })
-                                .with_parent(row_id),
+                            Node::new(
+                                tc_id,
+                                NodeType::TableCell {
+                                    colspan: 1,
+                                    rowspan: 1,
+                                },
+                            )
+                            .with_parent(row_id),
                         );
                         if let Some(row_node) = self.module.body.get_mut(row_id) {
                             row_node.add_child(tc_id);
@@ -596,15 +690,18 @@ fn convert_runs(p: &XmlNode) -> Vec<NodeType> {
             }
 
             nodes.push(NodeType::Text { content: text });
-            } else if child.tag == "hyperlink" {
-                let url = xml_attr(&child.attrs, "anchor")
-                    .or_else(|| xml_attr(&child.attrs, "id"));
-                let text = collect_run_text(child);
-                if let Some(ref url_str) = url {
+        } else if child.tag == "hyperlink" {
+            let url = xml_attr(&child.attrs, "anchor").or_else(|| xml_attr(&child.attrs, "id"));
+            let text = collect_run_text(child);
+            if let Some(ref url_str) = url {
                 if !url_str.is_empty() {
                     nodes.push(NodeType::Link {
                         url: url_str.clone(),
-                        title: if text.is_empty() { None } else { Some(text.clone()) },
+                        title: if text.is_empty() {
+                            None
+                        } else {
+                            Some(text.clone())
+                        },
                     });
                     continue;
                 }
@@ -694,7 +791,8 @@ mod tests {
         let filename = b"word/document.xml";
         let local_header = build_local_file_header(filename, xml_bytes.len() as u32, 0);
         let central_dir_entry = build_central_dir_entry(filename, xml_bytes.len() as u32, 0);
-        let end_of_central_dir = build_eocd(1, central_dir_entry.len() as u32, local_header.len() as u32);
+        let end_of_central_dir =
+            build_eocd(1, central_dir_entry.len() as u32, local_header.len() as u32);
 
         let mut out = Vec::new();
         out.extend_from_slice(&local_header);
@@ -832,7 +930,10 @@ mod tests {
         let module = convert_dom(&dom);
         let paras = find_nodes(&module, |nt| matches!(nt, NodeType::Paragraph));
         assert_eq!(paras.len(), 1);
-        let texts = find_nodes(&module, |nt| matches!(nt, NodeType::Text { content } if content.contains("Hello")));
+        let texts = find_nodes(
+            &module,
+            |nt| matches!(nt, NodeType::Text { content } if content.contains("Hello")),
+        );
         assert_eq!(texts.len(), 1);
     }
 

@@ -25,7 +25,7 @@ pub struct LabelInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CrossRef {
     pub label: String,
-    pub ref_node_id: u32,  // node containing the \ref
+    pub ref_node_id: u32, // node containing the \ref
 }
 
 /// Annotations collection.

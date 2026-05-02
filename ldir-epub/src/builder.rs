@@ -202,7 +202,7 @@ fn format_container_xml() -> String {
 <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
 </rootfiles>
 </container>"#
-    .to_string()
+        .to_string()
 }
 
 fn escape_xml(s: &str) -> String {
@@ -225,10 +225,7 @@ fn uuid_simple() -> String {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    format!(
-        "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
-        secs, 0, 0, 0, 0
-    )
+    format!("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}", secs, 0, 0, 0, 0)
 }
 
 fn date_now_str() -> String {
@@ -265,9 +262,7 @@ struct SimpleZip {
 
 impl SimpleZip {
     fn new() -> Self {
-        Self {
-            files: Vec::new(),
-        }
+        Self { files: Vec::new() }
     }
 
     fn add_file(&mut self, path: &str, data: &[u8], stored: bool) {
@@ -370,11 +365,24 @@ mod tests {
                 .with_label("sec:1"),
         );
         m.body.push(
-            Node::new(2, NodeType::Text { content: "Chapter 1".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Chapter 1".into(),
+                },
+            )
+            .with_parent(1),
         );
-        m.body.push(Node::new(3, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(0));
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Hello EPUB!".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Hello EPUB!".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(0).unwrap().add_child(3);

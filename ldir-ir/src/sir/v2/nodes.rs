@@ -18,47 +18,87 @@ pub enum NodeType {
     Subsection,
     Subsubsection,
     Paragraph,
-    
+
     // === Lists ===
-    List { list_type: ListType, ordered: bool, start: Option<u32> },
+    List {
+        list_type: ListType,
+        ordered: bool,
+        start: Option<u32>,
+    },
     ListItem,
-    
+
     // === Block content ===
     BlockQuote,
-    CodeBlock { language: Option<String> },
-    MathBlock { math_type: MathType, numbered: bool },
-    Table { col_specs: Vec<ColSpec>, num_cols: usize },
-    TableRow { is_header: bool },
-    TableCell { colspan: u8, rowspan: u8 },
-    
+    CodeBlock {
+        language: Option<String>,
+    },
+    MathBlock {
+        math_type: MathType,
+        numbered: bool,
+    },
+    Table {
+        col_specs: Vec<ColSpec>,
+        num_cols: usize,
+    },
+    TableRow {
+        is_header: bool,
+    },
+    TableCell {
+        colspan: u8,
+        rowspan: u8,
+    },
+
     // === Inline content (can be children of any block) ===
-    Text { content: String },
-    Styled { style_name: String },
+    Text {
+        content: String,
+    },
+    Styled {
+        style_name: String,
+    },
     Bold,
     Italic,
     Mono,
     Underline,
     Strikethrough,
     SmallCaps,
-    Link { url: String, title: Option<String> },
-    Image { source: String, alt: String, width: Option<Dimension>, height: Option<Dimension> },
-    MathInline { content: String },
+    Link {
+        url: String,
+        title: Option<String>,
+    },
+    Image {
+        source: String,
+        alt: String,
+        width: Option<Dimension>,
+        height: Option<Dimension>,
+    },
+    MathInline {
+        content: String,
+    },
     LineBreak,
-    
+
     // === Floats ===
-    Figure { placement: FloatPlacement },
+    Figure {
+        placement: FloatPlacement,
+    },
     Caption,
-    
+
     // === Special ===
-    Footnote { content: String },
+    Footnote {
+        content: String,
+    },
     FootnoteBlock,
-    TableOfContents { max_depth: u8 },
+    TableOfContents {
+        max_depth: u8,
+    },
     PageBreak,
     ThematicBreak,
-    Citation { keys: Vec<String>, style: Option<String> },
-    
+    Citation {
+        keys: Vec<String>,
+        style: Option<String>,
+    },
+
     // === Container ===
-    Group,  // anonymous grouping node
+    Group, // anonymous grouping node
 }
 
 /// List type.
@@ -77,7 +117,9 @@ pub enum MathType {
     Gather,
     Multline,
     Cases,
-    Matrix { delimiters: (Option<char>, Option<char>) },
+    Matrix {
+        delimiters: (Option<char>, Option<char>),
+    },
 }
 
 /// Float placement hint.
@@ -159,8 +201,11 @@ impl Node {
     pub fn text_content(&self) -> Option<&str> {
         match &self.node_type {
             NodeType::Text { content } => Some(content),
-            NodeType::Section | NodeType::Subsection | NodeType::Subsubsection
-            | NodeType::Chapter | NodeType::Part => None,
+            NodeType::Section
+            | NodeType::Subsection
+            | NodeType::Subsubsection
+            | NodeType::Chapter
+            | NodeType::Part => None,
             _ => None,
         }
     }
@@ -169,8 +214,11 @@ impl Node {
     pub fn is_heading(&self) -> bool {
         matches!(
             self.node_type,
-            NodeType::Part | NodeType::Chapter | NodeType::Section
-            | NodeType::Subsection | NodeType::Subsubsection
+            NodeType::Part
+                | NodeType::Chapter
+                | NodeType::Section
+                | NodeType::Subsection
+                | NodeType::Subsubsection
         )
     }
 
@@ -195,7 +243,9 @@ pub struct NodeTree {
 }
 
 impl NodeTree {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     pub fn push(&mut self, node: Node) -> u32 {
         let id = node.id;
@@ -214,11 +264,21 @@ impl NodeTree {
         self.nodes.iter_mut().find(|n| n.id == id)
     }
 
-    pub fn len(&self) -> usize { self.nodes.len() }
-    pub fn is_empty(&self) -> bool { self.nodes.is_empty() }
-    pub fn iter(&self) -> impl Iterator<Item = &Node> { self.nodes.iter() }
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Node> { self.nodes.iter_mut() }
-    pub fn roots(&self) -> &[u32] { &self.root_ids }
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &Node> {
+        self.nodes.iter()
+    }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Node> {
+        self.nodes.iter_mut()
+    }
+    pub fn roots(&self) -> &[u32] {
+        &self.root_ids
+    }
 
     pub fn retain(&mut self, f: impl FnMut(&Node) -> bool) {
         use std::collections::HashSet;
@@ -238,7 +298,9 @@ impl NodeTree {
     }
 
     pub fn rebuild_roots(&mut self) {
-        self.root_ids = self.nodes.iter()
+        self.root_ids = self
+            .nodes
+            .iter()
             .filter(|n| n.parent_id.is_none())
             .map(|n| n.id)
             .collect();
@@ -246,7 +308,9 @@ impl NodeTree {
 
     /// Find a node by label.
     pub fn find_by_label(&self, label: &str) -> Option<&Node> {
-        self.nodes.iter().find(|n| n.label.as_deref() == Some(label))
+        self.nodes
+            .iter()
+            .find(|n| n.label.as_deref() == Some(label))
     }
 
     /// Get all nodes of a specific type.
@@ -322,9 +386,25 @@ mod tests {
     fn test_collect_text() {
         let mut tree = NodeTree::new();
         tree.push(Node::new(1, NodeType::Paragraph));
-        tree.push(Node::new(2, NodeType::Text { content: "Hello ".to_string() }).with_parent(1));
+        tree.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Hello ".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
         tree.push(Node::new(3, NodeType::Bold).with_parent(1));
-        tree.push(Node::new(4, NodeType::Text { content: "world".to_string() }).with_parent(3));
+        tree.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "world".to_string(),
+                },
+            )
+            .with_parent(3),
+        );
 
         if let Some(p) = tree.get_mut(1) {
             p.add_child(2);
@@ -353,8 +433,19 @@ mod tests {
         let mut tree = NodeTree::new();
         tree.push(Node::new(1, NodeType::Document));
         tree.push(Node::new(2, NodeType::Paragraph).with_parent(1));
-        tree.push(Node::new(3, NodeType::Text { content: "Hello".to_string() }).with_parent(1));
-        if let Some(d) = tree.get_mut(1) { d.add_child(2); d.add_child(3); }
+        tree.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Hello".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(d) = tree.get_mut(1) {
+            d.add_child(2);
+            d.add_child(3);
+        }
 
         tree.retain(|n| n.id != 3);
         assert_eq!(tree.len(), 2);
@@ -380,7 +471,9 @@ mod tests {
         tree.push(Node::new(1, NodeType::Document));
         tree.push(Node::new(2, NodeType::Section).with_parent(1));
         assert_eq!(tree.roots().len(), 1);
-        if let Some(s) = tree.get_mut(2) { s.parent_id = None; }
+        if let Some(s) = tree.get_mut(2) {
+            s.parent_id = None;
+        }
         tree.rebuild_roots();
         assert_eq!(tree.roots().len(), 2);
     }

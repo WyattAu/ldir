@@ -127,6 +127,8 @@ pub struct CompileContext {
     pub chapter_title: String,
     /// Current section title (for template expansion).
     pub section_title: String,
+    /// Whether we are still on the first page (for header suppression).
+    pub first_page: bool,
 }
 
 impl Default for CompileContext {
@@ -187,6 +189,7 @@ impl CompileContext {
             page_number: 0,
             chapter_title: String::new(),
             section_title: String::new(),
+            first_page: true,
         }
     }
 
@@ -261,6 +264,7 @@ impl CompileContext {
             page_number: 0,
             chapter_title: String::new(),
             section_title: String::new(),
+            first_page: true,
         }
     }
 

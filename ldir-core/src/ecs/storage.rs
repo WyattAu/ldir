@@ -35,8 +35,8 @@ use crate::ecs::entity::{Entity, EntityAllocator};
 ///
 /// # Examples
 ///
-    /// ```ignore
-    /// use ldir_core::ecs::storage::World;
+/// ```ignore
+/// use ldir_core::ecs::storage::World;
 ///
 /// #[derive(Debug, PartialEq)]
 /// struct Health(i32);

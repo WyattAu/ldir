@@ -184,11 +184,14 @@ fn parse_docx_to_sir_v2(bytes: &[u8]) -> SIRModuleV2 {
 fn parse_input_to_sir_v2(path: &Path) -> Result<SIRModuleV2> {
     let format = detect_input_format(path);
     if format == "unknown" {
-        anyhow::bail!("unsupported input format for '{}'. Supported: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx", path.display());
+        anyhow::bail!(
+            "unsupported input format for '{}'. Supported: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx",
+            path.display()
+        );
     }
     if format == "docx" {
-        let bytes = std::fs::read(path)
-            .with_context(|| format!("failed to read {}", path.display()))?;
+        let bytes =
+            std::fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
         Ok(parse_docx_to_sir_v2(&bytes))
     } else {
         let text = std::fs::read_to_string(path)
@@ -203,7 +206,11 @@ fn merge_modules(inputs: &[PathBuf]) -> Result<SIRModuleV2> {
     for input in inputs {
         let mut module = parse_input_to_sir_v2(input)
             .with_context(|| format!("failed to parse {}", input.display()))?;
-        eprintln!("[ldir] parsed {} → {} nodes", input.display(), module.body.len());
+        eprintln!(
+            "[ldir] parsed {} → {} nodes",
+            input.display(),
+            module.body.len()
+        );
         for node in module.body.iter_mut() {
             node.id += id_offset;
             node.parent_id = node.parent_id.map(|p| p + id_offset);
@@ -251,13 +258,21 @@ fn write_output(module: &SIRModuleV2, output_path: &Path, format: &str) -> Resul
         }
         "sir2" => {
             let bytes = ldir_ir::sir::v2::SIRBinaryWriter::write(module);
-            eprintln!("[ldir] wrote S-IR v2 binary ({} bytes) → {}", bytes.len(), output_path.display());
+            eprintln!(
+                "[ldir] wrote S-IR v2 binary ({} bytes) → {}",
+                bytes.len(),
+                output_path.display()
+            );
             std::fs::write(output_path, &bytes)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         "ldir" => {
             let text = ldir_ir::sir::v2::module_to_text(module);
-            eprintln!("[ldir] wrote .ldir text ({} bytes) → {}", text.len(), output_path.display());
+            eprintln!(
+                "[ldir] wrote .ldir text ({} bytes) → {}",
+                text.len(),
+                output_path.display()
+            );
             std::fs::write(output_path, &text)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
@@ -367,10 +382,7 @@ fn load_font_variants(primary_path: &str) -> Vec<(u32, Vec<u8>)> {
 
 /// Resolve font data: first by family name via database, then by file path,
 /// then by scanning common system font directories.
-fn resolve_font(
-    cli: &Cli,
-    font_db: &FontDatabase,
-) -> Option<(Arc<Vec<u8>>, String)> {
+fn resolve_font(cli: &Cli, font_db: &FontDatabase) -> Option<(Arc<Vec<u8>>, String)> {
     if let Some(ref path) = cli.font_path {
         let data = std::fs::read(path)
             .with_context(|| format!("failed to read font: {}", path.display()))
@@ -390,7 +402,10 @@ fn resolve_font(
                 return Some((data, format!("system:{}", family)));
             }
         }
-        eprintln!("[ldir] warning: font family '{}' not found in system fonts", family);
+        eprintln!(
+            "[ldir] warning: font family '{}' not found in system fonts",
+            family
+        );
     }
 
     let candidates = [
@@ -516,15 +531,6 @@ fn list_system_fonts(font_db: &FontDatabase) {
     }
 }
 
-fn is_v1_only_input(inputs: &[PathBuf]) -> bool {
-    inputs.iter().all(|p| {
-        matches!(
-            detect_input_format(p),
-            "markdown" | "latex"
-        )
-    })
-}
-
 fn emit_pdf(
     gir_doc: &GIRDocument,
     cli: &Cli,
@@ -599,11 +605,8 @@ fn main() -> Result<()> {
 
     let first_input = &cli.inputs[0];
 
-    let effective_format = if cli.output.is_some() {
-        let out_ext = cli
-            .output
-            .as_ref()
-            .unwrap()
+    let effective_format = if let Some(ref output) = cli.output {
+        let out_ext = output
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
@@ -652,7 +655,8 @@ fn main() -> Result<()> {
     }
 
     let primary_family = cli.font.as_deref().unwrap_or("DejaVu Sans");
-    let mut variant_fonts: Vec<(u32, Arc<Vec<u8>>)> = load_font_variants_from_db(&cli, &font_db, primary_family);
+    let mut variant_fonts: Vec<(u32, Arc<Vec<u8>>)> =
+        load_font_variants_from_db(&cli, &font_db, primary_family);
 
     if let Some(ref path_str) = font_path_str {
         if !path_str.starts_with("system:") {
@@ -674,166 +678,101 @@ fn main() -> Result<()> {
     } else {
         None
     };
-    let base_dir = first_input.parent();
+    let mut module = merge_modules(&cli.inputs)?;
+    if let Some(ref title) = cli.title {
+        module.metadata.title = Some(title.clone());
+    }
+    if let Some(ref author) = cli.author {
+        module.metadata.author = Some(author.clone());
+    }
+    eprintln!("[ldir] merged → S-IR v2 ({} nodes)", module.body.len());
 
-    if is_v1_only_input(&cli.inputs) {
-        let first_path_str = first_input.to_str().unwrap_or("input");
-        let input_ext = first_input
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
-
-        let mut source = String::new();
-        for (i, input) in cli.inputs.iter().enumerate() {
-            if i > 0 {
-                source.push_str("\n\n");
-            }
-            let content = std::fs::read_to_string(input)
-                .with_context(|| format!("failed to read {}", input.display()))?;
-            source.push_str(&content);
-        }
-
-        let sir_doc = match input_ext {
-            "md" | "markdown" => {
-                eprintln!("[ldir] parsing {} ({} file{})...", first_path_str, cli.inputs.len(), if cli.inputs.len() > 1 { "s" } else { "" });
-                ldir_md::parse_markdown(&source)
-            }
-            "tex" | "latex" => {
-                eprintln!("[ldir] parsing {} ({} file{})...", first_path_str, cli.inputs.len(), if cli.inputs.len() > 1 { "s" } else { "" });
-                ldir_tex::parse_tex(&source)
-            }
-            _ => unreachable!(),
-        };
-        eprintln!(
-            "[ldir] parsed {} → {} S-IR instructions",
-            first_input.display(),
-            sir_doc.len()
-        );
-
-        let validation = ldir_core::validator::validate_sir(&sir_doc);
-        if let Err(errors) = validation {
-            eprintln!("[ldir] S-IR validation errors:");
-            for err in &errors {
-                eprintln!("  - {}", err);
-            }
-            anyhow::bail!("S-IR document is not well-formed ({} errors)", errors.len());
-        }
-
-        let gir_doc = ldir_core::compiler::compile_sir_with_font_variants_and_options(
-            &sir_doc,
-            font_data.clone(),
-            &variant_fonts,
-            Some((margin_pt, margin_pt, margin_pt, margin_pt)),
-            base_dir,
-            page_size_name,
-            page_dims,
-            cli.drop_caps,
-        )
-        .context("S-IR → G-IR compilation failed")?;
-        eprintln!("[ldir] compiled → {} pages", gir_doc.page_count());
-
-        if let Err(errors) = ldir_core::verifier::check_gir(&gir_doc) {
-            eprintln!("[ldir] G-IR verification warnings:");
-            for err in &errors {
-                eprintln!("  - {}", err);
-            }
-        }
-
-        match effective_format {
-            "pdf" => emit_pdf(&gir_doc, &cli, &font_data, &variant_fonts, &output)?,
-            "gir" => {
-                let bytes = ldir_core::emitter::binary::emit_gir(&gir_doc);
-                std::fs::write(&output, &bytes)
-                    .with_context(|| format!("failed to write {}", output.display()))?;
-                eprintln!(
-                    "[ldir] wrote G-IR binary ({} bytes) → {}",
-                    bytes.len(),
-                    output.display()
-                );
-            }
-            "sir" => {
-                let bytes = sir_doc.to_bytes_with_payload();
-                std::fs::write(&output, &bytes)
-                    .with_context(|| format!("failed to write {}", output.display()))?;
-                eprintln!(
-                    "[ldir] wrote S-IR binary ({} bytes) → {}",
-                    bytes.len(),
-                    output.display()
-                );
-            }
-            _ => anyhow::bail!("unsupported output format: {}", effective_format),
-        }
+    let (pw, ph) = if let Some((w, h)) = page_dims {
+        (w, h)
+    } else if let Some(name) = page_size_name {
+        ldir_core::compiler::context::parse_page_size(name).unwrap_or((
+            ldir_core::compiler::context::DEFAULT_PAGE_WIDTH_PT,
+            ldir_core::compiler::context::DEFAULT_PAGE_HEIGHT_PT,
+        ))
     } else {
-        if effective_format == "sir" {
-            anyhow::bail!("SIR output requires Markdown or TeX input");
-        }
+        (
+            ldir_core::compiler::context::DEFAULT_PAGE_WIDTH_PT,
+            ldir_core::compiler::context::DEFAULT_PAGE_HEIGHT_PT,
+        )
+    };
 
-        let mut module = merge_modules(&cli.inputs)?;
-        if let Some(ref title) = cli.title {
-            module.metadata.title = Some(title.clone());
-        }
-        if let Some(ref author) = cli.author {
-            module.metadata.author = Some(author.clone());
-        }
-        eprintln!("[ldir] merged → S-IR v2 ({} nodes)", module.body.len());
+    let mut ctx = ldir_core::compiler::context::CompileContext::with_font_margins_and_page(
+        font_data.clone(),
+        margin_pt,
+        margin_pt,
+        margin_pt,
+        margin_pt,
+        pw,
+        ph,
+    );
+    ctx.drop_caps_enabled = cli.drop_caps;
+    for (id, data) in &variant_fonts {
+        ctx.set_font_variant(*id as usize, Some(data.clone()));
+    }
+    ctx.font_db = Some(Arc::new(font_db));
+    ctx.font_family = cli
+        .font
+        .clone()
+        .unwrap_or_else(|| "DejaVu Sans".to_string());
+    ctx.font_mono_family = cli.font_mono.clone().unwrap_or_default();
 
-        let (pw, ph) = if let Some((w, h)) = page_dims {
-            (w, h)
-        } else if let Some(name) = page_size_name {
-            ldir_core::compiler::context::parse_page_size(name)
-                .unwrap_or((ldir_core::compiler::context::DEFAULT_PAGE_WIDTH_PT, ldir_core::compiler::context::DEFAULT_PAGE_HEIGHT_PT))
-        } else {
-            (ldir_core::compiler::context::DEFAULT_PAGE_WIDTH_PT, ldir_core::compiler::context::DEFAULT_PAGE_HEIGHT_PT)
-        };
-
-        let mut ctx = ldir_core::compiler::context::CompileContext::with_font_margins_and_page(
-            font_data.clone(),
-            margin_pt, margin_pt, margin_pt, margin_pt,
-            pw, ph,
+    let gir_doc = if let Some(ref bib_path) = cli.bibliography {
+        let bib_content = std::fs::read_to_string(bib_path)
+            .with_context(|| format!("failed to read bibliography: {}", bib_path.display()))?;
+        let bib_entries = ldir_core::compiler::bibtex::parse_bib(&bib_content)
+            .map_err(|e| anyhow::anyhow!("BibTeX parse error: {}", e))?;
+        eprintln!(
+            "[ldir] loaded bibliography: {} entries from {}",
+            bib_entries.len(),
+            bib_path.display()
         );
-        ctx.drop_caps_enabled = cli.drop_caps;
-        for (id, data) in &variant_fonts {
-            ctx.set_font_variant(*id as usize, Some(data.clone()));
-        }
-        ctx.font_db = Some(Arc::new(font_db));
-        ctx.font_family = cli.font.clone().unwrap_or_else(|| "DejaVu Sans".to_string());
-        ctx.font_mono_family = cli.font_mono.clone().unwrap_or_default();
+        ldir_core::compiler::v2_compile::compile_v2_document_with_bib(
+            &module,
+            &mut ctx,
+            &bib_entries,
+        )
+        .map_err(|e| anyhow::anyhow!("v2 compilation failed: {e}"))?
+    } else {
+        ldir_core::compiler::v2_compile::compile_v2_document(&module, &mut ctx)
+            .map_err(|e| anyhow::anyhow!("v2 compilation failed: {e}"))?
+    };
+    eprintln!("[ldir] compiled → {} pages", gir_doc.page_count());
 
-        let gir_doc = if let Some(ref bib_path) = cli.bibliography {
-            let bib_content = std::fs::read_to_string(bib_path)
-                .with_context(|| format!("failed to read bibliography: {}", bib_path.display()))?;
-            let bib_entries = ldir_core::compiler::bibtex::parse_bib(&bib_content)
-                .map_err(|e| anyhow::anyhow!("BibTeX parse error: {}", e))?;
-            eprintln!("[ldir] loaded bibliography: {} entries from {}", bib_entries.len(), bib_path.display());
-            ldir_core::compiler::v2_compile::compile_v2_document_with_bib(&module, &mut ctx, &bib_entries)
-                .map_err(|e| anyhow::anyhow!("v2 compilation failed: {e}"))?
-        } else {
-            ldir_core::compiler::v2_compile::compile_v2_document(&module, &mut ctx)
-                .map_err(|e| anyhow::anyhow!("v2 compilation failed: {e}"))?
-        };
-        eprintln!("[ldir] compiled → {} pages", gir_doc.page_count());
-
-        if let Err(errors) = ldir_core::verifier::check_gir(&gir_doc) {
-            eprintln!("[ldir] G-IR verification warnings:");
-            for err in &errors {
-                eprintln!("  - {}", err);
-            }
+    if let Err(errors) = ldir_core::verifier::check_gir(&gir_doc) {
+        eprintln!("[ldir] G-IR verification warnings:");
+        for err in &errors {
+            eprintln!("  - {}", err);
         }
+    }
 
-        match effective_format {
-            "pdf" => emit_pdf(&gir_doc, &cli, &font_data, &variant_fonts, &output)?,
-            "gir" => {
-                let bytes = ldir_core::emitter::binary::emit_gir(&gir_doc);
-                std::fs::write(&output, &bytes)
-                    .with_context(|| format!("failed to write {}", output.display()))?;
-                eprintln!(
-                    "[ldir] wrote G-IR binary ({} bytes) → {}",
-                    bytes.len(),
-                    output.display()
-                );
-            }
-            _ => anyhow::bail!("unsupported output format: {}", effective_format),
+    match effective_format {
+        "pdf" => emit_pdf(&gir_doc, &cli, &font_data, &variant_fonts, &output)?,
+        "gir" => {
+            let bytes = ldir_core::emitter::binary::emit_gir(&gir_doc);
+            std::fs::write(&output, &bytes)
+                .with_context(|| format!("failed to write {}", output.display()))?;
+            eprintln!(
+                "[ldir] wrote G-IR binary ({} bytes) → {}",
+                bytes.len(),
+                output.display()
+            );
         }
+        "sir" => {
+            let bytes = ldir_ir::sir::v2::serialize_module(&module);
+            std::fs::write(&output, &bytes)
+                .with_context(|| format!("failed to write {}", output.display()))?;
+            eprintln!(
+                "[ldir] wrote S-IR v2 ({} bytes) → {}",
+                bytes.len(),
+                output.display()
+            );
+        }
+        _ => anyhow::bail!("unsupported output format: {}", effective_format),
     }
 
     Ok(())

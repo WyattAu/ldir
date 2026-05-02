@@ -112,6 +112,11 @@ impl FontDatabase {
         self.inner.len()
     }
 
+    /// Alias for [`face_count`](Self::face_count), following Rust collection conventions.
+    pub fn len(&self) -> usize {
+        self.face_count()
+    }
+
     /// Queries the database for a monospace font, with common fallbacks.
     pub fn query_monospace(&self) -> Option<ID> {
         self.query("DejaVu Sans Mono")
@@ -122,12 +127,7 @@ impl FontDatabase {
     }
 
     /// Queries for a specific style variant of a font family.
-    pub fn query_family_style(
-        &self,
-        family: &str,
-        weight: Weight,
-        style: Style,
-    ) -> Option<ID> {
+    pub fn query_family_style(&self, family: &str, weight: Weight, style: Style) -> Option<ID> {
         let families = &[Family::Name(family)][..];
         let q = Query {
             families,
@@ -235,7 +235,10 @@ mod tests {
     fn system_fonts_load() {
         let mut db = FontDatabase::new();
         let count = db.load_system_fonts();
-        assert!(count > 0 || !db.inner.is_empty(), "should load system fonts");
+        assert!(
+            count > 0 || !db.inner.is_empty(),
+            "should load system fonts"
+        );
         let id = db.query("DejaVu Sans");
         assert!(id.is_some());
     }
@@ -279,7 +282,10 @@ mod tests {
         let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
         let data = Arc::new(std::fs::read(path).expect("test font should exist"));
         let ids = db.load_font_data(data);
-        let primary = ids.into_iter().next().expect("should have at least one face");
+        let primary = ids
+            .into_iter()
+            .next()
+            .expect("should have at least one face");
         let chain = db.fallback_chain(primary);
         assert!(!chain.is_empty());
         assert_eq!(chain[0], primary);
@@ -292,7 +298,10 @@ mod tests {
         let id = db.query("DejaVu Sans");
         if let Some(id) = id {
             let data = db.face_data(id);
-            assert!(data.is_some(), "face_data should work for file-backed fonts");
+            assert!(
+                data.is_some(),
+                "face_data should work for file-backed fonts"
+            );
             assert!(data.as_ref().unwrap().len() > 0);
         }
     }

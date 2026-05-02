@@ -23,8 +23,10 @@ pub struct JustifiedGlyph {
 }
 
 fn is_vowel(c: char) -> bool {
-    matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'y'
-        | 'A' | 'E' | 'I' | 'O' | 'U' | 'Y')
+    matches!(
+        c,
+        'a' | 'e' | 'i' | 'o' | 'u' | 'y' | 'A' | 'E' | 'I' | 'O' | 'U' | 'Y'
+    )
 }
 
 fn is_consonant(c: char) -> bool {
@@ -164,7 +166,11 @@ pub fn justify_line(
         let is_space = ci < text_bytes.len() && text_bytes[ci] == b' ';
 
         if is_space {
-            let bonus = if gap_idx < remainder { Fp266::ONE } else { Fp266::ZERO };
+            let bonus = if gap_idx < remainder {
+                Fp266::ONE
+            } else {
+                Fp266::ZERO
+            };
             let adjusted = g.advance + extra_per_gap + bonus;
             result.push(JustifiedGlyph {
                 glyph_id: g.glyph_id,
@@ -218,14 +224,27 @@ pub fn try_hyphenate_word(
     let idx = best_idx?;
 
     let first_glyphs = word.glyphs[..idx].to_vec();
-    let first_width: Fp266 = first_glyphs.iter().map(|g| g.advance).fold(Fp266::ZERO, |a, b| a + b) + hyphen_advance;
+    let first_width: Fp266 = first_glyphs
+        .iter()
+        .map(|g| g.advance)
+        .fold(Fp266::ZERO, |a, b| a + b)
+        + hyphen_advance;
 
     let second_glyphs = word.glyphs[idx..].to_vec();
-    let second_width: Fp266 = second_glyphs.iter().map(|g| g.advance).fold(Fp266::ZERO, |a, b| a + b);
+    let second_width: Fp266 = second_glyphs
+        .iter()
+        .map(|g| g.advance)
+        .fold(Fp266::ZERO, |a, b| a + b);
 
     Some((
-        WordGroup { glyphs: first_glyphs, width: first_width },
-        WordGroup { glyphs: second_glyphs, width: second_width },
+        WordGroup {
+            glyphs: first_glyphs,
+            width: first_width,
+        },
+        WordGroup {
+            glyphs: second_glyphs,
+            width: second_width,
+        },
     ))
 }
 
@@ -258,7 +277,10 @@ mod tests {
     #[test]
     fn test_hyphenation_basic() {
         let pts = hyphenation_points("letter");
-        assert!(!pts.is_empty(), "should find at least one break in 'letter'");
+        assert!(
+            !pts.is_empty(),
+            "should find at least one break in 'letter'"
+        );
     }
 
     #[test]
@@ -377,13 +399,21 @@ mod tests {
 
         // Natural width = 7+5+7+5+7 = 31pt → extra = 69pt, 2 gaps → 34.5 each
         // Fp266: 69*64 = 4416 raw, /2 = 2208, remainder 0
-        let space_advances: Vec<i32> = result.iter()
+        let space_advances: Vec<i32> = result
+            .iter()
             .filter_map(|g| {
-                if g.glyph_id == b' ' as u32 { Some(g.x_advance) } else { None }
+                if g.glyph_id == b' ' as u32 {
+                    Some(g.x_advance)
+                } else {
+                    None
+                }
             })
             .collect();
         assert_eq!(space_advances.len(), 2);
-        assert_eq!(space_advances[0], space_advances[1], "spaces should be equal");
+        assert_eq!(
+            space_advances[0], space_advances[1],
+            "spaces should be equal"
+        );
         // Each space = 5*64 + 2208 = 320 + 2208 = 2528
         assert_eq!(space_advances[0], 2528);
     }
@@ -440,8 +470,15 @@ mod tests {
         ];
         // Natural: 7+5+7+5+7+5+7 = 43pt. Width=50pt → extra=7pt=448raw, 3 gaps
         let result = justify_line(&glyphs, text.as_bytes(), Fp266::from_int(50), false);
-        let space_advances: Vec<i32> = result.iter()
-            .filter_map(|g| if g.glyph_id == b' ' as u32 { Some(g.x_advance) } else { None })
+        let space_advances: Vec<i32> = result
+            .iter()
+            .filter_map(|g| {
+                if g.glyph_id == b' ' as u32 {
+                    Some(g.x_advance)
+                } else {
+                    None
+                }
+            })
             .collect();
         assert_eq!(space_advances.len(), 3);
         // 448/3=149 remainder 1; first gap: 320+149+64=533; others: 320+149=469

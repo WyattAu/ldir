@@ -18,8 +18,8 @@
 ///
 /// # Examples
 ///
-    /// ```ignore
-    /// use ldir_core::ecs::Arena;
+/// ```ignore
+/// use ldir_core::ecs::Arena;
 ///
 /// let mut arena: Arena<i32> = Arena::new();
 /// let a = arena.alloc(10);

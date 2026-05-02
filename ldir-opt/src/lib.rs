@@ -1,5 +1,5 @@
-mod passes;
 mod pass_manager;
+mod passes;
 
 pub use pass_manager::{OptimizationReport, PassManager};
 pub use passes::*;
@@ -49,11 +49,26 @@ mod tests {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Document));
         m.body.push(Node::new(2, NodeType::Section).with_parent(1));
-        m.body.push(Node::new(3, NodeType::Paragraph).with_parent(2));
-        m.body.push(Node::new(4, NodeType::Text { content: "Hello".to_string() }).with_parent(3));
-        if let Some(d) = m.body.get_mut(1) { d.add_child(2); }
-        if let Some(s) = m.body.get_mut(2) { s.add_child(3); }
-        if let Some(p) = m.body.get_mut(3) { p.add_child(4); }
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(2));
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Hello".to_string(),
+                },
+            )
+            .with_parent(3),
+        );
+        if let Some(d) = m.body.get_mut(1) {
+            d.add_child(2);
+        }
+        if let Some(s) = m.body.get_mut(2) {
+            s.add_child(3);
+        }
+        if let Some(p) = m.body.get_mut(3) {
+            p.add_child(4);
+        }
         m
     }
 

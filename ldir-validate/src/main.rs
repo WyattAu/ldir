@@ -24,7 +24,11 @@ fn main() {
     let cli = Cli::parse();
 
     let bytes = fs::read(&cli.input).unwrap_or_else(|e| {
-        eprintln!("[ldir-validate] Error reading {}: {}", cli.input.display(), e);
+        eprintln!(
+            "[ldir-validate] Error reading {}: {}",
+            cli.input.display(),
+            e
+        );
         std::process::exit(1);
     });
 
@@ -90,10 +94,7 @@ fn validate(module: &ldir_ir::sir::v2::SIRModuleV2) -> Vec<ValidationError> {
     errors
 }
 
-fn validate_unique_ids(
-    module: &ldir_ir::sir::v2::SIRModuleV2,
-    errors: &mut Vec<ValidationError>,
-) {
+fn validate_unique_ids(module: &ldir_ir::sir::v2::SIRModuleV2, errors: &mut Vec<ValidationError>) {
     let mut seen = std::collections::HashSet::new();
     for node in module.body.iter() {
         if !seen.insert(node.id) {
@@ -105,10 +106,7 @@ fn validate_unique_ids(
     }
 }
 
-fn validate_parent_refs(
-    module: &ldir_ir::sir::v2::SIRModuleV2,
-    errors: &mut Vec<ValidationError>,
-) {
+fn validate_parent_refs(module: &ldir_ir::sir::v2::SIRModuleV2, errors: &mut Vec<ValidationError>) {
     let ids: std::collections::HashSet<u32> = module.body.iter().map(|n| n.id).collect();
     for node in module.body.iter() {
         if let Some(pid) = node.parent_id
@@ -116,30 +114,21 @@ fn validate_parent_refs(
         {
             errors.push(ValidationError {
                 kind: "invalid-parent".into(),
-                message: format!(
-                    "node {} references non-existent parent {}",
-                    node.id, pid
-                ),
+                message: format!("node {} references non-existent parent {}", node.id, pid),
             });
         }
         for &cid in &node.child_ids {
             if !ids.contains(&cid) {
                 errors.push(ValidationError {
                     kind: "invalid-child".into(),
-                    message: format!(
-                        "node {} references non-existent child {}",
-                        node.id, cid
-                    ),
+                    message: format!("node {} references non-existent child {}", node.id, cid),
                 });
             }
         }
     }
 }
 
-fn validate_no_cycles(
-    module: &ldir_ir::sir::v2::SIRModuleV2,
-    errors: &mut Vec<ValidationError>,
-) {
+fn validate_no_cycles(module: &ldir_ir::sir::v2::SIRModuleV2, errors: &mut Vec<ValidationError>) {
     let ids: std::collections::HashSet<u32> = module.body.iter().map(|n| n.id).collect();
 
     for &start_id in &ids {
@@ -161,10 +150,7 @@ fn validate_no_cycles(
     }
 }
 
-fn validate_labels(
-    module: &ldir_ir::sir::v2::SIRModuleV2,
-    errors: &mut Vec<ValidationError>,
-) {
+fn validate_labels(module: &ldir_ir::sir::v2::SIRModuleV2, errors: &mut Vec<ValidationError>) {
     let ids: std::collections::HashSet<u32> = module.body.iter().map(|n| n.id).collect();
     for (label, info) in &module.annotations.labels {
         if !ids.contains(&info.node_id) {
@@ -190,12 +176,13 @@ fn validate_labels(
     }
 }
 
-fn validate_style_refs(
-    module: &ldir_ir::sir::v2::SIRModuleV2,
-    errors: &mut Vec<ValidationError>,
-) {
-    let style_names: std::collections::HashSet<&str> =
-        module.styles.styles.iter().map(|s| s.name.as_str()).collect();
+fn validate_style_refs(module: &ldir_ir::sir::v2::SIRModuleV2, errors: &mut Vec<ValidationError>) {
+    let style_names: std::collections::HashSet<&str> = module
+        .styles
+        .styles
+        .iter()
+        .map(|s| s.name.as_str())
+        .collect();
 
     for style_decl in &module.styles.styles {
         if let Some(ref parent) = style_decl.parent
@@ -241,8 +228,12 @@ fn validate_counter_refs(
     module: &ldir_ir::sir::v2::SIRModuleV2,
     errors: &mut Vec<ValidationError>,
 ) {
-    let counter_names: std::collections::HashSet<&str> =
-        module.resources.counters.iter().map(|c| c.name.as_str()).collect();
+    let counter_names: std::collections::HashSet<&str> = module
+        .resources
+        .counters
+        .iter()
+        .map(|c| c.name.as_str())
+        .collect();
 
     for node in module.body.iter() {
         if let Some(ref counter) = node.counter
@@ -528,9 +519,7 @@ mod tests {
     #[test]
     fn test_invalid_parent() {
         use ldir_ir::sir::v2::nodes::*;
-        let m = make_module_direct(vec![
-            Node::new(1, NodeType::Paragraph).with_parent(99),
-        ]);
+        let m = make_module_direct(vec![Node::new(1, NodeType::Paragraph).with_parent(99)]);
         let errors = validate(&m);
         assert!(errors.iter().any(|e| e.kind == "invalid-parent"));
     }
@@ -549,8 +538,11 @@ mod tests {
     #[test]
     fn test_dangling_label() {
         let mut m = ldir_ir::sir::v2::SIRModuleV2::new();
-        m.annotations
-            .add_label("sec:ghost".into(), 999, ldir_ir::sir::v2::annotations::LabelCategory::Section);
+        m.annotations.add_label(
+            "sec:ghost".into(),
+            999,
+            ldir_ir::sir::v2::annotations::LabelCategory::Section,
+        );
         let errors = validate(&m);
         assert!(errors.iter().any(|e| e.kind == "dangling-label"));
     }

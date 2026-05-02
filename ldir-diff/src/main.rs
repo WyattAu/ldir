@@ -37,7 +37,10 @@ fn main() {
     if cli.format == "text" {
         print_diff_text(&diff);
     } else if cli.format == "json" {
-        println!("{}", serde_json::to_string_pretty(&diff).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&diff).unwrap_or_default()
+        );
     } else if cli.format == "count" {
         print_diff_count(&diff);
     } else {
@@ -137,8 +140,12 @@ fn compute_diff(
     }
 
     for id in old_ids.intersection(&new_ids) {
-        let old_node = old.body.get(*id).unwrap();
-        let new_node = new.body.get(*id).unwrap();
+        let Some(old_node) = old.body.get(*id) else {
+            continue;
+        };
+        let Some(new_node) = new.body.get(*id) else {
+            continue;
+        };
 
         if old_node.node_type != new_node.node_type {
             diff.nodes_modified.push(NodeChange {
@@ -202,10 +209,18 @@ fn compute_diff(
         diff.styles_removed.push(s.clone());
     }
 
-    let old_counters: std::collections::HashSet<_> =
-        old.resources.counters.iter().map(|c| c.name.clone()).collect();
-    let new_counters: std::collections::HashSet<_> =
-        new.resources.counters.iter().map(|c| c.name.clone()).collect();
+    let old_counters: std::collections::HashSet<_> = old
+        .resources
+        .counters
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
+    let new_counters: std::collections::HashSet<_> = new
+        .resources
+        .counters
+        .iter()
+        .map(|c| c.name.clone())
+        .collect();
     for c in new_counters.difference(&old_counters) {
         diff.counters_added.push(c.clone());
     }
@@ -597,12 +612,8 @@ mod tests {
 
     #[test]
     fn test_modified_node() {
-        let old = make_module(
-            "@text [id=1] { \"Hello\" }\n@text [id=2] { \"World\" }\n",
-        );
-        let new = make_module(
-            "@text [id=1] { \"Hello\" }\n@text [id=2] { \"Changed\" }\n",
-        );
+        let old = make_module("@text [id=1] { \"Hello\" }\n@text [id=2] { \"World\" }\n");
+        let new = make_module("@text [id=1] { \"Hello\" }\n@text [id=2] { \"Changed\" }\n");
         let diff = compute_diff(&old, &new);
         assert_eq!(diff.nodes_modified.len(), 1);
         assert_eq!(diff.nodes_modified[0].id, 2);
@@ -618,5 +629,125 @@ mod tests {
         let diff = compute_diff(&old, &new);
         assert!(!diff.metadata_changes.is_empty());
         assert!(diff.metadata_changes[0].contains("title"));
+    }
+
+    #[test]
+    fn test_label_added() {
+        let old = make_module("@section [id=1] { }\n");
+        let new = make_module(r#"@section [id=1, label="sec:intro"] { }"#);
+        let diff = compute_diff(&old, &new);
+        assert!(diff.labels_added.contains(&"sec:intro".to_string()));
+        assert!(diff.labels_removed.is_empty());
+    }
+
+    #[test]
+    fn test_label_removed() {
+        let old = make_module(r#"@section [id=1, label="sec:intro"] { }"#);
+        let new = make_module("@section [id=1] { }\n");
+        let diff = compute_diff(&old, &new);
+        assert!(diff.labels_removed.contains(&"sec:intro".to_string()));
+        assert!(diff.labels_added.is_empty());
+    }
+
+    #[test]
+    fn test_style_added() {
+        let old = make_module("@section [id=1] { }\n");
+        let new_text = r#"@section [id=1] { }"#;
+        let mut new = make_module(new_text);
+        new.styles.styles.push(ldir_ir::sir::v2::styles::StyleDecl {
+            name: "emphasis".into(),
+            parent: None,
+            properties: ldir_ir::sir::v2::styles::StyleProperties::default(),
+        });
+        let diff = compute_diff(&old, &new);
+        assert!(diff.styles_added.contains(&"emphasis".to_string()));
+    }
+
+    #[test]
+    fn test_counter_added() {
+        let old = make_module("@section [id=1] { }\n");
+        let new_text = "@section [id=1] { }\n";
+        let mut new = make_module(new_text);
+        new.resources.counters.push(ldir_ir::sir::v2::resources::CounterDecl {
+            name: "figure".into(),
+            format: ldir_ir::sir::v2::resources::CounterFormat::Arabic,
+            reset_scope: ldir_ir::sir::v2::resources::CounterReset::PerSection,
+        });
+        let diff = compute_diff(&old, &new);
+        assert!(diff.counters_added.contains(&"figure".to_string()));
+    }
+
+    #[test]
+    fn test_parent_change() {
+        let old = make_module("@section [id=1] { }\n@paragraph [id=2, parent=1] { }\n");
+        let new = make_module("@section [id=1] { }\n@section [id=2] { }\n");
+        let diff = compute_diff(&old, &new);
+        let parent_changes: Vec<_> = diff
+            .nodes_modified
+            .iter()
+            .filter(|c| c.field == "parent")
+            .collect();
+        assert_eq!(parent_changes.len(), 1);
+        assert_eq!(parent_changes[0].id, 2);
+    }
+
+    #[test]
+    fn test_multiple_adds_and_removes() {
+        let old = make_module("@section [id=1] { }\n@paragraph [id=2, parent=1] { }\n");
+        let new = make_module(
+            "@section [id=1] { }\n@text [id=3, parent=1] { }\n@bold [id=4, parent=3] { }\n",
+        );
+        let diff = compute_diff(&old, &new);
+        assert!(diff.nodes_added.contains(&3));
+        assert!(diff.nodes_added.contains(&4));
+        assert!(diff.nodes_removed.contains(&2));
+    }
+
+    #[test]
+    fn test_diff_serializable_to_json() {
+        let old = make_module("@section [id=1] { }\n");
+        let new = make_module("@section [id=1] { }\n@paragraph [id=2, parent=1] { }\n");
+        let diff = compute_diff(&old, &new);
+        let json = serde_json::to_string(&diff);
+        assert!(json.is_ok());
+        let json_str = json.unwrap();
+        assert!(json_str.contains("nodes_added"));
+    }
+
+    #[test]
+    fn test_empty_modules() {
+        let old = make_module("");
+        let new = make_module("");
+        let diff = compute_diff(&old, &new);
+        assert!(diff.metadata_changes.is_empty());
+        assert!(diff.nodes_added.is_empty());
+        assert!(diff.nodes_removed.is_empty());
+        assert!(diff.nodes_modified.is_empty());
+        assert!(diff.labels_added.is_empty());
+        assert!(diff.labels_removed.is_empty());
+        assert!(diff.styles_added.is_empty());
+        assert!(diff.styles_removed.is_empty());
+        assert!(diff.counters_added.is_empty());
+        assert!(diff.counters_removed.is_empty());
+    }
+
+    #[test]
+    fn test_metadata_author_change() {
+        let mut old = make_module("@section [id=1] { }\n");
+        old.metadata.author = Some("Alice".into());
+        let mut new = make_module("@section [id=1] { }\n");
+        new.metadata.author = Some("Bob".into());
+        let diff = compute_diff(&old, &new);
+        assert!(diff.metadata_changes.iter().any(|c| c.contains("author")));
+    }
+
+    #[test]
+    fn test_metadata_language_change() {
+        let mut old = make_module("@section [id=1] { }\n");
+        old.metadata.language = "en".into();
+        let mut new = make_module("@section [id=1] { }\n");
+        new.metadata.language = "ja".into();
+        let diff = compute_diff(&old, &new);
+        assert!(diff.metadata_changes.iter().any(|c| c.contains("language")));
     }
 }

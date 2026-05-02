@@ -10,6 +10,9 @@ mod subset;
 mod tables;
 
 pub use loader::FontFace;
+#[allow(unused_imports)]
 pub(crate) use loader::{FontMetrics, PdfFontInfo};
-pub(crate) use subset::{subset_font, FontSubset};
+#[allow(unused_imports)]
+pub(crate) use subset::{FontSubset, subset_font};
+#[allow(unused_imports)]
 pub(crate) use tables::{CmapTable, HeadTable, HheaTable, HmtxTable};

@@ -387,8 +387,8 @@ mod tests {
 #[cfg(test)]
 mod proptests {
     use super::*;
-    use crate::sir::opcode::SIROpcode;
     use crate::sir::ROOT_SENTINEL;
+    use crate::sir::opcode::SIROpcode;
     use proptest::prelude::*;
 
     proptest! {

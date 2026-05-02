@@ -60,7 +60,10 @@ impl HtmlRenderer {
         // DOCTYPE and html
         html.push_str("<!DOCTYPE html>\n<html");
         if module.metadata.language != "en" {
-            html.push_str(&format!(" lang=\"{}\"", escape_html(&module.metadata.language)));
+            html.push_str(&format!(
+                " lang=\"{}\"",
+                escape_html(&module.metadata.language)
+            ));
         }
         html.push_str(">\n");
 
@@ -70,7 +73,9 @@ impl HtmlRenderer {
         html.push_str(&" ".repeat(ind * 2));
         html.push_str("<meta charset=\"utf-8\">\n");
         html.push_str(&" ".repeat(ind * 2));
-        html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
+        html.push_str(
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
+        );
         if let Some(ref title) = module.metadata.title {
             html.push_str(&" ".repeat(ind * 2));
             html.push_str(&format!("<title>{}</title>\n", escape_html(title)));
@@ -155,18 +160,21 @@ impl HtmlRenderer {
 
         // Compute heading numbers for the TOC
         let mut counters = [0u32; 6];
-        let heading_numbers: Vec<String> = headings.iter().map(|node| {
-            if let Some(level) = node.heading_level() {
-                let idx = level as usize;
-                if idx < 6 {
-                    counters[idx] += 1;
-                    for c in &mut counters[(idx + 1)..] {
-                        *c = 0;
+        let heading_numbers: Vec<String> = headings
+            .iter()
+            .map(|node| {
+                if let Some(level) = node.heading_level() {
+                    let idx = level as usize;
+                    if idx < 6 {
+                        counters[idx] += 1;
+                        for c in &mut counters[(idx + 1)..] {
+                            *c = 0;
+                        }
                     }
                 }
-            }
-            format_heading_number(&counters)
-        }).collect();
+                format_heading_number(&counters)
+            })
+            .collect();
 
         let pad = " ".repeat(ind);
         html.push_str(&pad);
@@ -183,7 +191,9 @@ impl HtmlRenderer {
             html.push_str(&" ".repeat(ind + 1));
             html.push_str(&format!(
                 "<li><a href=\"#{}\">{} {}</a></li>\n",
-                id, num, escape_html(&text)
+                id,
+                num,
+                escape_html(&text)
             ));
         }
 
@@ -205,8 +215,11 @@ impl HtmlRenderer {
                 }
             }
 
-            NodeType::Part | NodeType::Chapter | NodeType::Section
-            | NodeType::Subsection | NodeType::Subsubsection => {
+            NodeType::Part
+            | NodeType::Chapter
+            | NodeType::Section
+            | NodeType::Subsection
+            | NodeType::Subsubsection => {
                 let level = node.heading_level().unwrap_or(2);
                 let tag = match level {
                     0 | 1 => "h1",
@@ -221,8 +234,8 @@ impl HtmlRenderer {
                         self.heading_counter[i] = 0;
                     }
                 }
-            let fallback_id = format!("heading-{}", node.id);
-            let id = node.label.as_deref().unwrap_or(&fallback_id);
+                let fallback_id = format!("heading-{}", node.id);
+                let id = node.label.as_deref().unwrap_or(&fallback_id);
                 let text = module.body.collect_text(node.id);
                 html.push_str(&pad);
                 html.push_str(&format!(
@@ -305,23 +318,21 @@ impl HtmlRenderer {
                 html.push('>');
             }
 
-            NodeType::MathInline { content } => {
-                match self.options.math_format {
-                    MathFormat::MathML => {
-                        html.push_str("<math>");
-                        html.push_str(&escape_html(content));
-                        html.push_str("</math>");
-                    }
-                    MathFormat::LaTeX => {
-                        html.push_str("<code class=\"math\">");
-                        html.push_str(&escape_html(content));
-                        html.push_str("</code>");
-                    }
-                    MathFormat::Text => {
-                        html.push_str(&format!("[{}]", escape_html(content)));
-                    }
+            NodeType::MathInline { content } => match self.options.math_format {
+                MathFormat::MathML => {
+                    html.push_str("<math>");
+                    html.push_str(&escape_html(content));
+                    html.push_str("</math>");
                 }
-            }
+                MathFormat::LaTeX => {
+                    html.push_str("<code class=\"math\">");
+                    html.push_str(&escape_html(content));
+                    html.push_str("</code>");
+                }
+                MathFormat::Text => {
+                    html.push_str(&format!("[{}]", escape_html(content)));
+                }
+            },
 
             NodeType::MathBlock { numbered, .. } => {
                 self.equation_counter += 1;
@@ -478,7 +489,9 @@ impl HtmlRenderer {
                         html.push_str(&" ".repeat(ind + 2));
                         html.push_str(&format!(
                             "<li id=\"fn-{}\">{} <a href=\"#fn-{}-back\">\u{21a9}</a></li>\n",
-                            fn_num, escape_html(content), fn_num
+                            fn_num,
+                            escape_html(content),
+                            fn_num
                         ));
                     }
                 }
@@ -519,7 +532,14 @@ impl HtmlRenderer {
         }
     }
 
-    fn render_node_inner(&mut self, html: &mut String, module: &SIRModuleV2, node: &Node, ind: usize, is_header_row: bool) {
+    fn render_node_inner(
+        &mut self,
+        html: &mut String,
+        module: &SIRModuleV2,
+        node: &Node,
+        ind: usize,
+        is_header_row: bool,
+    ) {
         match &node.node_type {
             NodeType::TableCell { .. } => {
                 let text = module.body.collect_text(node.id);
@@ -593,11 +613,24 @@ mod tests {
                 .with_label("sec:intro"),
         );
         m.body.push(
-            Node::new(2, NodeType::Text { content: "Introduction".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Introduction".into(),
+                },
+            )
+            .with_parent(1),
         );
-        m.body.push(Node::new(3, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(0));
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Hello, world!".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Hello, world!".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(0).unwrap().add_child(3);
@@ -657,17 +690,36 @@ mod tests {
     fn test_inline_styles() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(Node::new(2, NodeType::Bold).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "bold".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "bold".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.push(
-            Node::new(4, NodeType::Text { content: " and ".into() }).with_parent(1),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: " and ".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.push(Node::new(5, NodeType::Italic).with_parent(1));
         m.body.push(
-            Node::new(6, NodeType::Text { content: "italic".into() }).with_parent(5),
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "italic".into(),
+                },
+            )
+            .with_parent(5),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -685,7 +737,8 @@ mod tests {
     fn test_html_escaping() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -707,7 +760,8 @@ mod tests {
     fn test_link_rendered() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -719,7 +773,13 @@ mod tests {
             .with_parent(1),
         );
         m.body.push(
-            Node::new(3, NodeType::Text { content: "link".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "link".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -747,11 +807,23 @@ mod tests {
         );
         m.body.push(Node::new(2, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "item 1".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "item 1".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.push(Node::new(4, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(5, NodeType::Text { content: "item 2".into() }).with_parent(4),
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "item 2".into(),
+                },
+            )
+            .with_parent(4),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -780,7 +852,13 @@ mod tests {
             .with_parent(0),
         );
         m.body.push(
-            Node::new(2, NodeType::Text { content: "fn main() {}".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "fn main() {}".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -795,10 +873,18 @@ mod tests {
     fn test_blockquote() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::BlockQuote).with_parent(0));
-        m.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        m.body
+            .push(Node::new(1, NodeType::BlockQuote).with_parent(0));
+        m.body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "A quote".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "A quote".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -823,9 +909,8 @@ mod tests {
             )
             .with_parent(0),
         );
-        m.body.push(
-            Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1),
-        );
+        m.body
+            .push(Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1));
         m.body.push(
             Node::new(
                 3,
@@ -837,7 +922,13 @@ mod tests {
             .with_parent(2),
         );
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Header".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Header".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -854,7 +945,8 @@ mod tests {
     fn test_thematic_break() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
         m.body.get_mut(0).unwrap().add_child(1);
 
         let html = HtmlRenderer::new().render(&m);
@@ -865,7 +957,8 @@ mod tests {
     fn test_math_inline() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -899,7 +992,13 @@ mod tests {
             .with_label("eq:1"),
         );
         m.body.push(
-            Node::new(2, NodeType::Text { content: "E = mc^2".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "E = mc^2".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -960,7 +1059,13 @@ mod tests {
         );
         m.body.push(Node::new(2, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "first".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "first".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -976,7 +1081,8 @@ mod tests {
     fn test_image_rendered() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -1002,9 +1108,14 @@ mod tests {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
-            Node::new(1, NodeType::Figure { placement: FloatPlacement::Here })
-                .with_parent(0)
-                .with_label("fig:demo"),
+            Node::new(
+                1,
+                NodeType::Figure {
+                    placement: FloatPlacement::Here,
+                },
+            )
+            .with_parent(0)
+            .with_label("fig:demo"),
         );
         m.body.push(
             Node::new(
@@ -1020,7 +1131,13 @@ mod tests {
         );
         m.body.push(Node::new(3, NodeType::Caption).with_parent(1));
         m.body.push(
-            Node::new(4, NodeType::Text { content: "A diagram".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "A diagram".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1037,7 +1154,8 @@ mod tests {
     fn test_footnote_rendered() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -1047,7 +1165,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.push(Node::new(3, NodeType::FootnoteBlock).with_parent(0));
+        m.body
+            .push(Node::new(3, NodeType::FootnoteBlock).with_parent(0));
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(0).unwrap().add_child(3);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1064,8 +1183,10 @@ mod tests {
     fn test_line_break() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
-        m.body.push(Node::new(2, NodeType::LineBreak).with_parent(1));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(2, NodeType::LineBreak).with_parent(1));
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
 
@@ -1077,7 +1198,8 @@ mod tests {
     fn test_math_latex_format() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -1104,7 +1226,8 @@ mod tests {
     fn test_math_text_format() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -1130,7 +1253,8 @@ mod tests {
     fn test_styled_node() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -1141,7 +1265,13 @@ mod tests {
             .with_parent(1),
         );
         m.body.push(
-            Node::new(3, NodeType::Text { content: "styled".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "styled".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1155,10 +1285,17 @@ mod tests {
     fn test_mono_inline() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(Node::new(2, NodeType::Mono).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "code".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "code".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1172,10 +1309,18 @@ mod tests {
     fn test_underline_inline() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
-        m.body.push(Node::new(2, NodeType::Underline).with_parent(1));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(2, NodeType::Underline).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "under".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "under".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1189,10 +1334,18 @@ mod tests {
     fn test_strikethrough_inline() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
-        m.body.push(Node::new(2, NodeType::Strikethrough).with_parent(1));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(2, NodeType::Strikethrough).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "del".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "del".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1208,15 +1361,34 @@ mod tests {
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(Node::new(1, NodeType::Section).with_parent(0));
         m.body.push(
-            Node::new(2, NodeType::Text { content: "First".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "First".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.push(Node::new(3, NodeType::Section).with_parent(0));
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Second".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Second".into(),
+                },
+            )
+            .with_parent(3),
         );
-        m.body.push(Node::new(5, NodeType::Subsection).with_parent(0));
+        m.body
+            .push(Node::new(5, NodeType::Subsection).with_parent(0));
         m.body.push(
-            Node::new(6, NodeType::Text { content: "Sub".into() }).with_parent(5),
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "Sub".into(),
+                },
+            )
+            .with_parent(5),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(0).unwrap().add_child(3);
@@ -1245,9 +1417,8 @@ mod tests {
             )
             .with_parent(0),
         );
-        m.body.push(
-            Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1),
-        );
+        m.body
+            .push(Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1));
         m.body.push(
             Node::new(
                 3,
@@ -1259,11 +1430,16 @@ mod tests {
             .with_parent(2),
         );
         m.body.push(
-            Node::new(4, NodeType::Text { content: "H".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "H".into(),
+                },
+            )
+            .with_parent(3),
         );
-        m.body.push(
-            Node::new(5, NodeType::TableRow { is_header: false }).with_parent(1),
-        );
+        m.body
+            .push(Node::new(5, NodeType::TableRow { is_header: false }).with_parent(1));
         m.body.push(
             Node::new(
                 6,
@@ -1275,7 +1451,13 @@ mod tests {
             .with_parent(5),
         );
         m.body.push(
-            Node::new(7, NodeType::Text { content: "D".into() }).with_parent(6),
+            Node::new(
+                7,
+                NodeType::Text {
+                    content: "D".into(),
+                },
+            )
+            .with_parent(6),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1294,11 +1476,16 @@ mod tests {
     fn test_code_block_no_language() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::CodeBlock { language: None }).with_parent(0));
         m.body.push(
-            Node::new(1, NodeType::CodeBlock { language: None }).with_parent(0),
-        );
-        m.body.push(
-            Node::new(2, NodeType::Text { content: "text".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "text".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -1312,10 +1499,17 @@ mod tests {
     fn test_group_node() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(Node::new(2, NodeType::Group).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "inside".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "inside".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);

@@ -29,6 +29,8 @@ pub struct PdfOptions {
     pub footer_left: Option<String>,
     /// Footer right template.
     pub footer_right: Option<String>,
+    /// Suppress header on the first page.
+    pub suppress_first_header: bool,
 }
 
 impl Default for PdfOptions {
@@ -42,6 +44,7 @@ impl Default for PdfOptions {
             header_right: None,
             footer_left: None,
             footer_right: None,
+            suppress_first_header: true,
         }
     }
 }
@@ -50,14 +53,8 @@ fn expand_template(template: &str, page: usize, pages: usize, options: &PdfOptio
     let mut result = template.to_string();
     result = result.replace("{page}", &page.to_string());
     result = result.replace("{pages}", &pages.to_string());
-    result = result.replace(
-        "{title}",
-        options.title.as_deref().unwrap_or(""),
-    );
-    result = result.replace(
-        "{author}",
-        options.author.as_deref().unwrap_or(""),
-    );
+    result = result.replace("{title}", options.title.as_deref().unwrap_or(""));
+    result = result.replace("{author}", options.author.as_deref().unwrap_or(""));
     result = result.replace("{date}", &date_now_str());
     result
 }
@@ -69,8 +66,12 @@ fn date_now_str() -> String {
         .map(|d| {
             let secs = d.as_secs();
             let days = secs / 86400;
-            let z = days + 719528;
-            let era = if z >= 0 { z / 146097 } else { (z - 146096) / 146097 };
+            let z = (days + 719528) as i64;
+            let era = if z >= 0 {
+                z / 146097
+            } else {
+                (z - 146096) / 146097
+            };
             let doe = z - era * 146097;
             let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
             let y = yoe + era * 400;
@@ -188,15 +189,21 @@ pub fn gir_to_pdf_with_fonts_and_options(
         }
 
         for link in &page.links {
-            builder.add_link(link.x, link.y, link.width, link.height, link.url.clone(), link.destination_page);
+            builder.add_link(
+                link.x,
+                link.y,
+                link.width,
+                link.height,
+                link.url.clone(),
+                link.destination_page,
+            );
         }
 
         // Header/footer support
         let has_header = options.header_left.is_some() || options.header_right.is_some();
-        let has_custom_footer =
-            options.footer_left.is_some() || options.footer_right.is_some();
+        let has_custom_footer = options.footer_left.is_some() || options.footer_right.is_some();
 
-        if has_header {
+        if has_header && !(options.suppress_first_header && page_idx == 0) {
             if let Some(ref tmpl) = options.header_left {
                 let text = expand_template(tmpl, page_idx + 1, page_count, options);
                 if has_embedded_fonts {

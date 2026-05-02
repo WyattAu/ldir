@@ -17,7 +17,8 @@ use crate::shaping::cache::ThreadSafeShapeCache;
 
 /// OpenType feature to enable/disable during shaping.
 #[cfg(not(target_arch = "wasm32"))]
-pub use harfbuzz::{Feature, CALT, KERN, LIGA, LNUM, ONUM, TNUM};
+#[allow(unused_imports)]
+pub use harfbuzz::{CALT, Feature, KERN, LIGA, LNUM, ONUM, TNUM};
 
 /// OpenType feature stub for WASM targets.
 #[cfg(target_arch = "wasm32")]
@@ -32,10 +33,20 @@ pub struct Feature {
 #[cfg(target_arch = "wasm32")]
 impl Feature {
     pub fn enable(tag: &[u8; 4]) -> Self {
-        Self { tag: *tag, value: 1, start: 0, end: u32::MAX }
+        Self {
+            tag: *tag,
+            value: 1,
+            start: 0,
+            end: u32::MAX,
+        }
     }
     pub fn disable(tag: &[u8; 4]) -> Self {
-        Self { tag: *tag, value: 0, start: 0, end: u32::MAX }
+        Self {
+            tag: *tag,
+            value: 0,
+            start: 0,
+            end: u32::MAX,
+        }
     }
 }
 
@@ -153,12 +164,14 @@ pub fn shape_text_with_features(
     } else {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            return harfbuzz::shape_harfbuzz(font_data, text, font_size, None, None, None, features);
+            return harfbuzz::shape_harfbuzz(
+                font_data, text, font_size, None, None, None, features,
+            );
         }
         #[cfg(target_arch = "wasm32")]
         {
             let _ = features;
-            fast_path::shape_unicode_stub(text, font_size, 0)
+            fast_path::shape_unicode_basic(font_data, text, font_size, 0)
         }
     }
 }

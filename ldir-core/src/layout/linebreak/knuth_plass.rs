@@ -110,7 +110,7 @@ pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBre
                     nodes[a]
                         .total_demerits
                         .partial_cmp(&nodes[b].total_demerits)
-                        .unwrap()
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 })
                 .unwrap_or(&0);
             let best = &nodes[best_a_idx];
@@ -236,7 +236,7 @@ pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBre
             nodes[a]
                 .total_demerits
                 .partial_cmp(&nodes[b].total_demerits)
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
     // If no real breaks found (paragraph fits on one line), return empty

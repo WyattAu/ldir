@@ -69,35 +69,62 @@ pub fn shape_ascii(text: &str, font_size: Fp266, _font_id: u32) -> ShapedRun {
     }
 }
 
-/// Stub shaper for non-ASCII (Unicode) text.
+/// Basic Unicode shaper using ttf_parser cmap lookup (WASM-safe).
 ///
-/// Produces a placeholder `ShapedRun` where each Unicode scalar value maps to
-/// glyph ID `0xFFFD` (replacement character) with monospace advance.
-/// This allows the pipeline to function without HarfBuzz while the interface
-/// is validated.
-pub fn shape_unicode_stub(text: &str, font_size: Fp266, _font_id: u32) -> ShapedRun {
+/// Maps each Unicode scalar value to its glyph ID via the font's cmap table.
+/// Falls back to monospace advance for glyphs without explicit advance data.
+/// No kerning, ligatures, or complex shaping — suitable for WASM targets
+/// where HarfBuzz is unavailable.
+pub fn shape_unicode_basic(font_data: &[u8], text: &str, font_size: Fp266, _font_id: u32) -> ShapedRun {
     if text.is_empty() {
         return ShapedRun::empty();
     }
 
-    let char_advance = mono_advance(font_size);
+    let default_advance = mono_advance(font_size);
+
+    // Try to load the font for cmap-based glyph lookup.
+    let face = ttf_parser::Face::parse(font_data, 0).ok();
+    let upem = face.as_ref().map(|f| {
+        let u = f.units_per_em();
+        if u == 0 { 1000 } else { u }
+    });
+
     let mut glyphs = Vec::with_capacity(text.chars().count());
     let mut total_advance = Fp266::ZERO;
 
     for (byte_offset, ch) in text.char_indices() {
-        let glyph_id = if is_ascii_str(&ch.to_string()) {
-            (ch as u32) + 1
+        let (glyph_id, advance) = if let (Some(face), Some(upem)) = (&face, upem) {
+            match face.glyph_index(ch) {
+                Some(gid) if gid.0 != 0 => {
+                    let glyph_id = gid.0 as u32;
+                    let adv_units = face.glyph_hor_advance(gid).map_or(0, |v| v as i64);
+                    let advance = if upem as i64 > 0 {
+                        Fp266::from_raw((font_size.raw() * adv_units) / upem as i64)
+                    } else {
+                        default_advance
+                    };
+                    (glyph_id, advance)
+                }
+                _ => (0, default_advance),
+            }
         } else {
-            0xFFFD
+            // No font data — ASCII gets real glyph IDs, non-ASCII gets 0xFFFD
+            let glyph_id = if is_ascii_str(&ch.to_string()) {
+                (ch as u32) + 1
+            } else {
+                0xFFFD
+            };
+            (glyph_id, default_advance)
         };
+
         glyphs.push(ShapedGlyph {
             glyph_id,
             x_offset: Fp266::ZERO,
             y_offset: Fp266::ZERO,
-            advance: char_advance,
+            advance,
             cluster_id: byte_offset as u32,
         });
-        total_advance += char_advance;
+        total_advance += advance;
     }
 
     ShapedRun {
@@ -167,8 +194,9 @@ mod tests {
     }
 
     #[test]
-    fn unicode_stub_produces_replacement_glyphs() {
-        let run = shape_unicode_stub("日本語", Fp266::from_int(10), 1);
+    fn unicode_basic_no_font_produces_replacement_glyphs() {
+        // Without font data, non-ASCII gets tofu (glyph 0)
+        let run = shape_unicode_basic(&[], "日本語", Fp266::from_int(10), 1);
         assert_eq!(run.glyphs.len(), 3);
         for g in &run.glyphs {
             assert_eq!(g.glyph_id, 0xFFFD);
@@ -176,18 +204,44 @@ mod tests {
     }
 
     #[test]
-    fn unicode_stub_empty() {
-        let run = shape_unicode_stub("", Fp266::from_int(10), 1);
-        assert!(run.glyphs.is_empty());
-    }
-
-    #[test]
-    fn unicode_stub_mixed_ascii_and_non() {
-        let run = shape_unicode_stub("a日", Fp266::from_int(10), 1);
+    fn unicode_basic_no_font_mixed() {
+        let run = shape_unicode_basic(&[], "a日", Fp266::from_int(10), 1);
         assert_eq!(run.glyphs.len(), 2);
         // 'a' is ASCII, gets its own glyph_id
         assert_eq!(run.glyphs[0].glyph_id, 'a' as u32 + 1);
         // '日' is non-ASCII, gets replacement
         assert_eq!(run.glyphs[1].glyph_id, 0xFFFD);
+    }
+
+    #[test]
+    fn unicode_basic_no_font_empty() {
+        let run = shape_unicode_basic(&[], "", Fp266::from_int(10), 1);
+        assert!(run.glyphs.is_empty());
+    }
+
+    #[test]
+    fn unicode_basic_with_font_uses_cmap() {
+        // With real font data, cmap should map known chars to non-zero glyph IDs
+        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
+        if let Ok(data) = std::fs::read(path) {
+            let run = shape_unicode_basic(&data, "A", Fp266::from_int(10), 1);
+            assert_eq!(run.glyphs.len(), 1);
+            // 'A' should map to a real glyph ID (not 0xFFFD or 0)
+            assert_ne!(run.glyphs[0].glyph_id, 0xFFFD);
+            assert!(run.glyphs[0].glyph_id > 0);
+        }
+        // Skip on systems without the test font
+    }
+
+    #[test]
+    fn unicode_basic_with_font_unknown_char() {
+        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
+        if let Ok(data) = std::fs::read(path) {
+            // U+0001 is a control character not in most fonts
+            let run = shape_unicode_basic(&data, "\u{0001}", Fp266::from_int(10), 1);
+            assert_eq!(run.glyphs.len(), 1);
+            // Missing glyph should get glyph ID 0 with default advance
+            assert_eq!(run.glyphs[0].glyph_id, 0);
+        }
     }
 }

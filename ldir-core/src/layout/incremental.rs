@@ -127,6 +127,11 @@ impl IncrementalLayout {
         self.dirty.clear();
     }
 
+    /// Alias for [`clear_dirty`](Self::clear_dirty), following Rust collection conventions.
+    pub fn clear(&mut self) {
+        self.clear_dirty();
+    }
+
     /// Recompute the G-IR document.
     ///
     /// - If the dirty set is empty, returns a clone of `old_gir`
@@ -295,7 +300,10 @@ mod tests {
         let mut layout = IncrementalLayout::new(&doc1);
         let doc2 = make_simple_doc();
         layout.update_sir(&doc2);
-        assert!(layout.dirty_set().is_empty(), "identical S-IR should not mark anything dirty");
+        assert!(
+            layout.dirty_set().is_empty(),
+            "identical S-IR should not mark anything dirty"
+        );
         let old_gir = compile_sir(&doc1).unwrap();
         let new_gir = layout.recompile(&old_gir).unwrap();
         assert_eq!(old_gir, new_gir);
@@ -313,15 +321,13 @@ mod tests {
             ROOT_SENTINEL,
             0,
         ));
-        doc2.push(SIRInstruction::new(
-            SIROpcode::SetContent,
-            5,
-            0,
-            0,
-        ));
+        doc2.push(SIRInstruction::new(SIROpcode::SetContent, 5, 0, 0));
 
         layout.update_sir(&doc2);
-        assert!(!layout.dirty_set().is_empty(), "changed entity_id should mark entities dirty");
+        assert!(
+            !layout.dirty_set().is_empty(),
+            "changed entity_id should mark entities dirty"
+        );
         assert!(layout.is_dirty(5), "new entity 5 should be dirty");
         assert!(layout.is_dirty(1), "removed entity 1 should be dirty");
     }

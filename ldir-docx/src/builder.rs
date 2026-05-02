@@ -67,7 +67,11 @@ impl DocxBuilder {
         zip.add_file("[Content_Types].xml", content_types.as_bytes(), false);
         zip.add_file("_rels/.rels", rels.as_bytes(), false);
         zip.add_file("word/document.xml", document_xml.as_bytes(), false);
-        zip.add_file("word/_rels/document.xml.rels", document_rels.as_bytes(), false);
+        zip.add_file(
+            "word/_rels/document.xml.rels",
+            document_rels.as_bytes(),
+            false,
+        );
         zip.add_file("word/styles.xml", styles_xml.as_bytes(), false);
 
         zip.finish()
@@ -101,8 +105,11 @@ impl DocxBuilder {
                 }
             }
 
-            NodeType::Part | NodeType::Chapter | NodeType::Section
-            | NodeType::Subsection | NodeType::Subsubsection => {
+            NodeType::Part
+            | NodeType::Chapter
+            | NodeType::Section
+            | NodeType::Subsection
+            | NodeType::Subsubsection => {
                 let style = match &node.node_type {
                     NodeType::Part => "Heading1",
                     NodeType::Chapter => "Heading1",
@@ -176,12 +183,24 @@ impl DocxBuilder {
 
             NodeType::Table { .. } => {
                 out.push_str("<w:tbl><w:tblPr><w:tblBorders>");
-                out.push_str("<w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>");
-                out.push_str("<w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>");
-                out.push_str("<w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>");
-                out.push_str("<w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>");
-                out.push_str("<w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>");
-                out.push_str("<w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>");
+                out.push_str(
+                    "<w:top w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>",
+                );
+                out.push_str(
+                    "<w:left w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>",
+                );
+                out.push_str(
+                    "<w:bottom w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>",
+                );
+                out.push_str(
+                    "<w:right w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>",
+                );
+                out.push_str(
+                    "<w:insideH w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>",
+                );
+                out.push_str(
+                    "<w:insideV w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"000000\"/>",
+                );
                 out.push_str("</w:tblBorders></w:tblPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
@@ -385,9 +404,7 @@ struct SimpleZip {
 
 impl SimpleZip {
     fn new() -> Self {
-        Self {
-            files: Vec::new(),
-        }
+        Self { files: Vec::new() }
     }
 
     fn add_file(&mut self, path: &str, data: &[u8], stored: bool) {
@@ -483,11 +500,24 @@ mod tests {
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(Node::new(1, NodeType::Section).with_parent(0));
         m.body.push(
-            Node::new(2, NodeType::Text { content: "Chapter 1".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Chapter 1".into(),
+                },
+            )
+            .with_parent(1),
         );
-        m.body.push(Node::new(3, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(0));
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Hello DOCX!".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Hello DOCX!".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(0).unwrap().add_child(3);
@@ -540,14 +570,27 @@ mod tests {
     fn test_docx_bold_italic() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(Node::new(2, NodeType::Bold).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "bold".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "bold".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.push(Node::new(4, NodeType::Italic).with_parent(1));
         m.body.push(
-            Node::new(5, NodeType::Text { content: "italic".into() }).with_parent(4),
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "italic".into(),
+                },
+            )
+            .with_parent(4),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -580,7 +623,13 @@ mod tests {
         );
         m.body.push(Node::new(2, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "item 1".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "item 1".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -597,16 +646,35 @@ mod tests {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
-            Node::new(1, NodeType::Table { col_specs: vec![], num_cols: 2 }).with_parent(0),
+            Node::new(
+                1,
+                NodeType::Table {
+                    col_specs: vec![],
+                    num_cols: 2,
+                },
+            )
+            .with_parent(0),
+        );
+        m.body
+            .push(Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1));
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::TableCell {
+                    colspan: 1,
+                    rowspan: 1,
+                },
+            )
+            .with_parent(2),
         );
         m.body.push(
-            Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1),
-        );
-        m.body.push(
-            Node::new(3, NodeType::TableCell { colspan: 1, rowspan: 1 }).with_parent(2),
-        );
-        m.body.push(
-            Node::new(4, NodeType::Text { content: "Cell1".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Cell1".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -625,10 +693,22 @@ mod tests {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
-            Node::new(1, NodeType::CodeBlock { language: Some("rust".into()) }).with_parent(0),
+            Node::new(
+                1,
+                NodeType::CodeBlock {
+                    language: Some("rust".into()),
+                },
+            )
+            .with_parent(0),
         );
         m.body.push(
-            Node::new(2, NodeType::Text { content: "fn main() {}".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "fn main() {}".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -643,7 +723,8 @@ mod tests {
     fn test_docx_thematic_break() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
         m.body.get_mut(0).unwrap().add_child(1);
 
         let docx = DocxBuilder::new().build(&m).unwrap();
@@ -655,7 +736,8 @@ mod tests {
     fn test_docx_xml_escaping() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,

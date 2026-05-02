@@ -30,7 +30,10 @@ fn main() {
         Ok(m) => m,
         Err(_) => {
             let text = String::from_utf8(bytes).unwrap_or_else(|e| {
-                eprintln!("[ldir-dis] Error: not valid binary S-IR or UTF-8 text: {}", e);
+                eprintln!(
+                    "[ldir-dis] Error: not valid binary S-IR or UTF-8 text: {}",
+                    e
+                );
                 std::process::exit(1);
             });
             if let Some(ref out) = cli.output {
@@ -52,7 +55,10 @@ fn main() {
             std::process::exit(1);
         }),
         other => {
-            eprintln!("[ldir-dis] Unknown format: {} (use 'text' or 'json')", other);
+            eprintln!(
+                "[ldir-dis] Unknown format: {} (use 'text' or 'json')",
+                other
+            );
             std::process::exit(1);
         }
     };
@@ -63,7 +69,11 @@ fn main() {
                 eprintln!("[ldir-dis] Error writing {}: {}", out.display(), e);
                 std::process::exit(1);
             });
-            eprintln!("[ldir-dis] Wrote {} bytes to {}", output.len(), out.display());
+            eprintln!(
+                "[ldir-dis] Wrote {} bytes to {}",
+                output.len(),
+                out.display()
+            );
         }
         None => {
             print!("{}", output);

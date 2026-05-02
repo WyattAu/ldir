@@ -79,7 +79,9 @@ impl Default for SIRModuleV2 {
 
 impl SIRModuleV2 {
     /// Create a new empty module.
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     /// Create a new module with source tracking.
     pub fn from_source(format: &str, path: &str) -> Self {
@@ -90,7 +92,12 @@ impl SIRModuleV2 {
     }
 
     /// Add a labeled node and register its label.
-    pub fn add_labeled_node(&mut self, mut node: Node, label: &str, category: LabelCategory) -> u32 {
+    pub fn add_labeled_node(
+        &mut self,
+        mut node: Node,
+        label: &str,
+        category: LabelCategory,
+    ) -> u32 {
         let id = node.id;
         node.label = Some(label.to_string());
         self.annotations.add_label(label.to_string(), id, category);
@@ -100,11 +107,14 @@ impl SIRModuleV2 {
     /// Collect all heading nodes in document order.
     pub fn headings(&self) -> Vec<&Node> {
         self.body.find_by_type(|nt| {
-            matches!(nt, crate::sir::v2::nodes::NodeType::Part
-                | crate::sir::v2::nodes::NodeType::Chapter
-                | crate::sir::v2::nodes::NodeType::Section
-                | crate::sir::v2::nodes::NodeType::Subsection
-                | crate::sir::v2::nodes::NodeType::Subsubsection)
+            matches!(
+                nt,
+                crate::sir::v2::nodes::NodeType::Part
+                    | crate::sir::v2::nodes::NodeType::Chapter
+                    | crate::sir::v2::nodes::NodeType::Section
+                    | crate::sir::v2::nodes::NodeType::Subsection
+                    | crate::sir::v2::nodes::NodeType::Subsubsection
+            )
         })
     }
 }
@@ -140,7 +150,10 @@ mod tests {
         );
         assert_eq!(id, 1);
         assert!(m.annotations.find_label("sec:intro").is_some());
-        assert_eq!(m.annotations.find_label("sec:intro").unwrap().category, LabelCategory::Section);
+        assert_eq!(
+            m.annotations.find_label("sec:intro").unwrap().category,
+            LabelCategory::Section
+        );
         assert_eq!(m.body.find_by_label("sec:intro").unwrap().id, 1);
     }
 

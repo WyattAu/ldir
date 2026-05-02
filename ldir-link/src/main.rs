@@ -42,8 +42,12 @@ fn main() {
         eprintln!("[ldir-link] Error writing {}: {}", cli.output.display(), e);
         std::process::exit(1);
     });
-    eprintln!("[ldir-link] Linked {} modules into {} ({} bytes)",
-        cli.inputs.len(), cli.output.display(), bytes.len());
+    eprintln!(
+        "[ldir-link] Linked {} modules into {} ({} bytes)",
+        cli.inputs.len(),
+        cli.output.display(),
+        bytes.len()
+    );
 }
 
 fn load_module(path: &PathBuf) -> ldir_ir::sir::v2::SIRModuleV2 {
@@ -59,7 +63,11 @@ fn load_module(path: &PathBuf) -> ldir_ir::sir::v2::SIRModuleV2 {
         })
     } else {
         let text = String::from_utf8(bytes).unwrap_or_else(|e| {
-            eprintln!("[ldir-link] Error reading {}: not valid binary or UTF-8: {}", path.display(), e);
+            eprintln!(
+                "[ldir-link] Error reading {}: not valid binary or UTF-8: {}",
+                path.display(),
+                e
+            );
             std::process::exit(1);
         });
         ldir_ir::sir::v2::text_to_module(&text).unwrap_or_else(|e| {

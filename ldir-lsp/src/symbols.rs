@@ -43,7 +43,12 @@ fn heading_symbol_kind(level: usize) -> SymbolKind {
     }
 }
 
-fn make_heading_range(line_num: usize, line: &str, indent: usize, content_start: usize) -> (Range, Range) {
+fn make_heading_range(
+    line_num: usize,
+    line: &str,
+    indent: usize,
+    content_start: usize,
+) -> (Range, Range) {
     let range = Range {
         start: Position {
             line: line_num as u32,
@@ -100,8 +105,7 @@ fn extract_tex_symbols(text: &str) -> Vec<DocumentSymbol> {
     let mut symbols = Vec::new();
     for (line_num, line) in text.lines().enumerate() {
         if let Some((name, kind, prefix_len)) = extract_tex_heading(line) {
-            let (range, selection_range) =
-                make_heading_range(line_num, line, 0, prefix_len);
+            let (range, selection_range) = make_heading_range(line_num, line, 0, prefix_len);
             symbols.push(make_symbol(
                 name.to_string(),
                 Some(kind.to_string()),
@@ -110,8 +114,7 @@ fn extract_tex_symbols(text: &str) -> Vec<DocumentSymbol> {
                 selection_range,
             ));
         } else if let Some((env_name, prefix_len)) = extract_tex_environment(line) {
-            let (range, selection_range) =
-                make_heading_range(line_num, line, 0, prefix_len);
+            let (range, selection_range) = make_heading_range(line_num, line, 0, prefix_len);
             symbols.push(make_symbol(
                 env_name.to_string(),
                 Some(format!("\\begin{{{env_name}}}")),

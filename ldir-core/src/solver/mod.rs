@@ -4,4 +4,5 @@
 mod cassowary;
 mod matrix;
 
+#[allow(unused_imports)]
 pub use cassowary::*;

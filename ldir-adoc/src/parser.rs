@@ -1,7 +1,7 @@
 //! Recursive descent parser for Asciidoc → S-IR v2.
 
-use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
 
 pub fn parse_asciidoc(text: &str) -> SIRModuleV2 {
     let lines: Vec<&str> = text.lines().collect();
@@ -104,18 +104,28 @@ impl AsciidocParser {
 
     fn is_ordered_list_item(line: &str) -> bool {
         let trimmed = line.trim_start();
-        trimmed.starts_with(". ") || (trimmed.starts_with('.') && trimmed.len() > 1 && trimmed.chars().nth(1).is_some_and(|c| c.is_ascii_digit()))
+        trimmed.starts_with(". ")
+            || (trimmed.starts_with('.')
+                && trimmed.len() > 1
+                && trimmed.chars().nth(1).is_some_and(|c| c.is_ascii_digit()))
     }
 
     fn is_unordered_list_item(line: &str) -> bool {
         let trimmed = line.trim_start();
-        trimmed.starts_with("* ") || (trimmed.starts_with('*') && trimmed.len() > 1 && trimmed.chars().nth(1).is_some_and(|c| c != '*'))
+        trimmed.starts_with("* ")
+            || (trimmed.starts_with('*')
+                && trimmed.len() > 1
+                && trimmed.chars().nth(1).is_some_and(|c| c != '*'))
     }
 
     fn is_code_block_delimiter(line: &str) -> bool {
         let trimmed = line.trim();
-        trimmed == "----" || trimmed == "...." || trimmed == "====" || trimmed == "~~~~"
-            || trimmed == "----+" || trimmed == "----"
+        trimmed == "----"
+            || trimmed == "...."
+            || trimmed == "===="
+            || trimmed == "~~~~"
+            || trimmed == "----+"
+            || trimmed == "----"
     }
 
     fn is_literal_block_delimiter(line: &str) -> bool {
@@ -239,7 +249,9 @@ impl AsciidocParser {
                     if mid + start + 1 < len && chars[mid + start + 1] == ']' {
                         let content: String = chars[start..start + mid].iter().collect();
                         if !content.is_empty() {
-                            nodes.push(NodeType::Text { content: format!("[[{}]]", content) });
+                            nodes.push(NodeType::Text {
+                                content: format!("[[{}]]", content),
+                            });
                         }
                         i = start + mid + 2;
                         continue;
@@ -267,7 +279,11 @@ impl AsciidocParser {
                             i += 1;
                         }
                     }
-                    let alt_text = if alt.is_empty() { path.clone() } else { alt.split(',').next().unwrap_or("").trim().to_string() };
+                    let alt_text = if alt.is_empty() {
+                        path.clone()
+                    } else {
+                        alt.split(',').next().unwrap_or("").trim().to_string()
+                    };
                     path = path.trim().trim_end_matches(':').to_string();
                     nodes.push(NodeType::Image {
                         source: path,
@@ -302,7 +318,11 @@ impl AsciidocParser {
                     if !url.is_empty() {
                         nodes.push(NodeType::Link {
                             url,
-                            title: if link_text.is_empty() { None } else { Some(link_text) },
+                            title: if link_text.is_empty() {
+                                None
+                            } else {
+                                Some(link_text)
+                            },
                         });
                     }
                     continue;
@@ -331,7 +351,11 @@ impl AsciidocParser {
                     if !url.is_empty() {
                         nodes.push(NodeType::Link {
                             url,
-                            title: if link_text.is_empty() { None } else { Some(link_text) },
+                            title: if link_text.is_empty() {
+                                None
+                            } else {
+                                Some(link_text)
+                            },
                         });
                     }
                     continue;
@@ -361,7 +385,11 @@ impl AsciidocParser {
                     if !url.is_empty() {
                         nodes.push(NodeType::Link {
                             url,
-                            title: if link_text.is_empty() { None } else { Some(link_text) },
+                            title: if link_text.is_empty() {
+                                None
+                            } else {
+                                Some(link_text)
+                            },
                         });
                     }
                     continue;
@@ -403,7 +431,11 @@ impl AsciidocParser {
                             i += 1;
                         }
                     }
-                    let alt_text = if alt.is_empty() { path.clone() } else { alt.split(',').next().unwrap_or("").trim().to_string() };
+                    let alt_text = if alt.is_empty() {
+                        path.clone()
+                    } else {
+                        alt.split(',').next().unwrap_or("").trim().to_string()
+                    };
                     path = path.trim().to_string();
                     nodes.push(NodeType::Image {
                         source: path,
@@ -423,24 +455,33 @@ impl AsciidocParser {
             let mut buf = String::new();
             while i < len {
                 let c = chars[i];
-                if c == '*' || c == '_' || c == '`' || c == '$' || c == '[' || c == ']' || c == '\\' {
+                if c == '*' || c == '_' || c == '`' || c == '$' || c == '[' || c == ']' || c == '\\'
+                {
                     break;
                 }
                 if c == 'h' && i + 3 < len {
                     let r: String = chars[i..i + 4].iter().collect();
-                    if r == "http" { break; }
+                    if r == "http" {
+                        break;
+                    }
                 }
                 if c == 'l' && i + 4 < len {
                     let r: String = chars[i..i + 5].iter().collect();
-                    if r == "link:" { break; }
+                    if r == "link:" {
+                        break;
+                    }
                 }
                 if c == 'f' && i + 9 < len {
                     let r: String = chars[i..i + 10].iter().collect();
-                    if r == "footnote:[" { break; }
+                    if r == "footnote:[" {
+                        break;
+                    }
                 }
                 if c == 'i' && i + 6 < len {
                     let r: String = chars[i..i + 7].iter().collect();
-                    if r == "image::" { break; }
+                    if r == "image::" {
+                        break;
+                    }
                 }
                 buf.push(c);
                 i += 1;
@@ -449,7 +490,9 @@ impl AsciidocParser {
             if !trimmed.is_empty() {
                 nodes.push(NodeType::Text { content: trimmed });
             } else if i < len {
-                nodes.push(NodeType::Text { content: chars[i].to_string() });
+                nodes.push(NodeType::Text {
+                    content: chars[i].to_string(),
+                });
                 i += 1;
             }
         }
@@ -468,10 +511,17 @@ impl AsciidocParser {
         None
     }
 
-    fn add_children(&mut self, module: &mut SIRModuleV2, parent_id: u32, child_nodes: Vec<NodeType>) {
+    fn add_children(
+        &mut self,
+        module: &mut SIRModuleV2,
+        parent_id: u32,
+        child_nodes: Vec<NodeType>,
+    ) {
         for node_type in child_nodes {
             let child_id = self.gen_id();
-            module.body.push(Node::new(child_id, node_type).with_parent(parent_id));
+            module
+                .body
+                .push(Node::new(child_id, node_type).with_parent(parent_id));
             if let Some(parent) = module.body.get_mut(parent_id) {
                 parent.add_child(child_id);
             }
@@ -516,9 +566,16 @@ impl AsciidocParser {
                 if Self::is_attribute_line(line) {
                     if let Some((key, val)) = Self::parse_attribute(line) {
                         match key.as_str() {
-                            "subject" | "description" => { module.metadata.subject = Some(val); }
-                            "lang" => { module.metadata.language = val; }
-                            "author" if !author_set => { module.metadata.author = Some(val); author_set = true; }
+                            "subject" | "description" => {
+                                module.metadata.subject = Some(val);
+                            }
+                            "lang" => {
+                                module.metadata.language = val;
+                            }
+                            "author" if !author_set => {
+                                module.metadata.author = Some(val);
+                                author_set = true;
+                            }
                             _ => {}
                         }
                     }
@@ -529,7 +586,8 @@ impl AsciidocParser {
                 if !title_set {
                     if let Some(level) = Self::count_heading_level(line) {
                         if level == 1 {
-                            let inline = Self::parse_inline_content(line.trim_start_matches('=').trim());
+                            let inline =
+                                Self::parse_inline_content(line.trim_start_matches('=').trim());
                             if let Some(NodeType::Text { content }) = inline.first() {
                                 module.metadata.title = Some(content.clone());
                             }
@@ -565,8 +623,12 @@ impl AsciidocParser {
                 if Self::is_attribute_line(line) {
                     if let Some((key, val)) = Self::parse_attribute(line) {
                         match key.as_str() {
-                            "subject" | "description" => { module.metadata.subject = Some(val); }
-                            "lang" => { module.metadata.language = val; }
+                            "subject" | "description" => {
+                                module.metadata.subject = Some(val);
+                            }
+                            "lang" => {
+                                module.metadata.language = val;
+                            }
                             _ => {}
                         }
                     }
@@ -624,11 +686,14 @@ impl AsciidocParser {
                 if Self::is_unordered_list_item(line) {
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(list_id, NodeType::List {
-                            list_type: ListType::Unordered,
-                            ordered: false,
-                            start: None,
-                        })
+                        Node::new(
+                            list_id,
+                            NodeType::List {
+                                list_type: ListType::Unordered,
+                                ordered: false,
+                                start: None,
+                            },
+                        )
                         .with_parent(doc_id),
                     );
 
@@ -644,7 +709,9 @@ impl AsciidocParser {
                         let content = item_text.trim_start_matches('*').trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module.body.push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module
+                            .body
+                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -661,11 +728,14 @@ impl AsciidocParser {
                 if Self::is_ordered_list_item(line) {
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(list_id, NodeType::List {
-                            list_type: ListType::Ordered,
-                            ordered: true,
-                            start: None,
-                        })
+                        Node::new(
+                            list_id,
+                            NodeType::List {
+                                list_type: ListType::Ordered,
+                                ordered: true,
+                                start: None,
+                            },
+                        )
                         .with_parent(doc_id),
                     );
 
@@ -681,7 +751,9 @@ impl AsciidocParser {
                         let content = item_text.trim_start_matches('.').trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module.body.push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module
+                            .body
+                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -698,7 +770,11 @@ impl AsciidocParser {
                 if trimmed.starts_with("[source") || trimmed.starts_with("[code") {
                     let lang = if let Some(start) = trimmed.find(',') {
                         let lang_str = trimmed[start + 1..].trim_end_matches(']').trim();
-                        if lang_str.is_empty() { None } else { Some(lang_str.to_string()) }
+                        if lang_str.is_empty() {
+                            None
+                        } else {
+                            Some(lang_str.to_string())
+                        }
                     } else {
                         None
                     };
@@ -723,8 +799,13 @@ impl AsciidocParser {
                             if !code_content.is_empty() {
                                 let text_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(text_id, NodeType::Text { content: code_content })
-                                        .with_parent(cb_id),
+                                    Node::new(
+                                        text_id,
+                                        NodeType::Text {
+                                            content: code_content,
+                                        },
+                                    )
+                                    .with_parent(cb_id),
                                 );
                                 if let Some(cb) = module.body.get_mut(cb_id) {
                                     cb.add_child(text_id);
@@ -761,8 +842,13 @@ impl AsciidocParser {
                     if !literal_content.is_empty() {
                         let text_id = self.gen_id();
                         module.body.push(
-                            Node::new(text_id, NodeType::Text { content: literal_content })
-                                .with_parent(cb_id),
+                            Node::new(
+                                text_id,
+                                NodeType::Text {
+                                    content: literal_content,
+                                },
+                            )
+                            .with_parent(cb_id),
                         );
                         if let Some(cb) = module.body.get_mut(cb_id) {
                             cb.add_child(text_id);
@@ -791,7 +877,9 @@ impl AsciidocParser {
                     }
                     let inline_nodes = Self::parse_inline_content(&quote_content);
                     let bq_id = self.gen_id();
-                    module.body.push(Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id));
+                    module
+                        .body
+                        .push(Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id));
                     self.add_children(&mut module, bq_id, inline_nodes);
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(bq_id);
@@ -833,11 +921,20 @@ impl AsciidocParser {
                     if !rows.is_empty() {
                         let table_id = self.gen_id();
                         let col_specs: Vec<ColSpec> = (0..num_cols)
-                            .map(|_| ColSpec { align: ColumnAlign::Left, width: None })
+                            .map(|_| ColSpec {
+                                align: ColumnAlign::Left,
+                                width: None,
+                            })
                             .collect();
                         module.body.push(
-                            Node::new(table_id, NodeType::Table { col_specs, num_cols })
-                                .with_parent(doc_id),
+                            Node::new(
+                                table_id,
+                                NodeType::Table {
+                                    col_specs,
+                                    num_cols,
+                                },
+                            )
+                            .with_parent(doc_id),
                         );
 
                         for (row_idx, row) in rows.iter().enumerate() {
@@ -854,16 +951,27 @@ impl AsciidocParser {
                             for cell_text in row {
                                 let tc_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(tc_id, NodeType::TableCell { colspan: 1, rowspan: 1 })
-                                        .with_parent(row_id),
+                                    Node::new(
+                                        tc_id,
+                                        NodeType::TableCell {
+                                            colspan: 1,
+                                            rowspan: 1,
+                                        },
+                                    )
+                                    .with_parent(row_id),
                                 );
                                 if let Some(row_node) = module.body.get_mut(row_id) {
                                     row_node.add_child(tc_id);
                                 }
                                 let text_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(text_id, NodeType::Text { content: cell_text.clone() })
-                                        .with_parent(tc_id),
+                                    Node::new(
+                                        text_id,
+                                        NodeType::Text {
+                                            content: cell_text.clone(),
+                                        },
+                                    )
+                                    .with_parent(tc_id),
                                 );
                                 if let Some(tc) = module.body.get_mut(tc_id) {
                                     tc.add_child(text_id);
@@ -890,9 +998,11 @@ impl AsciidocParser {
                         || Self::is_ordered_list_item(pl)
                         || Self::is_comment_line(pl)
                         || Self::is_attribute_line(pl)
-                        || pt == "----" || pt == "...."
+                        || pt == "----"
+                        || pt == "...."
                         || Self::is_table_delimiter(pl)
-                        || pt.starts_with("[source") || pt.starts_with("[code")
+                        || pt.starts_with("[source")
+                        || pt.starts_with("[code")
                         || pt.starts_with("[quote]")
                         || Self::admonition_type(pl).is_some()
                     {
@@ -909,7 +1019,9 @@ impl AsciidocParser {
                 if !para_text.is_empty() {
                     let inline_nodes = Self::parse_inline_content(&para_text);
                     let para_id = self.gen_id();
-                    module.body.push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
+                    module
+                        .body
+                        .push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
                     self.add_children(&mut module, para_id, inline_nodes);
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(para_id);
@@ -985,7 +1097,9 @@ mod tests {
     #[test]
     fn test_unordered_list() {
         let module = parse_asciidoc("* Item one\n* Item two\n");
-        let lists = find_nodes(&module, |nt| matches!(nt, NodeType::List { ordered: false, .. }));
+        let lists = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: false, .. })
+        });
         assert_eq!(lists.len(), 1);
         let items = find_nodes(&module, |nt| matches!(nt, NodeType::ListItem));
         assert!(items.len() >= 2);
@@ -994,21 +1108,28 @@ mod tests {
     #[test]
     fn test_ordered_list() {
         let module = parse_asciidoc(". First item\n. Second item\n");
-        let lists = find_nodes(&module, |nt| matches!(nt, NodeType::List { ordered: true, .. }));
+        let lists = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: true, .. })
+        });
         assert_eq!(lists.len(), 1);
     }
 
     #[test]
     fn test_code_block() {
         let module = parse_asciidoc("[source,rust]\n----\nfn main() {}\n----\n");
-        let cbs = find_nodes(&module, |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"));
+        let cbs = find_nodes(
+            &module,
+            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"),
+        );
         assert_eq!(cbs.len(), 1);
     }
 
     #[test]
     fn test_literal_block() {
         let module = parse_asciidoc("----\nSome literal text.\n----\n");
-        let cbs = find_nodes(&module, |nt| matches!(nt, NodeType::CodeBlock { language: None }));
+        let cbs = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::CodeBlock { language: None })
+        });
         assert_eq!(cbs.len(), 1);
     }
 
@@ -1068,7 +1189,9 @@ mod tests {
     fn test_comment_stripped() {
         let module = parse_asciidoc("// This is a comment\nHello\n");
         let texts = find_nodes(&module, |nt| matches!(nt, NodeType::Text { .. }));
-        assert!(!texts.iter().any(|n| matches!(&n.node_type, NodeType::Text { content } if content.contains("comment"))));
+        assert!(!texts.iter().any(
+            |n| matches!(&n.node_type, NodeType::Text { content } if content.contains("comment"))
+        ));
     }
 
     #[test]

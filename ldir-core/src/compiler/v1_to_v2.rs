@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
-use ldir_ir::sir::{BlockType, SIROpcode, SIRDocument, StyleModifier};
+use ldir_ir::sir::{BlockType, SIRDocument, SIROpcode, StyleModifier};
 
 pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
     let mut module = SIRModuleV2::new();
@@ -71,9 +71,40 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                         width: None,
                         height: None,
                     },
-                    Some(BlockType::Table) => NodeType::Table {
-                        col_specs: Vec::new(),
-                        num_cols: 0,
+                    Some(BlockType::Table) => {
+                        let num_cols = doc
+                            .payload()
+                            .get(instr.payload_offset() + 1, 4)
+                            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                            .unwrap_or(0) as usize;
+                        NodeType::Table {
+                            col_specs: Vec::new(),
+                            num_cols,
+                        }
+                    }
+                    Some(BlockType::TableRow) => {
+                        let is_header = doc
+                            .payload()
+                            .get(instr.payload_offset() + 1, 1)
+                            .map(|b| b[0] == 1)
+                            .unwrap_or(false);
+                        NodeType::TableRow { is_header }
+                    }
+                    Some(BlockType::TableCell) => NodeType::TableCell {
+                        colspan: 1,
+                        rowspan: 1,
+                    },
+                    Some(BlockType::Footnote) => {
+                        let content = doc
+                            .payload_text(instr)
+                            .unwrap_or_default()
+                            .trim_end_matches('\0')
+                            .to_string();
+                        NodeType::Footnote { content }
+                    }
+                    Some(BlockType::FootnoteBlock) => NodeType::FootnoteBlock,
+                    Some(BlockType::Figure) => NodeType::Figure {
+                        placement: FloatPlacement::Here,
                     },
                     None => NodeType::Paragraph,
                 };
@@ -166,10 +197,7 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                     .unwrap_or_default()
                     .trim_end_matches('\0')
                     .to_string();
-                let mut node = Node::new(
-                    v2_id,
-                    NodeType::MathInline { content: text },
-                );
+                let mut node = Node::new(v2_id, NodeType::MathInline { content: text });
                 if let Some(pid) = parent_v2.or(current_block_v2) {
                     node = node.with_parent(pid);
                 }
@@ -182,13 +210,7 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                     .unwrap_or_default()
                     .trim_end_matches('\0')
                     .to_string();
-                let mut node = Node::new(
-                    v2_id,
-                    NodeType::Link {
-                        url,
-                        title: None,
-                    },
-                );
+                let mut node = Node::new(v2_id, NodeType::Link { url, title: None });
                 if let Some(pid) = parent_v2.or(current_block_v2) {
                     node = node.with_parent(pid);
                 }
@@ -197,11 +219,8 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
         }
     }
 
-    let parent_ids: Vec<(u32, Option<u32>)> = module
-        .body
-        .iter()
-        .map(|n| (n.id, n.parent_id))
-        .collect();
+    let parent_ids: Vec<(u32, Option<u32>)> =
+        module.body.iter().map(|n| (n.id, n.parent_id)).collect();
     for (child_id, parent_opt) in parent_ids {
         if let Some(pid) = parent_opt {
             if let Some(parent) = module.body.get_mut(pid) {

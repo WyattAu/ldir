@@ -9,6 +9,6 @@
 
 mod render;
 
-pub use render::HtmlRenderer;
 pub use render::HtmlOptions;
+pub use render::HtmlRenderer;
 pub use render::MathFormat;

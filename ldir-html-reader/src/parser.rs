@@ -1,5 +1,5 @@
-use ldir_ir::sir::v2::nodes::*;
 use ldir_ir::sir::v2::module::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::*;
 
 enum HtmlToken {
     OpenTag {
@@ -24,7 +24,10 @@ struct DomNode {
 }
 
 fn attr(attrs: &[(String, String)], name: &str) -> Option<String> {
-    attrs.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone())
+    attrs
+        .iter()
+        .find(|(k, _)| k == name)
+        .map(|(_, v)| v.clone())
 }
 
 fn decode_entities(s: &str) -> String {
@@ -55,18 +58,22 @@ fn decode_entities(s: &str) -> String {
                     "&bull;" => Some('•'),
                     "&middot;" => Some('·'),
                     _ => {
-                        if let Some(hex_str) = entity.strip_prefix("&#x").and_then(|e| e.strip_suffix(';')) {
-                        if let Ok(code) = u32::from_str_radix(hex_str, 16) {
-                            char::from_u32(code)
-                        } else {
-                            None
-                        }
-                        } else if let Some(dec_str) = entity.strip_prefix("&#").and_then(|e| e.strip_suffix(';')) {
-                        if let Ok(code) = dec_str.parse::<u32>() {
-                            char::from_u32(code)
-                        } else {
-                            None
-                        }
+                        if let Some(hex_str) =
+                            entity.strip_prefix("&#x").and_then(|e| e.strip_suffix(';'))
+                        {
+                            if let Ok(code) = u32::from_str_radix(hex_str, 16) {
+                                char::from_u32(code)
+                            } else {
+                                None
+                            }
+                        } else if let Some(dec_str) =
+                            entity.strip_prefix("&#").and_then(|e| e.strip_suffix(';'))
+                        {
+                            if let Ok(code) = dec_str.parse::<u32>() {
+                                char::from_u32(code)
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
@@ -263,8 +270,18 @@ fn build_dom(tokens: &[HtmlToken]) -> DomNode {
             } => {
                 let void = matches!(
                     tag.as_str(),
-                    "br" | "hr" | "img" | "input" | "meta" | "link" | "area" | "base"
-                        | "col" | "embed" | "source" | "track" | "wbr"
+                    "br" | "hr"
+                        | "img"
+                        | "input"
+                        | "meta"
+                        | "link"
+                        | "area"
+                        | "base"
+                        | "col"
+                        | "embed"
+                        | "source"
+                        | "track"
+                        | "wbr"
                 );
                 let node = DomNode {
                     tag: tag.clone(),
@@ -281,18 +298,16 @@ fn build_dom(tokens: &[HtmlToken]) -> DomNode {
                 }
             }
             HtmlToken::CloseTag { tag } => {
-                let skip_tags = [
-                    "head", "style", "script", "noscript",
-                ];
+                let skip_tags = ["head", "style", "script", "noscript"];
                 if skip_tags.contains(&tag.as_str()) {
                     while let Some(current) = stack.last() {
                         if current.tag == *tag {
                             let popped = stack.pop();
-                        if let Some(popped_node) = popped
-                            && let Some(parent) = stack.last_mut()
-                        {
-                            parent.children.push(popped_node);
-                        }
+                            if let Some(popped_node) = popped
+                                && let Some(parent) = stack.last_mut()
+                            {
+                                parent.children.push(popped_node);
+                            }
                             break;
                         }
                         let popped = stack.pop();
@@ -347,10 +362,7 @@ struct Converter {
 impl Converter {
     fn new() -> Self {
         let module = SIRModuleV2::from_source("html", "");
-        Self {
-            module,
-            next_id: 0,
-        }
+        Self { module, next_id: 0 }
     }
 
     fn alloc_id(&mut self) -> u32 {
@@ -461,10 +473,7 @@ impl Converter {
                 num_cols: 0,
             }),
             "tr" => {
-                let is_header = dom
-                    .children
-                    .iter()
-                    .any(|c| c.tag == "th");
+                let is_header = dom.children.iter().any(|c| c.tag == "th");
                 Some(NodeType::TableRow { is_header })
             }
             "th" | "td" => {
@@ -483,7 +492,9 @@ impl Converter {
                 if let Some(class) = attr(&dom.attrs, "class") {
                     let first_class = class.split_whitespace().next().unwrap_or("").to_string();
                     if !first_class.is_empty() {
-                        Some(NodeType::Styled { style_name: first_class })
+                        Some(NodeType::Styled {
+                            style_name: first_class,
+                        })
                     } else {
                         Some(NodeType::Group)
                     }
@@ -532,41 +543,47 @@ impl Converter {
         }
 
         if tag == "pre" {
-        if let Some(inner) = dom.children.first()
-            && inner.tag == "code"
-        {
-                    let lang = attr(&inner.attrs, "class")
-                        .and_then(|c| {
-                            c.split_whitespace()
-                                .find(|cls| cls.starts_with("language-"))
-                                .map(|cls| cls.strip_prefix("language-").unwrap_or(cls).to_string())
-                        })
-                        .or_else(|| attr(&inner.attrs, "lang"));
-                    if let Some(pre_node) = self.module.body.get_mut(emitted_id) {
-                        pre_node.node_type = NodeType::CodeBlock { language: lang };
-                    }
-
-                    if let Some(text) = &inner.text {
-                        let text_id = self.alloc_id();
-                        self.module.body.push(
-                            Node::new(text_id, NodeType::Text {
-                                content: text.clone(),
-                            })
-                            .with_parent(emitted_id),
-                        );
-                        if let Some(pre_node) = self.module.body.get_mut(emitted_id) {
-                            pre_node.add_child(text_id);
-                        }
-                    }
-                    return Some(emitted_id);
+            if let Some(inner) = dom.children.first()
+                && inner.tag == "code"
+            {
+                let lang = attr(&inner.attrs, "class")
+                    .and_then(|c| {
+                        c.split_whitespace()
+                            .find(|cls| cls.starts_with("language-"))
+                            .map(|cls| cls.strip_prefix("language-").unwrap_or(cls).to_string())
+                    })
+                    .or_else(|| attr(&inner.attrs, "lang"));
+                if let Some(pre_node) = self.module.body.get_mut(emitted_id) {
+                    pre_node.node_type = NodeType::CodeBlock { language: lang };
                 }
+
+                if let Some(text) = &inner.text {
+                    let text_id = self.alloc_id();
+                    self.module.body.push(
+                        Node::new(
+                            text_id,
+                            NodeType::Text {
+                                content: text.clone(),
+                            },
+                        )
+                        .with_parent(emitted_id),
+                    );
+                    if let Some(pre_node) = self.module.body.get_mut(emitted_id) {
+                        pre_node.add_child(text_id);
+                    }
+                }
+                return Some(emitted_id);
+            }
 
             if let Some(text) = &dom.text {
                 let text_id = self.alloc_id();
                 self.module.body.push(
-                    Node::new(text_id, NodeType::Text {
-                        content: text.clone(),
-                    })
+                    Node::new(
+                        text_id,
+                        NodeType::Text {
+                            content: text.clone(),
+                        },
+                    )
                     .with_parent(emitted_id),
                 );
                 if let Some(pre_node) = self.module.body.get_mut(emitted_id) {
@@ -593,9 +610,12 @@ impl Converter {
         {
             let text_id = self.alloc_id();
             self.module.body.push(
-                Node::new(text_id, NodeType::Text {
-                    content: text.clone(),
-                })
+                Node::new(
+                    text_id,
+                    NodeType::Text {
+                        content: text.clone(),
+                    },
+                )
                 .with_parent(emitted_id),
             );
             if let Some(this_node) = self.module.body.get_mut(emitted_id) {
@@ -635,14 +655,26 @@ mod tests {
     fn test_simple_paragraph() {
         let module = parse_html("<p>Hello</p>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Paragraph)).is_some());
-        assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Text { content } if content == "Hello")).is_some());
+        assert!(
+            find_node_by_type(
+                &module,
+                |nt| matches!(nt, NodeType::Text { content } if content == "Hello")
+            )
+            .is_some()
+        );
     }
 
     #[test]
     fn test_heading() {
         let module = parse_html("<h1>Title</h1>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Chapter)).is_some());
-        assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Text { content } if content == "Title")).is_some());
+        assert!(
+            find_node_by_type(
+                &module,
+                |nt| matches!(nt, NodeType::Text { content } if content == "Title")
+            )
+            .is_some()
+        );
     }
 
     #[test]
@@ -666,7 +698,11 @@ mod tests {
         let module = parse_html(r#"<a href="https://example.com">click</a>"#);
         let link = find_node_by_type(&module, |nt| matches!(nt, NodeType::Link { .. }));
         assert!(link.is_some());
-        if let Some(Node { node_type: NodeType::Link { url, .. }, .. }) = link {
+        if let Some(Node {
+            node_type: NodeType::Link { url, .. },
+            ..
+        }) = link
+        {
             assert_eq!(url, "https://example.com");
         }
     }
@@ -676,7 +712,11 @@ mod tests {
         let module = parse_html(r#"<img src="photo.png" alt="a photo">"#);
         let img = find_node_by_type(&module, |nt| matches!(nt, NodeType::Image { .. }));
         assert!(img.is_some());
-        if let Some(Node { node_type: NodeType::Image { source, alt, .. }, .. }) = img {
+        if let Some(Node {
+            node_type: NodeType::Image { source, alt, .. },
+            ..
+        }) = img
+        {
             assert_eq!(source, "photo.png");
             assert_eq!(alt, "a photo");
         }
@@ -685,7 +725,9 @@ mod tests {
     #[test]
     fn test_unordered_list() {
         let module = parse_html("<ul><li>one</li><li>two</li></ul>");
-        let list = find_node_by_type(&module, |nt| matches!(nt, NodeType::List { ordered: false, .. }));
+        let list = find_node_by_type(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: false, .. })
+        });
         assert!(list.is_some());
         let items = find_nodes_by_type(&module, |nt| matches!(nt, NodeType::ListItem));
         assert_eq!(items.len(), 2);
@@ -694,7 +736,9 @@ mod tests {
     #[test]
     fn test_ordered_list() {
         let module = parse_html("<ol><li>first</li></ol>");
-        let list = find_node_by_type(&module, |nt| matches!(nt, NodeType::List { ordered: true, .. }));
+        let list = find_node_by_type(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: true, .. })
+        });
         assert!(list.is_some());
     }
 
@@ -702,7 +746,13 @@ mod tests {
     fn test_blockquote() {
         let module = parse_html("<blockquote>quoted text</blockquote>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::BlockQuote)).is_some());
-        assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Text { content } if content == "quoted text")).is_some());
+        assert!(
+            find_node_by_type(
+                &module,
+                |nt| matches!(nt, NodeType::Text { content } if content == "quoted text")
+            )
+            .is_some()
+        );
     }
 
     #[test]
@@ -715,7 +765,10 @@ mod tests {
     #[test]
     fn test_code_block_with_language() {
         let module = parse_html(r#"<pre><code class="language-rust">fn main() {}</code></pre>"#);
-        let cb = find_node_by_type(&module, |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"));
+        let cb = find_node_by_type(
+            &module,
+            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"),
+        );
         assert!(cb.is_some());
     }
 
@@ -724,15 +777,26 @@ mod tests {
         let module = parse_html("<table><tr><td>A</td></tr></table>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Table { .. })).is_some());
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::TableRow { .. })).is_some());
-        assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::TableCell { .. })).is_some());
+        assert!(
+            find_node_by_type(&module, |nt| matches!(nt, NodeType::TableCell { .. })).is_some()
+        );
     }
 
     #[test]
     fn test_table_with_header() {
-        let module = parse_html("<table><tr><th>H1</th><th>H2</th></tr><tr><td>D</td></tr></table>");
-        let header_rows: Vec<_> = module.body.iter().filter(|n| matches!(n.node_type, NodeType::TableRow { is_header: true })).collect();
+        let module =
+            parse_html("<table><tr><th>H1</th><th>H2</th></tr><tr><td>D</td></tr></table>");
+        let header_rows: Vec<_> = module
+            .body
+            .iter()
+            .filter(|n| matches!(n.node_type, NodeType::TableRow { is_header: true }))
+            .collect();
         assert_eq!(header_rows.len(), 1);
-        let data_rows: Vec<_> = module.body.iter().filter(|n| matches!(n.node_type, NodeType::TableRow { is_header: false })).collect();
+        let data_rows: Vec<_> = module
+            .body
+            .iter()
+            .filter(|n| matches!(n.node_type, NodeType::TableRow { is_header: false }))
+            .collect();
         assert_eq!(data_rows.len(), 1);
     }
 
@@ -741,7 +805,13 @@ mod tests {
         let module = parse_html("<p><strong><em>bold italic</em></strong></p>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Bold)).is_some());
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Italic)).is_some());
-        assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Text { content } if content == "bold italic")).is_some());
+        assert!(
+            find_node_by_type(
+                &module,
+                |nt| matches!(nt, NodeType::Text { content } if content == "bold italic")
+            )
+            .is_some()
+        );
     }
 
     #[test]
@@ -749,7 +819,11 @@ mod tests {
         let module = parse_html("<!-- this is a comment --><p>Hello</p>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Paragraph)).is_some());
         let _total = module.body.iter().count();
-        let group_count = module.body.iter().filter(|n| matches!(n.node_type, NodeType::Group)).count();
+        let group_count = module
+            .body
+            .iter()
+            .filter(|n| matches!(n.node_type, NodeType::Group))
+            .count();
         assert_eq!(group_count, 0, "comments should produce no nodes");
     }
 
@@ -759,7 +833,10 @@ mod tests {
             "<html><head><title>Test</title><style>body{}</style></head><body><p>content</p></body></html>",
         );
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Paragraph)).is_some());
-        let has_title = module.body.iter().any(|n| matches!(&n.node_type, NodeType::Text { content } if content == "Test"));
+        let has_title = module
+            .body
+            .iter()
+            .any(|n| matches!(&n.node_type, NodeType::Text { content } if content == "Test"));
         assert!(!has_title, "title inside head should be skipped");
     }
 
@@ -803,7 +880,11 @@ mod tests {
         let module = parse_html(r#"<span class="red">text</span>"#);
         let styled = find_node_by_type(&module, |nt| matches!(nt, NodeType::Styled { .. }));
         assert!(styled.is_some());
-        if let Some(Node { node_type: NodeType::Styled { style_name }, .. }) = styled {
+        if let Some(Node {
+            node_type: NodeType::Styled { style_name },
+            ..
+        }) = styled
+        {
             assert_eq!(style_name, "red");
         }
     }
@@ -843,7 +924,13 @@ mod tests {
     fn test_inline_code() {
         let module = parse_html("<code>var x = 1;</code>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Mono)).is_some());
-        assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Text { content } if content == "var x = 1;")).is_some());
+        assert!(
+            find_node_by_type(
+                &module,
+                |nt| matches!(nt, NodeType::Text { content } if content == "var x = 1;")
+            )
+            .is_some()
+        );
     }
 
     #[test]
@@ -851,7 +938,11 @@ mod tests {
         let module = parse_html("<math>x^2 + y^2 = z^2</math>");
         let math = find_node_by_type(&module, |nt| matches!(nt, NodeType::MathInline { .. }));
         assert!(math.is_some());
-        if let Some(Node { node_type: NodeType::MathInline { content }, .. }) = math {
+        if let Some(Node {
+            node_type: NodeType::MathInline { content },
+            ..
+        }) = math
+        {
             assert_eq!(content, "x^2 + y^2 = z^2");
         }
     }
@@ -871,7 +962,9 @@ mod tests {
 
     #[test]
     fn test_figure_and_caption() {
-        let module = parse_html("<figure><img src=\"fig.png\" alt=\"Figure\"><figcaption>Caption text</figcaption></figure>");
+        let module = parse_html(
+            "<figure><img src=\"fig.png\" alt=\"Figure\"><figcaption>Caption text</figcaption></figure>",
+        );
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Figure { .. })).is_some());
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Caption)).is_some());
     }
@@ -879,7 +972,15 @@ mod tests {
     #[test]
     fn test_colspan_rowspan() {
         let module = parse_html(r#"<table><tr><td colspan="2" rowspan="3">span</td></tr></table>"#);
-        let cell = find_node_by_type(&module, |nt| matches!(nt, NodeType::TableCell { colspan: 2, rowspan: 3 }));
+        let cell = find_node_by_type(&module, |nt| {
+            matches!(
+                nt,
+                NodeType::TableCell {
+                    colspan: 2,
+                    rowspan: 3
+                }
+            )
+        });
         assert!(cell.is_some());
     }
 
@@ -899,7 +1000,13 @@ mod tests {
     fn test_deeply_nested() {
         let module = parse_html("<div><div><div><p>deep</p></div></div></div>");
         assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Paragraph)).is_some());
-        assert!(find_node_by_type(&module, |nt| matches!(nt, NodeType::Text { content } if content == "deep")).is_some());
+        assert!(
+            find_node_by_type(
+                &module,
+                |nt| matches!(nt, NodeType::Text { content } if content == "deep")
+            )
+            .is_some()
+        );
     }
 
     #[test]

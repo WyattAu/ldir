@@ -2,8 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::sir::v2::resources::FontWeight;
 use crate::sir::v2::metadata::Dimension;
+use crate::sir::v2::resources::FontWeight;
 
 /// Text alignment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -21,7 +21,7 @@ pub struct StyleProperties {
     pub font_name: Option<String>,
     pub font_size: Option<Dimension>,
     pub font_weight: Option<FontWeight>,
-    pub font_style: Option<String>,  // "normal", "italic", "oblique"
+    pub font_style: Option<String>, // "normal", "italic", "oblique"
     pub text_color: Option<String>,
     pub background_color: Option<String>,
     pub line_height: Option<f64>,
@@ -80,7 +80,10 @@ mod tests {
         assert!(decls.find("body").is_some());
         assert!(decls.find("heading").is_some());
         assert!(decls.find("nonexistent").is_none());
-        assert_eq!(decls.find("heading").unwrap().parent.as_deref(), Some("body"));
+        assert_eq!(
+            decls.find("heading").unwrap().parent.as_deref(),
+            Some("body")
+        );
     }
 
     #[test]

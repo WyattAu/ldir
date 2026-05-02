@@ -30,8 +30,8 @@ pub enum FontStyle {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum FontSource {
     System,
-    File(String),       // path to font file
-    Embedded,           // font data embedded in module
+    File(String), // path to font file
+    Embedded,     // font data embedded in module
 }
 
 /// Font declaration.
@@ -42,7 +42,7 @@ pub struct FontDecl {
     pub weight: FontWeight,
     pub style: FontStyle,
     pub source: FontSource,
-    pub features: Vec<String>,  // OpenType features
+    pub features: Vec<String>, // OpenType features
 }
 
 /// RGB color.
@@ -51,7 +51,7 @@ pub struct ColorValue {
     pub r: u8,
     pub g: u8,
     pub b: u8,
-    pub a: Option<u8>,  // alpha
+    pub a: Option<u8>, // alpha
 }
 
 /// Color declaration.
@@ -64,11 +64,11 @@ pub struct ColorDecl {
 /// Counter formatting.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CounterFormat {
-    Arabic,       // 1, 2, 3
-    RomanLower,   // i, ii, iii
-    RomanUpper,   // I, II, III
-    AlphaLower,   // a, b, c
-    AlphaUpper,   // A, B, C
+    Arabic,         // 1, 2, 3
+    RomanLower,     // i, ii, iii
+    RomanUpper,     // I, II, III
+    AlphaLower,     // a, b, c
+    AlphaUpper,     // A, B, C
     Custom(String), // e.g., "(1)"
 }
 
@@ -121,7 +121,12 @@ mod tests {
 
     #[test]
     fn test_color_value() {
-        let c = ColorValue { r: 255, g: 0, b: 128, a: Some(200) };
+        let c = ColorValue {
+            r: 255,
+            g: 0,
+            b: 128,
+            a: Some(200),
+        };
         assert_eq!(c.r, 255);
         assert_eq!(c.a, Some(200));
 

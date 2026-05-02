@@ -32,7 +32,9 @@ pub fn parse_bib(bib_content: &str) -> Result<HashMap<String, BibEntry>, String>
                 let (key, new_i) = parse_entry_key(&chars, i);
                 if key.is_empty() {
                     i = find_matching_brace(&chars, new_i);
-                    if i < len { i += 1; }
+                    if i < len {
+                        i += 1;
+                    }
                     continue;
                 }
                 i = new_i;
@@ -80,7 +82,8 @@ fn parse_identifier(chars: &[char], start: usize) -> (String, usize) {
 
 fn parse_entry_key(chars: &[char], start: usize) -> (String, usize) {
     let mut end = start;
-    while end < chars.len() && !chars[end].is_whitespace() && chars[end] != ',' && chars[end] != '}' {
+    while end < chars.len() && !chars[end].is_whitespace() && chars[end] != ',' && chars[end] != '}'
+    {
         end += 1;
     }
     let key: String = chars[start..end].iter().collect();
@@ -219,13 +222,29 @@ fn find_matching_brace(chars: &[char], start: usize) -> usize {
 }
 
 pub fn format_citation_ieee(entry: &BibEntry) -> String {
-    let author = entry.fields.get("author").map(|s| s.as_str()).unwrap_or("Unknown");
-    let title = entry.fields.get("title").map(|s| s.as_str()).unwrap_or("Untitled");
-    let year = entry.fields.get("year").map(|s| s.as_str()).unwrap_or("n.d.");
+    let author = entry
+        .fields
+        .get("author")
+        .map(|s| s.as_str())
+        .unwrap_or("Unknown");
+    let title = entry
+        .fields
+        .get("title")
+        .map(|s| s.as_str())
+        .unwrap_or("Untitled");
+    let year = entry
+        .fields
+        .get("year")
+        .map(|s| s.as_str())
+        .unwrap_or("n.d.");
 
     match entry.entry_type.as_str() {
         "article" => {
-            let journal = entry.fields.get("journal").map(|s| s.as_str()).unwrap_or("");
+            let journal = entry
+                .fields
+                .get("journal")
+                .map(|s| s.as_str())
+                .unwrap_or("");
             let volume = entry.fields.get("volume").map(|s| s.as_str()).unwrap_or("");
             let pages = entry.fields.get("pages").map(|s| s.as_str()).unwrap_or("");
             if !journal.is_empty() && !volume.is_empty() && !pages.is_empty() {
@@ -240,18 +259,23 @@ pub fn format_citation_ieee(entry: &BibEntry) -> String {
             }
         }
         "book" => {
-            let publisher = entry.fields.get("publisher").map(|s| s.as_str()).unwrap_or("");
+            let publisher = entry
+                .fields
+                .get("publisher")
+                .map(|s| s.as_str())
+                .unwrap_or("");
             if !publisher.is_empty() {
-                format!(
-                    "{}, *{}*, {}. {}.",
-                    author, title, publisher, year
-                )
+                format!("{}, *{}*, {}. {}.", author, title, publisher, year)
             } else {
                 format!("{}, *{}*, {}.", author, title, year)
             }
         }
         "inproceedings" | "conference" => {
-            let booktitle = entry.fields.get("booktitle").map(|s| s.as_str()).unwrap_or("");
+            let booktitle = entry
+                .fields
+                .get("booktitle")
+                .map(|s| s.as_str())
+                .unwrap_or("");
             let pages = entry.fields.get("pages").map(|s| s.as_str()).unwrap_or("");
             if !booktitle.is_empty() && !pages.is_empty() {
                 format!(
@@ -274,13 +298,29 @@ pub fn format_citation_ieee(entry: &BibEntry) -> String {
 }
 
 pub fn format_citation_apa(entry: &BibEntry) -> String {
-    let author = entry.fields.get("author").map(|s| s.as_str()).unwrap_or("Unknown");
-    let title = entry.fields.get("title").map(|s| s.as_str()).unwrap_or("Untitled");
-    let year = entry.fields.get("year").map(|s| s.as_str()).unwrap_or("n.d.");
+    let author = entry
+        .fields
+        .get("author")
+        .map(|s| s.as_str())
+        .unwrap_or("Unknown");
+    let title = entry
+        .fields
+        .get("title")
+        .map(|s| s.as_str())
+        .unwrap_or("Untitled");
+    let year = entry
+        .fields
+        .get("year")
+        .map(|s| s.as_str())
+        .unwrap_or("n.d.");
 
     match entry.entry_type.as_str() {
         "article" => {
-            let journal = entry.fields.get("journal").map(|s| s.as_str()).unwrap_or("");
+            let journal = entry
+                .fields
+                .get("journal")
+                .map(|s| s.as_str())
+                .unwrap_or("");
             let volume = entry.fields.get("volume").map(|s| s.as_str()).unwrap_or("");
             let pages = entry.fields.get("pages").map(|s| s.as_str()).unwrap_or("");
             if !journal.is_empty() && !volume.is_empty() && !pages.is_empty() {
@@ -300,7 +340,11 @@ pub fn format_citation_apa(entry: &BibEntry) -> String {
             format!("{} ({}). *{}*.", author, year, title)
         }
         "inproceedings" | "conference" => {
-            let booktitle = entry.fields.get("booktitle").map(|s| s.as_str()).unwrap_or("");
+            let booktitle = entry
+                .fields
+                .get("booktitle")
+                .map(|s| s.as_str())
+                .unwrap_or("");
             if !booktitle.is_empty() {
                 format!("{} ({}). {}. In *{}*.", author, year, title, booktitle)
             } else {
@@ -375,7 +419,10 @@ mod tests {
             Some("Literate Programming")
         );
         assert_eq!(entry.fields.get("volume").map(|s| s.as_str()), Some("27"));
-        assert_eq!(entry.fields.get("pages").map(|s| s.as_str()), Some("97--111"));
+        assert_eq!(
+            entry.fields.get("pages").map(|s| s.as_str()),
+            Some("97--111")
+        );
     }
 
     #[test]
@@ -383,7 +430,10 @@ mod tests {
         let entries = parse_bib(SIMPLE_BIB).expect("parse should succeed");
         let entry = entries.get("lamport1994").expect("entry should exist");
         assert_eq!(entry.entry_type, "book");
-        assert_eq!(entry.fields.get("publisher").map(|s| s.as_str()), Some("Addison-Wesley"));
+        assert_eq!(
+            entry.fields.get("publisher").map(|s| s.as_str()),
+            Some("Addison-Wesley")
+        );
     }
 
     #[test]
@@ -402,7 +452,10 @@ mod tests {
         let bib = r#"@article{key1, author = "Jane Doe", title = "A Title", year = "2020"}"#;
         let entries = parse_bib(bib).expect("parse should succeed");
         let entry = entries.get("key1").expect("entry should exist");
-        assert_eq!(entry.fields.get("author").map(|s| s.as_str()), Some("Jane Doe"));
+        assert_eq!(
+            entry.fields.get("author").map(|s| s.as_str()),
+            Some("Jane Doe")
+        );
         assert_eq!(entry.fields.get("year").map(|s| s.as_str()), Some("2020"));
     }
 
@@ -425,7 +478,10 @@ mod tests {
         let bib = r#"@book{key3, author = {Some {Nested} Name}, title = {A {Book} Title}, year = {2022}}"#;
         let entries = parse_bib(bib).expect("parse should succeed");
         let entry = entries.get("key3").expect("entry should exist");
-        assert_eq!(entry.fields.get("author").map(|s| s.as_str()), Some("Some {Nested} Name"));
+        assert_eq!(
+            entry.fields.get("author").map(|s| s.as_str()),
+            Some("Some {Nested} Name")
+        );
     }
 
     #[test]

@@ -6,9 +6,19 @@
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KPBox {
-    Content { width: i32 },
-    Glue { width: i32, stretch: i32, shrink: i32 },
-    Penalty { penalty: i32, width: i32, flagged: bool },
+    Content {
+        width: i32,
+    },
+    Glue {
+        width: i32,
+        stretch: i32,
+        shrink: i32,
+    },
+    Penalty {
+        penalty: i32,
+        width: i32,
+        flagged: bool,
+    },
     ForcedBreak,
 }
 
@@ -65,21 +75,13 @@ fn compute_ratio(
     if diff < 0 {
         if total_stretch > 0 {
             let r = (-diff) as f64 / total_stretch as f64;
-            if r <= TOLERANCE {
-                Some(r)
-            } else {
-                None
-            }
+            if r <= TOLERANCE { Some(r) } else { None }
         } else {
             Some(0.0)
         }
     } else if total_shrink > 0 {
         let r = -(diff as f64 / total_shrink as f64);
-        if r >= -TOLERANCE {
-            Some(r)
-        } else {
-            None
-        }
+        if r >= -TOLERANCE { Some(r) } else { None }
     } else {
         None
     }
@@ -253,7 +255,11 @@ pub fn knuth_plass_break(boxes: &[KPBox], line_width: i32) -> Vec<usize> {
         return Vec::new();
     }
 
-    let last_pos = active_nodes[1..].iter().map(|n| n.position).max().unwrap_or(0);
+    let last_pos = active_nodes[1..]
+        .iter()
+        .map(|n| n.position)
+        .max()
+        .unwrap_or(0);
 
     let mut best_idx = 1;
     let mut found = false;
@@ -285,7 +291,11 @@ mod tests {
     }
 
     fn glue_box(width: i32, stretch: i32, shrink: i32) -> KPBox {
-        KPBox::Glue { width, stretch, shrink }
+        KPBox::Glue {
+            width,
+            stretch,
+            shrink,
+        }
     }
 
     fn penalty_box(penalty: i32, width: i32, flagged: bool) -> KPBox {
@@ -578,12 +588,7 @@ mod tests {
 
     #[test]
     fn test_multiple_forced_breaks() {
-        let boxes = vec![
-            word_box(30),
-            forced_break(),
-            word_box(30),
-            forced_break(),
-        ];
+        let boxes = vec![word_box(30), forced_break(), word_box(30), forced_break()];
         let breaks = knuth_plass_break(&boxes, 100);
         assert!(!breaks.is_empty());
     }

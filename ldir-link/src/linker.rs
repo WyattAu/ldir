@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use ldir_ir::sir::v2::nodes::{Node, NodeType};
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::{Node, NodeType};
 
 #[derive(Debug, Clone)]
 pub enum LinkError {
@@ -95,7 +95,9 @@ impl ModuleLinker {
                     } else {
                         ldir_ir::sir::v2::annotations::LabelCategory::Custom
                     };
-                    self.output.annotations.add_label(label.clone(), new_node.id, category);
+                    self.output
+                        .annotations
+                        .add_label(label.clone(), new_node.id, category);
                 }
             }
 
@@ -135,7 +137,9 @@ impl ModuleLinker {
         }
 
         for r in module.annotations.refs {
-            self.output.annotations.add_ref(r.label, r.ref_node_id + offset);
+            self.output
+                .annotations
+                .add_ref(r.label, r.ref_node_id + offset);
         }
 
         self.id_offset = offset + max_id + 1;
@@ -172,8 +176,11 @@ impl ModuleLinker {
 mod tests {
     use super::*;
     use ldir_ir::sir::v2::nodes::{Node, NodeType};
+    use ldir_ir::sir::v2::resources::{
+        ColorDecl, ColorValue, CounterDecl, CounterFormat, CounterReset, FontDecl, FontSource,
+        FontStyle, FontWeight,
+    };
     use ldir_ir::sir::v2::styles::{StyleDecl, StyleProperties};
-    use ldir_ir::sir::v2::resources::{CounterDecl, CounterFormat, CounterReset, FontDecl, FontWeight, FontStyle, FontSource, ColorDecl, ColorValue};
 
     fn make_module_with_nodes(nodes: Vec<Node>) -> SIRModuleV2 {
         let mut m = SIRModuleV2::new();
@@ -200,12 +207,8 @@ mod tests {
 
     #[test]
     fn test_link_two_modules() {
-        let m1 = make_module_with_nodes(vec![
-            Node::new(1, NodeType::Section),
-        ]);
-        let m2 = make_module_with_nodes(vec![
-            Node::new(1, NodeType::Section),
-        ]);
+        let m1 = make_module_with_nodes(vec![Node::new(1, NodeType::Section)]);
+        let m2 = make_module_with_nodes(vec![Node::new(1, NodeType::Section)]);
         let result = link_modules(vec![m1, m2]).unwrap();
         assert_eq!(result.body.len(), 3);
     }
@@ -218,15 +221,16 @@ mod tests {
             Node::new(1, NodeType::Section),
             Node::new(2, NodeType::Paragraph).with_parent(1),
         ]);
-        let m2 = make_module_with_nodes(vec![
-            Node::new(1, NodeType::Chapter),
-        ]);
+        let m2 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
         let result = link_modules(vec![m1, m2]).unwrap();
 
         assert!(result.body.get(1).is_some());
         assert!(result.body.get(2).is_some());
 
-        let m2_chapter = result.body.iter().find(|n| matches!(n.node_type, NodeType::Chapter));
+        let m2_chapter = result
+            .body
+            .iter()
+            .find(|n| matches!(n.node_type, NodeType::Chapter));
         assert!(m2_chapter.is_some());
         assert_ne!(m2_chapter.unwrap().id, 1);
     }
@@ -294,7 +298,10 @@ mod tests {
 
         let result = link_modules(vec![m1, m2]).unwrap();
         assert_eq!(result.styles.styles.len(), 1);
-        assert_eq!(result.styles.styles[0].properties.font_name.as_deref(), Some("New"));
+        assert_eq!(
+            result.styles.styles[0].properties.font_name.as_deref(),
+            Some("New")
+        );
     }
 
     // --- Resource merging ---
@@ -356,13 +363,23 @@ mod tests {
         let mut m1 = SIRModuleV2::new();
         m1.resources.colors.push(ColorDecl {
             name: "primary".to_string(),
-            value: ColorValue { r: 0, g: 0, b: 0, a: None },
+            value: ColorValue {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: None,
+            },
         });
 
         let mut m2 = SIRModuleV2::new();
         m2.resources.colors.push(ColorDecl {
             name: "accent".to_string(),
-            value: ColorValue { r: 255, g: 0, b: 0, a: None },
+            value: ColorValue {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: None,
+            },
         });
 
         let result = link_modules(vec![m1, m2]).unwrap();
@@ -412,12 +429,8 @@ mod tests {
 
     #[test]
     fn test_link_root_consolidation() {
-        let m1 = make_module_with_nodes(vec![
-            Node::new(1, NodeType::Chapter),
-        ]);
-        let m2 = make_module_with_nodes(vec![
-            Node::new(1, NodeType::Chapter),
-        ]);
+        let m1 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
+        let m2 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
 
         let result = link_modules(vec![m1, m2]).unwrap();
         assert_eq!(result.body.roots().len(), 1);

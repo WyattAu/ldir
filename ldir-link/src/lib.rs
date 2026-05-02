@@ -1,3 +1,3 @@
 mod linker;
 
-pub use linker::{link_modules, LinkError};
+pub use linker::{LinkError, link_modules};

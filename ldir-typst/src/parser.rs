@@ -1,8 +1,8 @@
 //! Recursive descent parser for Typst → S-IR v2.
 
+use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::annotations::LabelCategory;
 use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
-use ldir_ir::sir::v2::SIRModuleV2;
 
 pub fn parse_typst(text: &str) -> SIRModuleV2 {
     let tokens = tokenize(text);
@@ -165,7 +165,30 @@ fn tokenize(text: &str) -> Vec<Token> {
                 let mut buf = String::new();
                 while i < len {
                     let c = chars[i];
-                    if c.is_whitespace() || matches!(c, '*' | '_' | '`' | '$' | '-' | '+' | '.' | '#' | '(' | ')' | '[' | ']' | '<' | '>' | ':' | ',' | '=' | '/' | '@' | '"') {
+                    if c.is_whitespace()
+                        || matches!(
+                            c,
+                            '*' | '_'
+                                | '`'
+                                | '$'
+                                | '-'
+                                | '+'
+                                | '.'
+                                | '#'
+                                | '('
+                                | ')'
+                                | '['
+                                | ']'
+                                | '<'
+                                | '>'
+                                | ':'
+                                | ','
+                                | '='
+                                | '/'
+                                | '@'
+                                | '"'
+                        )
+                    {
                         break;
                     }
                     buf.push(c);
@@ -408,14 +431,13 @@ impl TypstParser {
                                     self.advance();
                                 }
                                 if !url.is_empty() {
-                                    nodes.push(NodeType::Link {
-                                        url,
-                                        title: None,
-                                    });
+                                    nodes.push(NodeType::Link { url, title: None });
                                 }
                             }
                             "ref" => {
-                                let _label = self.collect_text_until(&|t| matches!(t, Token::RAngle | Token::Newline | Token::Eof));
+                                let _label = self.collect_text_until(&|t| {
+                                    matches!(t, Token::RAngle | Token::Newline | Token::Eof)
+                                });
                             }
                             _ => {
                                 nodes.push(NodeType::Text { content: name });
@@ -425,7 +447,17 @@ impl TypstParser {
                 }
                 Token::AtSign => {
                     self.advance();
-                    let label = self.collect_text_until(&|t| matches!(t, Token::Text(_) | Token::Newline | Token::Eof | Token::Star | Token::Underscore | Token::Backtick));
+                    let label = self.collect_text_until(&|t| {
+                        matches!(
+                            t,
+                            Token::Text(_)
+                                | Token::Newline
+                                | Token::Eof
+                                | Token::Star
+                                | Token::Underscore
+                                | Token::Backtick
+                        )
+                    });
                     if !label.is_empty() {
                         nodes.push(NodeType::Text {
                             content: format!("@{}", label),
@@ -468,8 +500,7 @@ impl TypstParser {
                         _ => NodeType::Paragraph,
                     };
                     let heading_id = self.gen_id();
-                    let mut heading_node = Node::new(heading_id, heading_type)
-                        .with_parent(doc_id);
+                    let mut heading_node = Node::new(heading_id, heading_type).with_parent(doc_id);
                     if let Some(NodeType::Text { content }) = inline_nodes.first() {
                         heading_node.counter = Some(content.clone());
                     }
@@ -520,14 +551,18 @@ impl TypstParser {
                                 self.skip_newlines();
 
                                 let bq_id = self.gen_id();
-                                module.body.push(Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id));
+                                module.body.push(
+                                    Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id),
+                                );
                                 if let Some(doc) = module.body.get_mut(doc_id) {
                                     doc.add_child(bq_id);
                                 }
 
                                 for node_type in &inline_nodes {
                                     let child_id = self.gen_id();
-                                    module.body.push(Node::new(child_id, node_type.clone()).with_parent(bq_id));
+                                    module.body.push(
+                                        Node::new(child_id, node_type.clone()).with_parent(bq_id),
+                                    );
                                     if let Some(bq) = module.body.get_mut(bq_id) {
                                         bq.add_child(child_id);
                                     }
@@ -573,11 +608,8 @@ impl TypstParser {
                                 if !url.is_empty() {
                                     let link_id = self.gen_id();
                                     module.body.push(
-                                        Node::new(
-                                            link_id,
-                                            NodeType::Link { url, title: None },
-                                        )
-                                        .with_parent(doc_id),
+                                        Node::new(link_id, NodeType::Link { url, title: None })
+                                            .with_parent(doc_id),
                                     );
                                     if let Some(doc) = module.body.get_mut(doc_id) {
                                         doc.add_child(link_id);
@@ -596,9 +628,13 @@ impl TypstParser {
                                 }
                                 let fig_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(fig_id, NodeType::Figure {
-                                        placement: ldir_ir::sir::v2::nodes::FloatPlacement::Here,
-                                    })
+                                    Node::new(
+                                        fig_id,
+                                        NodeType::Figure {
+                                            placement:
+                                                ldir_ir::sir::v2::nodes::FloatPlacement::Here,
+                                        },
+                                    )
                                     .with_parent(doc_id),
                                 );
                                 if let Some(doc) = module.body.get_mut(doc_id) {
@@ -609,13 +645,19 @@ impl TypstParser {
                                 let (num_cols, cells) = self.parse_table_args();
                                 let table_id = self.gen_id();
                                 let col_specs: Vec<ColSpec> = (0..num_cols)
-                                    .map(|_| ColSpec { align: ColumnAlign::Left, width: None })
+                                    .map(|_| ColSpec {
+                                        align: ColumnAlign::Left,
+                                        width: None,
+                                    })
                                     .collect();
                                 module.body.push(
-                                    Node::new(table_id, NodeType::Table {
-                                        col_specs,
-                                        num_cols,
-                                    })
+                                    Node::new(
+                                        table_id,
+                                        NodeType::Table {
+                                            col_specs,
+                                            num_cols,
+                                        },
+                                    )
                                     .with_parent(doc_id),
                                 );
 
@@ -632,8 +674,14 @@ impl TypstParser {
                                 for cell_text in &cells {
                                     let tc_id = self.gen_id();
                                     module.body.push(
-                                        Node::new(tc_id, NodeType::TableCell { colspan: 1, rowspan: 1 })
-                                            .with_parent(row_id),
+                                        Node::new(
+                                            tc_id,
+                                            NodeType::TableCell {
+                                                colspan: 1,
+                                                rowspan: 1,
+                                            },
+                                        )
+                                        .with_parent(row_id),
                                     );
                                     if let Some(row) = module.body.get_mut(row_id) {
                                         row.add_child(tc_id);
@@ -642,7 +690,9 @@ impl TypstParser {
                                     module.body.push(
                                         Node::new(
                                             text_id,
-                                            NodeType::Text { content: cell_text.clone() },
+                                            NodeType::Text {
+                                                content: cell_text.clone(),
+                                            },
                                         )
                                         .with_parent(tc_id),
                                     );
@@ -653,8 +703,11 @@ impl TypstParser {
                                     if cell_idx % num_cols == 0 && cell_idx < cells.len() {
                                         row_id = self.gen_id();
                                         module.body.push(
-                                            Node::new(row_id, NodeType::TableRow { is_header: false })
-                                                .with_parent(table_id),
+                                            Node::new(
+                                                row_id,
+                                                NodeType::TableRow { is_header: false },
+                                            )
+                                            .with_parent(table_id),
                                         );
                                         if let Some(tbl) = module.body.get_mut(table_id) {
                                             tbl.add_child(row_id);
@@ -682,25 +735,30 @@ impl TypstParser {
 
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(list_id, NodeType::List {
-                            list_type: ListType::Unordered,
-                            ordered: false,
-                            start: None,
-                        })
+                        Node::new(
+                            list_id,
+                            NodeType::List {
+                                list_type: ListType::Unordered,
+                                ordered: false,
+                                start: None,
+                            },
+                        )
                         .with_parent(doc_id),
                     );
 
                     let item_id = self.gen_id();
-                    module.body.push(
-                        Node::new(item_id, NodeType::ListItem).with_parent(list_id),
-                    );
+                    module
+                        .body
+                        .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
                     if let Some(list) = module.body.get_mut(list_id) {
                         list.add_child(item_id);
                     }
 
                     for node_type in &inline_nodes {
                         let child_id = self.gen_id();
-                        module.body.push(Node::new(child_id, node_type.clone()).with_parent(item_id));
+                        module
+                            .body
+                            .push(Node::new(child_id, node_type.clone()).with_parent(item_id));
                         if let Some(item) = module.body.get_mut(item_id) {
                             item.add_child(child_id);
                         }
@@ -708,12 +766,13 @@ impl TypstParser {
 
                     while self.at(&Token::Minus) {
                         self.advance();
-                        let item_inline = self.collect_inline_content(&[Token::Newline, Token::Eof]);
+                        let item_inline =
+                            self.collect_inline_content(&[Token::Newline, Token::Eof]);
                         self.skip_newlines();
                         let sub_item_id = self.gen_id();
-                        module.body.push(
-                            Node::new(sub_item_id, NodeType::ListItem).with_parent(list_id),
-                        );
+                        module
+                            .body
+                            .push(Node::new(sub_item_id, NodeType::ListItem).with_parent(list_id));
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(sub_item_id);
                         }
@@ -739,25 +798,30 @@ impl TypstParser {
 
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(list_id, NodeType::List {
-                            list_type: ListType::Ordered,
-                            ordered: true,
-                            start: None,
-                        })
+                        Node::new(
+                            list_id,
+                            NodeType::List {
+                                list_type: ListType::Ordered,
+                                ordered: true,
+                                start: None,
+                            },
+                        )
                         .with_parent(doc_id),
                     );
 
                     let item_id = self.gen_id();
-                    module.body.push(
-                        Node::new(item_id, NodeType::ListItem).with_parent(list_id),
-                    );
+                    module
+                        .body
+                        .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
                     if let Some(list) = module.body.get_mut(list_id) {
                         list.add_child(item_id);
                     }
 
                     for node_type in &inline_nodes {
                         let child_id = self.gen_id();
-                        module.body.push(Node::new(child_id, node_type.clone()).with_parent(item_id));
+                        module
+                            .body
+                            .push(Node::new(child_id, node_type.clone()).with_parent(item_id));
                         if let Some(item) = module.body.get_mut(item_id) {
                             item.add_child(child_id);
                         }
@@ -765,12 +829,13 @@ impl TypstParser {
 
                     while self.at(&Token::Plus) {
                         self.advance();
-                        let item_inline = self.collect_inline_content(&[Token::Newline, Token::Eof]);
+                        let item_inline =
+                            self.collect_inline_content(&[Token::Newline, Token::Eof]);
                         self.skip_newlines();
                         let sub_item_id = self.gen_id();
-                        module.body.push(
-                            Node::new(sub_item_id, NodeType::ListItem).with_parent(list_id),
-                        );
+                        module
+                            .body
+                            .push(Node::new(sub_item_id, NodeType::ListItem).with_parent(list_id));
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(sub_item_id);
                         }
@@ -810,16 +875,18 @@ impl TypstParser {
                     }
 
                     let para_id = self.gen_id();
-                    module.body.push(
-                        Node::new(para_id, NodeType::Paragraph).with_parent(doc_id),
-                    );
+                    module
+                        .body
+                        .push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(para_id);
                     }
 
                     for node_type in &inline_nodes {
                         let child_id = self.gen_id();
-                        module.body.push(Node::new(child_id, node_type.clone()).with_parent(para_id));
+                        module
+                            .body
+                            .push(Node::new(child_id, node_type.clone()).with_parent(para_id));
                         if let Some(para) = module.body.get_mut(para_id) {
                             para.add_child(child_id);
                         }
@@ -998,13 +1065,17 @@ mod tests {
         let paras = find_nodes(&module, |nt| matches!(nt, NodeType::Paragraph));
         assert_eq!(paras.len(), 1);
         let texts = find_nodes(&module, |nt| matches!(nt, NodeType::Text { .. }));
-        assert!(texts.iter().any(|n| matches!(&n.node_type, NodeType::Text { content } if content.contains("Hello"))));
+        assert!(texts.iter().any(
+            |n| matches!(&n.node_type, NodeType::Text { content } if content.contains("Hello"))
+        ));
     }
 
     #[test]
     fn test_unordered_list() {
         let module = parse_typst("- Item one\n- Item two\n");
-        let lists = find_nodes(&module, |nt| matches!(nt, NodeType::List { ordered: false, .. }));
+        let lists = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: false, .. })
+        });
         assert_eq!(lists.len(), 1);
         let items = find_nodes(&module, |nt| matches!(nt, NodeType::ListItem));
         assert!(items.len() >= 2);
@@ -1013,7 +1084,9 @@ mod tests {
     #[test]
     fn test_ordered_list() {
         let module = parse_typst("+ First item\n+ Second item\n");
-        let lists = find_nodes(&module, |nt| matches!(nt, NodeType::List { ordered: true, .. }));
+        let lists = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: true, .. })
+        });
         assert_eq!(lists.len(), 1);
         let items = find_nodes(&module, |nt| matches!(nt, NodeType::ListItem));
         assert!(items.len() >= 2);
@@ -1033,8 +1106,12 @@ mod tests {
     fn test_comment_stripped() {
         let module = parse_typst("// This is a comment\nHello\n");
         let texts = find_nodes(&module, |nt| matches!(nt, NodeType::Text { .. }));
-        assert!(!texts.iter().any(|n| matches!(&n.node_type, NodeType::Text { content } if content.contains("comment"))));
-        assert!(texts.iter().any(|n| matches!(&n.node_type, NodeType::Text { content } if content.contains("Hello"))));
+        assert!(!texts.iter().any(
+            |n| matches!(&n.node_type, NodeType::Text { content } if content.contains("comment"))
+        ));
+        assert!(texts.iter().any(
+            |n| matches!(&n.node_type, NodeType::Text { content } if content.contains("Hello"))
+        ));
     }
 
     #[test]
@@ -1105,7 +1182,10 @@ mod tests {
         let module = parse_typst("#set page(paper: \"a4\")\n\nHello\n");
         let paras = find_nodes(&module, |nt| matches!(nt, NodeType::Paragraph));
         assert_eq!(paras.len(), 1);
-        let texts = find_nodes(&module, |nt| matches!(nt, NodeType::Text { content } if content.contains("Hello")));
+        let texts = find_nodes(
+            &module,
+            |nt| matches!(nt, NodeType::Text { content } if content.contains("Hello")),
+        );
         assert_eq!(texts.len(), 1);
     }
 
@@ -1123,7 +1203,8 @@ mod tests {
 
     #[test]
     fn test_figure() {
-        let module = parse_typst("#figure(\n  image(\"photo.png\"),\n  caption: Photo,\n) <fig:photo>\n");
+        let module =
+            parse_typst("#figure(\n  image(\"photo.png\"),\n  caption: Photo,\n) <fig:photo>\n");
         let figs = find_nodes(&module, |nt| matches!(nt, NodeType::Figure { .. }));
         assert_eq!(figs.len(), 1);
     }
@@ -1147,7 +1228,10 @@ mod tests {
     #[test]
     fn test_tokenizer_comment() {
         let tokens = tokenize("hello // comment\nworld");
-        let texts: Vec<_> = tokens.iter().filter(|t| matches!(t, Token::Text(_))).collect();
+        let texts: Vec<_> = tokens
+            .iter()
+            .filter(|t| matches!(t, Token::Text(_)))
+            .collect();
         assert_eq!(texts.len(), 2);
     }
 

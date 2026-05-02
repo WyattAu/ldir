@@ -35,6 +35,16 @@ pub enum BlockType {
     Image = 0x08,
     /// Table block (grid of cells).
     Table = 0x09,
+    /// Table row within a table.
+    TableRow = 0x0a,
+    /// Table cell within a table row.
+    TableCell = 0x0b,
+    /// Footnote inline reference.
+    Footnote = 0x0c,
+    /// Footnote definition block (container for all footnotes).
+    FootnoteBlock = 0x0d,
+    /// Figure float container.
+    Figure = 0x0e,
 }
 
 impl BlockType {
@@ -53,6 +63,11 @@ impl BlockType {
             0x07 => Some(Self::ThematicBreak),
             0x08 => Some(Self::Image),
             0x09 => Some(Self::Table),
+            0x0a => Some(Self::TableRow),
+            0x0b => Some(Self::TableCell),
+            0x0c => Some(Self::Footnote),
+            0x0d => Some(Self::FootnoteBlock),
+            0x0e => Some(Self::Figure),
             _ => None,
         }
     }

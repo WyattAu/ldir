@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion, black_box, BatchSize, BenchmarkId};
+use criterion::{BatchSize, BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use ldir_core::compiler::compile_sir;
 use ldir_ir::sir::{ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
 

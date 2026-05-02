@@ -266,7 +266,15 @@ impl PdfDocumentBuilder {
     /// The rectangle `(x, y, x+w, y+h)` defines the clickable area.
     /// `url` is the target URI. If `destination_page` is `Some(page_idx)`,
     /// the link is an internal destination link instead of a URI link.
-    pub fn add_link(&mut self, x: f64, y: f64, w: f64, h: f64, url: String, destination_page: Option<usize>) {
+    pub fn add_link(
+        &mut self,
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+        url: String,
+        destination_page: Option<usize>,
+    ) {
         if self.pages.is_empty() {
             self.add_page(612.0, 792.0);
         }
@@ -425,7 +433,7 @@ impl PdfDocumentBuilder {
             .pages
             .iter_mut()
             .enumerate()
-            .map(|(page_idx, p)| {
+            .map(|(_page_idx, p)| {
                 let mut content = std::mem::replace(&mut p.content, Content::new());
 
                 // Inject image Do operations for images on this page
@@ -479,10 +487,7 @@ impl PdfDocumentBuilder {
                 let mut xobjects = resources.x_objects();
                 for &idx in &page_image_indices {
                     let resource_name = format!("Im{}", idx);
-                    xobjects.pair(
-                        Name(resource_name.as_bytes()),
-                        image_xobject_ids[idx],
-                    );
+                    xobjects.pair(Name(resource_name.as_bytes()), image_xobject_ids[idx]);
                 }
             }
 

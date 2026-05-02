@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{Pass, PassResult};
-use ldir_ir::sir::v2::nodes::NodeType;
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::NodeType;
 
 // ---------------------------------------------------------------------------
 // 1. Dead Node Elimination
@@ -11,7 +11,9 @@ use ldir_ir::sir::v2::SIRModuleV2;
 pub struct DeadNodeElimination;
 
 impl Pass for DeadNodeElimination {
-    fn name(&self) -> &str { "dead-node-elimination" }
+    fn name(&self) -> &str {
+        "dead-node-elimination"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
         let mut reachable = HashSet::new();
@@ -31,8 +33,14 @@ impl Pass for DeadNodeElimination {
         let after = module.body.len();
         let removed = before - after;
 
-        module.annotations.labels.retain(|_, info| reachable.contains(&info.node_id));
-        module.annotations.refs.retain(|r| reachable.contains(&r.ref_node_id));
+        module
+            .annotations
+            .labels
+            .retain(|_, info| reachable.contains(&info.node_id));
+        module
+            .annotations
+            .refs
+            .retain(|r| reachable.contains(&r.ref_node_id));
 
         PassResult {
             changed: removed > 0,
@@ -50,12 +58,13 @@ impl Pass for DeadNodeElimination {
 pub struct DeadStyleElimination;
 
 impl Pass for DeadStyleElimination {
-    fn name(&self) -> &str { "dead-style-elimination" }
+    fn name(&self) -> &str {
+        "dead-style-elimination"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
-        let mut referenced: HashSet<String> = module.body.iter()
-            .filter_map(|n| n.style.clone())
-            .collect();
+        let mut referenced: HashSet<String> =
+            module.body.iter().filter_map(|n| n.style.clone()).collect();
         for style in &module.styles.styles {
             if let Some(ref parent) = style.parent {
                 referenced.insert(parent.clone());
@@ -63,7 +72,10 @@ impl Pass for DeadStyleElimination {
         }
 
         let before = module.styles.styles.len();
-        module.styles.styles.retain(|s| referenced.contains(&s.name));
+        module
+            .styles
+            .styles
+            .retain(|s| referenced.contains(&s.name));
         let removed = before - module.styles.styles.len();
 
         PassResult {
@@ -106,14 +118,18 @@ impl DeadResourceElimination {
     }
 
     fn collect_referenced_counters(module: &SIRModuleV2) -> HashSet<String> {
-        module.body.iter()
+        module
+            .body
+            .iter()
             .filter_map(|n| n.counter.clone())
             .collect()
     }
 }
 
 impl Pass for DeadResourceElimination {
-    fn name(&self) -> &str { "dead-resource-elimination" }
+    fn name(&self) -> &str {
+        "dead-resource-elimination"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
         let fonts = Self::collect_referenced_fonts(module);
@@ -129,7 +145,10 @@ impl Pass for DeadResourceElimination {
         let color_removed = color_before - module.resources.colors.len();
 
         let counter_before = module.resources.counters.len();
-        module.resources.counters.retain(|c| counters.contains(&c.name));
+        module
+            .resources
+            .counters
+            .retain(|c| counters.contains(&c.name));
         let counter_removed = counter_before - module.resources.counters.len();
 
         let total = font_removed + color_removed + counter_removed;
@@ -153,10 +172,14 @@ impl Pass for DeadResourceElimination {
 pub struct EmptyBlockCollapse;
 
 impl Pass for EmptyBlockCollapse {
-    fn name(&self) -> &str { "empty-block-collapse" }
+    fn name(&self) -> &str {
+        "empty-block-collapse"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
-        let removable: HashSet<u32> = module.body.iter()
+        let removable: HashSet<u32> = module
+            .body
+            .iter()
             .filter(|n| {
                 matches!(n.node_type, NodeType::Group | NodeType::Document)
                     && n.child_ids.is_empty()
@@ -196,12 +219,17 @@ impl Pass for EmptyBlockCollapse {
 pub struct StyleInlining;
 
 impl StyleInlining {
-    fn resolve_style(module: &SIRModuleV2, name: &str) -> ldir_ir::sir::v2::styles::StyleProperties {
+    fn resolve_style(
+        module: &SIRModuleV2,
+        name: &str,
+    ) -> ldir_ir::sir::v2::styles::StyleProperties {
         let mut chain = Vec::new();
         let mut visited = HashSet::new();
         let mut current = name.to_string();
         while let Some(decl) = module.styles.find(&current) {
-            if !visited.insert(decl.name.clone()) { break; }
+            if !visited.insert(decl.name.clone()) {
+                break;
+            }
             chain.push(decl.properties.clone());
             match &decl.parent {
                 Some(parent) => current = parent.clone(),
@@ -221,29 +249,63 @@ impl StyleInlining {
         base: &mut ldir_ir::sir::v2::styles::StyleProperties,
         overlay: &ldir_ir::sir::v2::styles::StyleProperties,
     ) {
-        if overlay.font_name.is_some() { base.font_name = overlay.font_name.clone(); }
-        if overlay.font_size.is_some() { base.font_size = overlay.font_size.clone(); }
-        if overlay.font_weight.is_some() { base.font_weight = overlay.font_weight; }
-        if overlay.font_style.is_some() { base.font_style = overlay.font_style.clone(); }
-        if overlay.text_color.is_some() { base.text_color = overlay.text_color.clone(); }
-        if overlay.background_color.is_some() { base.background_color = overlay.background_color.clone(); }
-        if overlay.line_height.is_some() { base.line_height = overlay.line_height; }
-        if overlay.paragraph_indent.is_some() { base.paragraph_indent = overlay.paragraph_indent.clone(); }
-        if overlay.space_before.is_some() { base.space_before = overlay.space_before.clone(); }
-        if overlay.space_after.is_some() { base.space_after = overlay.space_after.clone(); }
-        if overlay.text_align.is_some() { base.text_align = overlay.text_align; }
-        if overlay.keep_with_next.is_some() { base.keep_with_next = overlay.keep_with_next; }
-        if overlay.page_break_before.is_some() { base.page_break_before = overlay.page_break_before; }
-        if overlay.first_line_indent.is_some() { base.first_line_indent = overlay.first_line_indent.clone(); }
-        if overlay.margins.is_some() { base.margins = overlay.margins.clone(); }
+        if overlay.font_name.is_some() {
+            base.font_name = overlay.font_name.clone();
+        }
+        if overlay.font_size.is_some() {
+            base.font_size = overlay.font_size.clone();
+        }
+        if overlay.font_weight.is_some() {
+            base.font_weight = overlay.font_weight;
+        }
+        if overlay.font_style.is_some() {
+            base.font_style = overlay.font_style.clone();
+        }
+        if overlay.text_color.is_some() {
+            base.text_color = overlay.text_color.clone();
+        }
+        if overlay.background_color.is_some() {
+            base.background_color = overlay.background_color.clone();
+        }
+        if overlay.line_height.is_some() {
+            base.line_height = overlay.line_height;
+        }
+        if overlay.paragraph_indent.is_some() {
+            base.paragraph_indent = overlay.paragraph_indent.clone();
+        }
+        if overlay.space_before.is_some() {
+            base.space_before = overlay.space_before.clone();
+        }
+        if overlay.space_after.is_some() {
+            base.space_after = overlay.space_after.clone();
+        }
+        if overlay.text_align.is_some() {
+            base.text_align = overlay.text_align;
+        }
+        if overlay.keep_with_next.is_some() {
+            base.keep_with_next = overlay.keep_with_next;
+        }
+        if overlay.page_break_before.is_some() {
+            base.page_break_before = overlay.page_break_before;
+        }
+        if overlay.first_line_indent.is_some() {
+            base.first_line_indent = overlay.first_line_indent.clone();
+        }
+        if overlay.margins.is_some() {
+            base.margins = overlay.margins.clone();
+        }
     }
 }
 
 impl Pass for StyleInlining {
-    fn name(&self) -> &str { "style-inlining" }
+    fn name(&self) -> &str {
+        "style-inlining"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
-        let style_refs: Vec<(u32, String)> = module.body.iter()
+        let style_refs: Vec<(u32, String)> = module
+            .body
+            .iter()
             .filter_map(|n| n.style.as_ref().map(|s| (n.id, s.clone())))
             .collect();
 
@@ -257,7 +319,9 @@ impl Pass for StyleInlining {
                 properties: resolved,
             };
 
-            let already_exists = module.styles.find(&flat_name)
+            let already_exists = module
+                .styles
+                .find(&flat_name)
                 .map(|s| s.parent.is_none())
                 .unwrap_or(false);
 
@@ -286,10 +350,15 @@ impl Pass for StyleInlining {
 pub struct CounterPropagation;
 
 impl Pass for CounterPropagation {
-    fn name(&self) -> &str { "counter-propagation" }
+    fn name(&self) -> &str {
+        "counter-propagation"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
-        let counter_decls: HashMap<String, _> = module.resources.counters.iter()
+        let counter_decls: HashMap<String, _> = module
+            .resources
+            .counters
+            .iter()
             .map(|c| (c.name.clone(), c.reset_scope))
             .collect();
 
@@ -304,7 +373,9 @@ impl Pass for CounterPropagation {
             };
 
             if let Some(ref counter_name) = node.counter {
-                let reset_scope = counter_decls.get(counter_name).copied()
+                let reset_scope = counter_decls
+                    .get(counter_name)
+                    .copied()
                     .unwrap_or(ldir_ir::sir::v2::resources::CounterReset::PerDocument);
 
                 let should_reset = match reset_scope {
@@ -343,7 +414,9 @@ impl Pass for CounterPropagation {
 pub struct LabelDeduplication;
 
 impl Pass for LabelDeduplication {
-    fn name(&self) -> &str { "label-deduplication" }
+    fn name(&self) -> &str {
+        "label-deduplication"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
         let mut seen = HashSet::new();
@@ -358,9 +431,10 @@ impl Pass for LabelDeduplication {
             }
         }
 
-        module.annotations.labels.retain(|label, _| {
-            seen.contains(label.as_str())
-        });
+        module
+            .annotations
+            .labels
+            .retain(|label, _| seen.contains(label.as_str()));
 
         PassResult {
             changed: duplicates > 0,
@@ -378,13 +452,17 @@ impl Pass for LabelDeduplication {
 pub struct TextNodeMerging;
 
 impl Pass for TextNodeMerging {
-    fn name(&self) -> &str { "text-node-merging" }
+    fn name(&self) -> &str {
+        "text-node-merging"
+    }
 
     fn run(&self, module: &mut SIRModuleV2) -> PassResult {
         let mut to_remove: HashSet<u32> = HashSet::new();
         let mut merges = 0;
 
-        let parent_children: HashMap<u32, Vec<u32>> = module.body.iter()
+        let parent_children: HashMap<u32, Vec<u32>> = module
+            .body
+            .iter()
             .filter(|n| !n.child_ids.is_empty())
             .map(|n| (n.id, n.child_ids.clone()))
             .collect();
@@ -405,7 +483,9 @@ impl Pass for TextNodeMerging {
                 {
                     let merged_content = format!("{}{}", a_content, b_content);
                     if let Some(n) = module.body.get_mut(a_id) {
-                        n.node_type = NodeType::Text { content: merged_content };
+                        n.node_type = NodeType::Text {
+                            content: merged_content,
+                        };
                     }
                     to_remove.insert(b_id);
                     merges += 1;
@@ -437,8 +517,8 @@ impl Pass for TextNodeMerging {
 mod tests {
     use super::*;
     use ldir_ir::sir::v2::nodes::{Node, NodeType};
-    use ldir_ir::sir::v2::styles::{StyleDecl, StyleProperties};
     use ldir_ir::sir::v2::resources::{CounterDecl, CounterFormat, CounterReset};
+    use ldir_ir::sir::v2::styles::{StyleDecl, StyleProperties};
 
     // --- Dead Node Elimination ---
 
@@ -446,9 +526,20 @@ mod tests {
     fn test_dead_node_elimination_removes_unreachable() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Document));
-        m.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
-        m.body.push(Node::new(99, NodeType::Text { content: "orphan".to_string() }).with_parent(1));
-        if let Some(d) = m.body.get_mut(1) { d.add_child(2); }
+        m.body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        m.body.push(
+            Node::new(
+                99,
+                NodeType::Text {
+                    content: "orphan".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(d) = m.body.get_mut(1) {
+            d.add_child(2);
+        }
 
         let pass = DeadNodeElimination;
         let result = pass.run(&mut m);
@@ -462,8 +553,11 @@ mod tests {
     fn test_dead_node_elimination_no_change() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Document));
-        m.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
-        if let Some(d) = m.body.get_mut(1) { d.add_child(2); }
+        m.body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        if let Some(d) = m.body.get_mut(1) {
+            d.add_child(2);
+        }
 
         let pass = DeadNodeElimination;
         let result = pass.run(&mut m);
@@ -476,11 +570,30 @@ mod tests {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Document));
         m.body.push(Node::new(2, NodeType::Section).with_parent(1));
-        m.body.push(Node::new(3, NodeType::Paragraph).with_parent(2));
-        m.body.push(Node::new(4, NodeType::Text { content: "deep".to_string() }).with_parent(3));
-        m.body.push(Node::new(50, NodeType::Text { content: "orphan".to_string() }).with_parent(1));
-        for (parent, child) in [(1,2),(2,3),(3,4)] {
-            if let Some(p) = m.body.get_mut(parent) { p.add_child(child); }
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(2));
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "deep".to_string(),
+                },
+            )
+            .with_parent(3),
+        );
+        m.body.push(
+            Node::new(
+                50,
+                NodeType::Text {
+                    content: "orphan".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
+        for (parent, child) in [(1, 2), (2, 3), (3, 4)] {
+            if let Some(p) = m.body.get_mut(parent) {
+                p.add_child(child);
+            }
         }
 
         DeadNodeElimination.run(&mut m);
@@ -503,7 +616,8 @@ mod tests {
             parent: None,
             properties: Default::default(),
         });
-        m.body.push(Node::new(1, NodeType::Paragraph).with_style("used"));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_style("used"));
 
         let pass = DeadStyleElimination;
         let result = pass.run(&mut m);
@@ -525,7 +639,8 @@ mod tests {
             parent: Some("body".to_string()),
             properties: Default::default(),
         });
-        m.body.push(Node::new(1, NodeType::Section).with_style("heading"));
+        m.body
+            .push(Node::new(1, NodeType::Section).with_style("heading"));
 
         DeadStyleElimination.run(&mut m);
         assert_eq!(m.styles.styles.len(), 2);
@@ -536,22 +651,26 @@ mod tests {
     #[test]
     fn test_dead_resource_elimination() {
         let mut m = SIRModuleV2::new();
-        m.resources.fonts.push(ldir_ir::sir::v2::resources::FontDecl {
-            name: "used".to_string(),
-            family: "Inter".to_string(),
-            weight: ldir_ir::sir::v2::resources::FontWeight::Regular,
-            style: ldir_ir::sir::v2::resources::FontStyle::Normal,
-            source: ldir_ir::sir::v2::resources::FontSource::System,
-            features: Vec::new(),
-        });
-        m.resources.fonts.push(ldir_ir::sir::v2::resources::FontDecl {
-            name: "unused".to_string(),
-            family: "Unused".to_string(),
-            weight: ldir_ir::sir::v2::resources::FontWeight::Regular,
-            style: ldir_ir::sir::v2::resources::FontStyle::Normal,
-            source: ldir_ir::sir::v2::resources::FontSource::System,
-            features: Vec::new(),
-        });
+        m.resources
+            .fonts
+            .push(ldir_ir::sir::v2::resources::FontDecl {
+                name: "used".to_string(),
+                family: "Inter".to_string(),
+                weight: ldir_ir::sir::v2::resources::FontWeight::Regular,
+                style: ldir_ir::sir::v2::resources::FontStyle::Normal,
+                source: ldir_ir::sir::v2::resources::FontSource::System,
+                features: Vec::new(),
+            });
+        m.resources
+            .fonts
+            .push(ldir_ir::sir::v2::resources::FontDecl {
+                name: "unused".to_string(),
+                family: "Unused".to_string(),
+                weight: ldir_ir::sir::v2::resources::FontWeight::Regular,
+                style: ldir_ir::sir::v2::resources::FontStyle::Normal,
+                source: ldir_ir::sir::v2::resources::FontSource::System,
+                features: Vec::new(),
+            });
         m.styles.styles.push(StyleDecl {
             name: "body".to_string(),
             parent: None,
@@ -580,7 +699,8 @@ mod tests {
             format: CounterFormat::Arabic,
             reset_scope: CounterReset::PerDocument,
         });
-        m.body.push(Node::new(1, NodeType::Section).with_counter("section"));
+        m.body
+            .push(Node::new(1, NodeType::Section).with_counter("section"));
 
         DeadResourceElimination.run(&mut m);
         assert_eq!(m.resources.counters.len(), 1);
@@ -594,9 +714,12 @@ mod tests {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Document));
         m.body.push(Node::new(2, NodeType::Group));
-        m.body.push(Node::new(3, NodeType::Group).with_label("keep-me"));
+        m.body
+            .push(Node::new(3, NodeType::Group).with_label("keep-me"));
         m.body.push(Node::new(4, NodeType::Section).with_parent(1));
-        if let Some(d) = m.body.get_mut(1) { d.add_child(4); }
+        if let Some(d) = m.body.get_mut(1) {
+            d.add_child(4);
+        }
 
         let pass = EmptyBlockCollapse;
         let result = pass.run(&mut m);
@@ -611,7 +734,9 @@ mod tests {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Document));
         m.body.push(Node::new(2, NodeType::Section).with_parent(1));
-        if let Some(d) = m.body.get_mut(1) { d.add_child(2); }
+        if let Some(d) = m.body.get_mut(1) {
+            d.add_child(2);
+        }
 
         let result = EmptyBlockCollapse.run(&mut m);
         assert!(!result.changed);
@@ -631,14 +756,18 @@ mod tests {
                 ..Default::default()
             },
         });
-        m.body.push(Node::new(1, NodeType::Paragraph).with_style("body"));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_style("body"));
 
         let pass = StyleInlining;
         let result = pass.run(&mut m);
         assert!(result.changed);
         assert_eq!(m.styles.styles.len(), 2);
         assert_eq!(m.styles.styles[1].parent, None);
-        assert_eq!(m.styles.styles[1].properties.font_name.as_deref(), Some("Inter"));
+        assert_eq!(
+            m.styles.styles[1].properties.font_name.as_deref(),
+            Some("Inter")
+        );
     }
 
     #[test]
@@ -661,13 +790,17 @@ mod tests {
                 ..Default::default()
             },
         });
-        m.body.push(Node::new(1, NodeType::Paragraph).with_style("derived"));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_style("derived"));
 
         StyleInlining.run(&mut m);
         let inlined = m.styles.find("__inlined_derived").unwrap();
         assert!(inlined.parent.is_none());
         assert_eq!(inlined.properties.font_name.as_deref(), Some("Derived"));
-        assert_eq!(inlined.properties.font_size, Some(ldir_ir::sir::v2::metadata::Dimension::Pt(12.0)));
+        assert_eq!(
+            inlined.properties.font_size,
+            Some(ldir_ir::sir::v2::metadata::Dimension::Pt(12.0))
+        );
     }
 
     // --- Counter Propagation ---
@@ -680,8 +813,10 @@ mod tests {
             format: CounterFormat::Arabic,
             reset_scope: CounterReset::PerDocument,
         });
-        m.body.push(Node::new(1, NodeType::Section).with_counter("section"));
-        m.body.push(Node::new(2, NodeType::Section).with_counter("section"));
+        m.body
+            .push(Node::new(1, NodeType::Section).with_counter("section"));
+        m.body
+            .push(Node::new(2, NodeType::Section).with_counter("section"));
 
         let pass = CounterPropagation;
         let result = pass.run(&mut m);
@@ -695,10 +830,20 @@ mod tests {
     #[test]
     fn test_label_deduplication() {
         let mut m = SIRModuleV2::new();
-        m.body.push(Node::new(1, NodeType::Section).with_label("dup"));
-        m.body.push(Node::new(2, NodeType::Section).with_label("dup"));
-        m.annotations.add_label("dup".to_string(), 1, ldir_ir::sir::v2::annotations::LabelCategory::Section);
-        m.annotations.add_label("dup".to_string(), 2, ldir_ir::sir::v2::annotations::LabelCategory::Section);
+        m.body
+            .push(Node::new(1, NodeType::Section).with_label("dup"));
+        m.body
+            .push(Node::new(2, NodeType::Section).with_label("dup"));
+        m.annotations.add_label(
+            "dup".to_string(),
+            1,
+            ldir_ir::sir::v2::annotations::LabelCategory::Section,
+        );
+        m.annotations.add_label(
+            "dup".to_string(),
+            2,
+            ldir_ir::sir::v2::annotations::LabelCategory::Section,
+        );
 
         let pass = LabelDeduplication;
         let result = pass.run(&mut m);
@@ -723,9 +868,28 @@ mod tests {
     fn test_text_node_merging() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Paragraph));
-        m.body.push(Node::new(2, NodeType::Text { content: "Hello ".to_string() }).with_parent(1));
-        m.body.push(Node::new(3, NodeType::Text { content: "world".to_string() }).with_parent(1));
-        if let Some(p) = m.body.get_mut(1) { p.add_child(2); p.add_child(3); }
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Hello ".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "world".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(p) = m.body.get_mut(1) {
+            p.add_child(2);
+            p.add_child(3);
+        }
 
         let pass = TextNodeMerging;
         let result = pass.run(&mut m);
@@ -743,10 +907,30 @@ mod tests {
     fn test_text_node_merging_non_adjacent() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(1, NodeType::Paragraph));
-        m.body.push(Node::new(2, NodeType::Text { content: "A".to_string() }).with_parent(1));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "A".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
         m.body.push(Node::new(3, NodeType::Bold).with_parent(1));
-        m.body.push(Node::new(4, NodeType::Text { content: "B".to_string() }).with_parent(1));
-        if let Some(p) = m.body.get_mut(1) { p.add_child(2); p.add_child(3); p.add_child(4); }
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "B".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(p) = m.body.get_mut(1) {
+            p.add_child(2);
+            p.add_child(3);
+            p.add_child(4);
+        }
 
         let result = TextNodeMerging.run(&mut m);
         assert!(!result.changed);
@@ -769,14 +953,48 @@ mod tests {
             properties: Default::default(),
         });
         m.body.push(Node::new(1, NodeType::Document));
-        m.body.push(Node::new(2, NodeType::Section).with_parent(1).with_label("sec:a"));
-        m.body.push(Node::new(3, NodeType::Paragraph).with_parent(2).with_style("body"));
-        m.body.push(Node::new(4, NodeType::Text { content: "Hello ".to_string() }).with_parent(3));
-        m.body.push(Node::new(5, NodeType::Text { content: "world".to_string() }).with_parent(3));
+        m.body.push(
+            Node::new(2, NodeType::Section)
+                .with_parent(1)
+                .with_label("sec:a"),
+        );
+        m.body.push(
+            Node::new(3, NodeType::Paragraph)
+                .with_parent(2)
+                .with_style("body"),
+        );
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Hello ".to_string(),
+                },
+            )
+            .with_parent(3),
+        );
+        m.body.push(
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "world".to_string(),
+                },
+            )
+            .with_parent(3),
+        );
         m.body.push(Node::new(6, NodeType::Group).with_parent(1));
-        m.body.push(Node::new(99, NodeType::Text { content: "orphan".to_string() }).with_parent(1));
-        for (parent, child) in [(1,2),(2,3),(3,4),(3,5)] {
-            if let Some(p) = m.body.get_mut(parent) { p.add_child(child); }
+        m.body.push(
+            Node::new(
+                99,
+                NodeType::Text {
+                    content: "orphan".to_string(),
+                },
+            )
+            .with_parent(1),
+        );
+        for (parent, child) in [(1, 2), (2, 3), (3, 4), (3, 5)] {
+            if let Some(p) = m.body.get_mut(parent) {
+                p.add_child(child);
+            }
         }
 
         let pm = crate::default_pass_manager();

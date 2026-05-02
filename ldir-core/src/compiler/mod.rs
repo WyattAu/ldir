@@ -30,8 +30,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use ldir_ir::gir::{GIRCommand, GIRDocument, GIRImage, GIRLink, GIRPage};
 use ldir_ir::gir::ImageFormat;
+use ldir_ir::gir::{GIRCommand, GIRDocument, GIRImage, GIRLink, GIRPage};
 use ldir_ir::sir::{BlockType, SIRDocument, SIROpcode, StyleModifier};
 
 use crate::compiler::context::{CompileContext, parse_page_size};
@@ -185,43 +185,49 @@ pub fn compile_sir_with_font_db(
 
     let mut augmented_variants: Vec<(u32, Arc<Vec<u8>>)> = font_variants.to_vec();
 
-    if augmented_variants.iter().all(|(id, _)| *id != context::FONT_ID_BOLD) {
-        if let Some(id) = font_db.query_family_style(
-            font_family,
-            fontdb::Weight::BOLD,
-            fontdb::Style::Normal,
-        ) {
+    if augmented_variants
+        .iter()
+        .all(|(id, _)| *id != context::FONT_ID_BOLD)
+    {
+        if let Some(id) =
+            font_db.query_family_style(font_family, fontdb::Weight::BOLD, fontdb::Style::Normal)
+        {
             if let Some(data) = font_db.face_data(id) {
                 augmented_variants.push((context::FONT_ID_BOLD, data));
             }
         }
     }
 
-    if augmented_variants.iter().all(|(id, _)| *id != context::FONT_ID_ITALIC) {
-        if let Some(id) = font_db.query_family_style(
-            font_family,
-            fontdb::Weight::NORMAL,
-            fontdb::Style::Italic,
-        ) {
+    if augmented_variants
+        .iter()
+        .all(|(id, _)| *id != context::FONT_ID_ITALIC)
+    {
+        if let Some(id) =
+            font_db.query_family_style(font_family, fontdb::Weight::NORMAL, fontdb::Style::Italic)
+        {
             if let Some(data) = font_db.face_data(id) {
                 augmented_variants.push((context::FONT_ID_ITALIC, data));
             }
         }
     }
 
-    if augmented_variants.iter().all(|(id, _)| *id != context::FONT_ID_BOLD_ITALIC) {
-        if let Some(id) = font_db.query_family_style(
-            font_family,
-            fontdb::Weight::BOLD,
-            fontdb::Style::Italic,
-        ) {
+    if augmented_variants
+        .iter()
+        .all(|(id, _)| *id != context::FONT_ID_BOLD_ITALIC)
+    {
+        if let Some(id) =
+            font_db.query_family_style(font_family, fontdb::Weight::BOLD, fontdb::Style::Italic)
+        {
             if let Some(data) = font_db.face_data(id) {
                 augmented_variants.push((context::FONT_ID_BOLD_ITALIC, data));
             }
         }
     }
 
-    if augmented_variants.iter().all(|(id, _)| *id != context::FONT_ID_MONO) {
+    if augmented_variants
+        .iter()
+        .all(|(id, _)| *id != context::FONT_ID_MONO)
+    {
         if !font_mono_family.is_empty() {
             if let Some(id) = font_db.query(font_mono_family) {
                 if let Some(data) = font_db.face_data(id) {
@@ -294,8 +300,10 @@ pub fn compile_sir_with_font_variants(
     if hits + misses > 0 {
         let rate = hits as f64 / (hits + misses) as f64;
         tracing::info!(
-    "Shape cache: {} hits, {} misses, {:.1}% hit rate",
-    hits, misses, rate * 100.0
+            "Shape cache: {} hits, {} misses, {:.1}% hit rate",
+            hits,
+            misses,
+            rate * 100.0
         );
     }
 
@@ -309,6 +317,9 @@ pub fn compile_sir_with_font_variants(
 /// `page_size_name` is an optional preset name ("a4", "letter", "legal").
 /// `page_dims` is optional explicit `(width_pt, height_pt)`.
 /// `drop_caps` enables drop caps for the first paragraph after headings.
+///
+/// **Prefer [`compile_v2_document`](super::v2_compile::compile_v2_document) for new code.**
+/// This v1 entry point is retained for backward compatibility.
 #[allow(clippy::too_many_arguments)]
 pub fn compile_sir_with_font_variants_and_options(
     doc: &SIRDocument,
@@ -325,9 +336,15 @@ pub fn compile_sir_with_font_variants_and_options(
     let (pw, ph) = if let Some((w, h)) = page_dims {
         (w, h)
     } else if let Some(name) = page_size_name {
-        parse_page_size(name).unwrap_or((context::DEFAULT_PAGE_WIDTH_PT, context::DEFAULT_PAGE_HEIGHT_PT))
+        parse_page_size(name).unwrap_or((
+            context::DEFAULT_PAGE_WIDTH_PT,
+            context::DEFAULT_PAGE_HEIGHT_PT,
+        ))
     } else {
-        (context::DEFAULT_PAGE_WIDTH_PT, context::DEFAULT_PAGE_HEIGHT_PT)
+        (
+            context::DEFAULT_PAGE_WIDTH_PT,
+            context::DEFAULT_PAGE_HEIGHT_PT,
+        )
     };
 
     let font_data_for_pass1 = font_data.clone();
@@ -386,9 +403,16 @@ pub fn compile_sir_with_font_variants_and_options(
         let mut fn1 = FootnoteState::new();
 
         compile_node(
-            &tree, tree.root_index(), doc,
-            &mut page1, &mut ctx1, &mut gir_pass1,
-            base_dir, &labels, &mut eq1, &mut fn1,
+            &tree,
+            tree.root_index(),
+            doc,
+            &mut page1,
+            &mut ctx1,
+            &mut gir_pass1,
+            base_dir,
+            &labels,
+            &mut eq1,
+            &mut fn1,
         )?;
 
         if fn1.has_pending() {
@@ -410,7 +434,9 @@ pub fn compile_sir_with_font_variants_and_options(
     if needs_toc {
         let toc_page_count_before = gir_doc.page_count();
         generate_toc(
-            &mut page, &mut ctx, &mut gir_doc,
+            &mut page,
+            &mut ctx,
+            &mut gir_doc,
             &heading_entries,
             heading_page_positions.as_ref(),
         );
@@ -446,7 +472,9 @@ pub fn compile_sir_with_font_variants_and_options(
         let rate = hits as f64 / (hits + misses) as f64;
         tracing::info!(
             "Shape cache: {} hits, {} misses, {:.1}% hit rate",
-            hits, misses, rate * 100.0
+            hits,
+            misses,
+            rate * 100.0
         );
     }
 
@@ -509,8 +537,8 @@ fn generate_toc(
         };
 
         let page_num_str = page_num;
-        let num_x = (ctx.page_width - ctx.margin_right).to_f64() / 64.0
-            - (page_num_str.len() as f64 * 5.0);
+        let num_x =
+            (ctx.page_width - ctx.margin_right).to_f64() / 64.0 - (page_num_str.len() as f64 * 5.0);
         emit_move_xy(page, Fp266::from_f64(num_x * 64.0), ctx.y);
         for ch in page_num_str.chars() {
             page.push(GIRCommand::new_put_glyph(ch as i32, (5 * 64) as i32));
@@ -662,8 +690,8 @@ fn emit_footnotes(
     let notes = fn_state.take_pending();
     ctx.footnote_reserve = 0;
 
-    let footnote_y = ctx.page_height - ctx.margin_bottom
-        - Fp266::from_int(FOOTNOTE_FONT_SIZE_PT + 12);
+    let footnote_y =
+        ctx.page_height - ctx.margin_bottom - Fp266::from_int(FOOTNOTE_FONT_SIZE_PT + 12);
 
     let rule_x = ctx.x;
     let rule_width = Fp266::from_int(FOOTNOTE_RULE_WIDTH_PT);
@@ -726,10 +754,7 @@ fn emit_paragraph_inline(
 
     let line_ranges = {
         let items: BumpVec<'_, LineBreakItem> = BumpVec::from_iter_in(
-            shaped
-            .glyphs
-            .iter()
-            .map(|g| {
+            shaped.glyphs.iter().map(|g| {
                 let ci = g.cluster_id as usize;
                 let is_space = ci < text_bytes.len() && text_bytes[ci] == b' ';
                 let space_stretch = if is_space {
@@ -828,10 +853,7 @@ fn strip_label(text: &str) -> String {
 /// Collect all `\label{key}` entries and section/equation numbers from the S-IR tree.
 ///
 /// Returns a HashMap of label_key → display_number.
-fn collect_labels(
-    tree: &InstructionTree,
-    doc: &SIRDocument,
-) -> HashMap<String, String> {
+fn collect_labels(tree: &InstructionTree, doc: &SIRDocument) -> HashMap<String, String> {
     let mut labels: HashMap<String, String> = HashMap::new();
     let mut section_counters: HashMap<u32, u32> = HashMap::new();
     let mut equation_counter: u32 = 0;
@@ -1030,8 +1052,7 @@ fn compile_node(
                                 if fn_state.has_pending() {
                                     emit_footnotes(fn_state, page, ctx, gir_doc);
                                 }
-                                gir_doc
-                                    .push_page(std::mem::replace(page, ctx.new_page()));
+                                gir_doc.push_page(std::mem::replace(page, ctx.new_page()));
                             }
                             ctx.y = ctx.margin_top;
                         }
@@ -1061,12 +1082,7 @@ fn compile_node(
                         .or(ctx.font_data.as_ref());
                     let font_bytes = font_data_for_math.map(|d| d.as_slice());
 
-                    let result = layout_math(
-                        &clean_text,
-                        font_bytes,
-                        ctx.font_size,
-                        ctx.y,
-                    );
+                    let result = layout_math(&clean_text, font_bytes, ctx.font_size, ctx.y);
 
                     emit_set_font(page, ctx.font_id as i32);
                     for glyph in &result.glyphs {
@@ -1092,7 +1108,11 @@ fn compile_node(
                     if numbered {
                         *equation_counter += 1;
                         let eq_num = format!("({})", equation_counter);
-                        emit_move_xy(page, ctx.page_width - ctx.margin_right - Fp266::from_int(36), ctx.y);
+                        emit_move_xy(
+                            page,
+                            ctx.page_width - ctx.margin_right - Fp266::from_int(36),
+                            ctx.y,
+                        );
                         for ch in eq_num.chars() {
                             page.push(GIRCommand::new_put_glyph(ch as i32, (7 * 64) as i32));
                         }
@@ -1140,14 +1160,26 @@ fn compile_node(
                         let url = url.trim_end_matches('\0').to_string();
                         if !url.is_empty() {
                             ctx.pending_link_urls.push(url);
-                            ctx.link_start_positions.push((ctx.x.to_f64(), ctx.y.to_f64()));
+                            ctx.link_start_positions
+                                .push((ctx.x.to_f64(), ctx.y.to_f64()));
                         }
                     }
                 }
             }
 
             for &child_idx in &node.children {
-                compile_node(tree, child_idx, doc, page, ctx, gir_doc, base_dir, labels, equation_counter, fn_state)?;
+                compile_node(
+                    tree,
+                    child_idx,
+                    doc,
+                    page,
+                    ctx,
+                    gir_doc,
+                    base_dir,
+                    labels,
+                    equation_counter,
+                    fn_state,
+                )?;
             }
 
             // Record link rectangles after all children have been rendered
@@ -1199,9 +1231,7 @@ fn compile_node(
             let resolved_bytes = resolved.as_bytes();
             let mut i = 0;
             while i < resolved_bytes.len() {
-                if resolved_bytes[i] == b'\\'
-                    && resolved[i..].starts_with("\\fnmark{")
-                {
+                if resolved_bytes[i] == b'\\' && resolved[i..].starts_with("\\fnmark{") {
                     if !current.is_empty() {
                         parts.push(current.clone());
                         current.clear();
@@ -1226,18 +1256,19 @@ fn compile_node(
             }
 
             for part in &parts {
-                if let Some(num_str) = part.strip_prefix("\\fnmark{").and_then(|s| s.strip_suffix('}')) {
+                if let Some(num_str) = part
+                    .strip_prefix("\\fnmark{")
+                    .and_then(|s| s.strip_suffix('}'))
+                {
                     if let Ok(num) = num_str.parse::<u32>() {
                         let mark_char = superscript_digit(num);
                         emit_set_font(page, ctx.font_id as i32);
                         emit_move_xy(page, ctx.x, ctx.y);
-                        page.push(GIRCommand::new_put_glyph(
-                            mark_char as i32,
-                            (5 * 64) as i32,
-                        ));
+                        page.push(GIRCommand::new_put_glyph(mark_char as i32, (5 * 64) as i32));
                         ctx.advance_x(Fp266::from_int(5));
 
-                        let fn_text = doc.footnotes
+                        let fn_text = doc
+                            .footnotes
                             .iter()
                             .find(|(n, _)| *n == num)
                             .map(|(_, t)| t.clone());
@@ -1261,7 +1292,18 @@ fn compile_node(
             }
 
             for &child_idx in &node.children {
-                compile_node(tree, child_idx, doc, page, ctx, gir_doc, base_dir, labels, equation_counter, fn_state)?;
+                compile_node(
+                    tree,
+                    child_idx,
+                    doc,
+                    page,
+                    ctx,
+                    gir_doc,
+                    base_dir,
+                    labels,
+                    equation_counter,
+                    fn_state,
+                )?;
             }
         }
         SIROpcode::ApplyStyle => {
@@ -1280,21 +1322,54 @@ fn compile_node(
             }
 
             for &child_idx in &node.children {
-                compile_node(tree, child_idx, doc, page, ctx, gir_doc, base_dir, labels, equation_counter, fn_state)?;
+                compile_node(
+                    tree,
+                    child_idx,
+                    doc,
+                    page,
+                    ctx,
+                    gir_doc,
+                    base_dir,
+                    labels,
+                    equation_counter,
+                    fn_state,
+                )?;
             }
         }
         SIROpcode::InsertMath => {
             emit_attach_metadata(page, 0, 0, 0, 0);
 
             for &child_idx in &node.children {
-                compile_node(tree, child_idx, doc, page, ctx, gir_doc, base_dir, labels, equation_counter, fn_state)?;
+                compile_node(
+                    tree,
+                    child_idx,
+                    doc,
+                    page,
+                    ctx,
+                    gir_doc,
+                    base_dir,
+                    labels,
+                    equation_counter,
+                    fn_state,
+                )?;
             }
         }
         SIROpcode::LinkData => {
             emit_attach_metadata(page, 0, 0, 0, 0);
 
             for &child_idx in &node.children {
-                compile_node(tree, child_idx, doc, page, ctx, gir_doc, base_dir, labels, equation_counter, fn_state)?;
+                compile_node(
+                    tree,
+                    child_idx,
+                    doc,
+                    page,
+                    ctx,
+                    gir_doc,
+                    base_dir,
+                    labels,
+                    equation_counter,
+                    fn_state,
+                )?;
             }
         }
     }
@@ -1395,7 +1470,11 @@ fn load_and_scale_image(
     };
 
     let cw = content_width.to_f64();
-    let scale = if (w_px as f64) > cw { cw / (w_px as f64) } else { 1.0 };
+    let scale = if (w_px as f64) > cw {
+        cw / (w_px as f64)
+    } else {
+        1.0
+    };
     let w_fp = ((w_px as f64) * scale * 64.0) as i32;
     let h_fp = ((h_px as f64) * scale * 64.0) as i32;
 
@@ -1412,11 +1491,7 @@ fn load_and_scale_image(
 }
 
 /// Collect text content from SetContent children of a block.
-fn collect_block_text(
-    tree: &InstructionTree,
-    children: &[usize],
-    doc: &SIRDocument,
-) -> String {
+fn collect_block_text(tree: &InstructionTree, children: &[usize], doc: &SIRDocument) -> String {
     let mut text = String::new();
     for &child_idx in children {
         let child_node = tree.node(child_idx);
@@ -1432,11 +1507,7 @@ fn collect_block_text(
     text
 }
 
-fn collect_table_text(
-    tree: &InstructionTree,
-    children: &[usize],
-    doc: &SIRDocument,
-) -> String {
+fn collect_table_text(tree: &InstructionTree, children: &[usize], doc: &SIRDocument) -> String {
     let mut text = String::new();
     for &child_idx in children {
         let child_node = tree.node(child_idx);
@@ -1480,7 +1551,10 @@ fn emit_table(
         } else if !trimmed.is_empty() && !trimmed.starts_with('-') && !trimmed.starts_with(':') {
             // Separator line (e.g. |---|---|) - skip
             let cells: Vec<&str> = trimmed.split('|').map(|c| c.trim()).collect();
-            if !cells.iter().all(|c| c.is_empty() || c.chars().all(|ch| ch == '-' || ch == ':')) {
+            if !cells
+                .iter()
+                .all(|c| c.is_empty() || c.chars().all(|ch| ch == '-' || ch == ':'))
+            {
                 rows.push(cells);
             }
         }
@@ -1522,17 +1596,14 @@ fn emit_table(
             if col_idx >= num_cols {
                 break;
             }
-            let col_x = cx.to_f64() / 64.0;
+            let _col_x = cx.to_f64() / 64.0;
             emit_move_xy(page, cx, ctx.y);
 
             let trimmed_cell = cell.trim();
             if !trimmed_cell.is_empty() {
                 emit_set_font(page, ctx.font_id as i32);
                 for ch in trimmed_cell.chars() {
-                    page.push(GIRCommand::new_put_glyph(
-                        ch as i32,
-                        (7 * 64) as i32,
-                    ));
+                    page.push(GIRCommand::new_put_glyph(ch as i32, (7 * 64) as i32));
                 }
             }
 
@@ -1611,8 +1682,18 @@ fn emit_drop_cap_paragraph(
         .or(ctx.font_data.as_ref());
 
     let drop_cap_width = if let Some(data) = font_data_for_style {
-        let shaped = crate::shaping::shape_text_cached(&ctx.shape_cache, data, &first_char.to_string(), drop_cap_size, ctx.font_id);
-        shaped.glyphs.iter().map(|g| g.advance).fold(Fp266::ZERO, |a, b| a + b)
+        let shaped = crate::shaping::shape_text_cached(
+            &ctx.shape_cache,
+            data,
+            &first_char.to_string(),
+            drop_cap_size,
+            ctx.font_id,
+        );
+        shaped
+            .glyphs
+            .iter()
+            .map(|g| g.advance)
+            .fold(Fp266::ZERO, |a, b| a + b)
     } else {
         Fp266::from_int(14).mul(Fp266::from_int(DROP_CAP_SIZE_MULTIPLIER))
     };
@@ -1621,7 +1702,13 @@ fn emit_drop_cap_paragraph(
     ctx.font_size = drop_cap_size;
 
     let drop_cap_shaped = if let Some(data) = font_data_for_style {
-        crate::shaping::shape_text_cached(&ctx.shape_cache, data, &first_char.to_string(), drop_cap_size, ctx.font_id)
+        crate::shaping::shape_text_cached(
+            &ctx.shape_cache,
+            data,
+            &first_char.to_string(),
+            drop_cap_size,
+            ctx.font_id,
+        )
     } else {
         crate::shaping::fast_path::shape_ascii(&first_char.to_string(), drop_cap_size, ctx.font_id)
     };
@@ -1630,7 +1717,10 @@ fn emit_drop_cap_paragraph(
     emit_set_font(page, ctx.font_id as i32);
     emit_move_xy(page, ctx.x, drop_cap_y);
     for g in &drop_cap_shaped.glyphs {
-        page.push(GIRCommand::new_put_glyph(g.glyph_id as i32, g.advance.raw() as i32));
+        page.push(GIRCommand::new_put_glyph(
+            g.glyph_id as i32,
+            g.advance.raw() as i32,
+        ));
     }
 
     ctx.font_size = saved_font_size;
@@ -1661,10 +1751,7 @@ fn emit_drop_cap_paragraph(
 
     let line_ranges = {
         let items: BumpVec<'_, LineBreakItem> = BumpVec::from_iter_in(
-            rest_shaped
-            .glyphs
-            .iter()
-            .map(|g| {
+            rest_shaped.glyphs.iter().map(|g| {
                 let ci = g.cluster_id as usize;
                 let is_space = ci < text_bytes.len() && text_bytes[ci] == b' ';
                 let space_stretch = if is_space {
@@ -1715,11 +1802,7 @@ fn emit_drop_cap_paragraph(
     let num_lines = line_ranges.len();
     for (line_idx, &(start, end)) in line_ranges.iter().enumerate() {
         let use_indent = line_idx < DROP_CAP_LINES && line_idx < num_lines;
-        let line_x = if use_indent {
-            ctx.x + indent
-        } else {
-            ctx.x
-        };
+        let line_x = if use_indent { ctx.x + indent } else { ctx.x };
         let line_width = if use_indent {
             indented_width
         } else {
@@ -1788,10 +1871,7 @@ fn emit_paragraph(
 
     let line_ranges = {
         let items: BumpVec<'_, LineBreakItem> = BumpVec::from_iter_in(
-            shaped
-            .glyphs
-            .iter()
-            .map(|g| {
+            shaped.glyphs.iter().map(|g| {
                 let ci = g.cluster_id as usize;
                 let is_space = ci < text_bytes.len() && text_bytes[ci] == b' ';
                 let space_stretch = if is_space {
@@ -1873,8 +1953,8 @@ fn emit_paragraph(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ldir_ir::sir::{ROOT_SENTINEL, SIRInstruction};
     use ldir_ir::sir::BlockType;
+    use ldir_ir::sir::{ROOT_SENTINEL, SIRInstruction};
 
     fn make_simple_doc() -> SIRDocument {
         let mut doc = SIRDocument::new();
@@ -2069,8 +2149,9 @@ mod tests {
 
     #[test]
     fn test_detect_png_format() {
-        let png_header = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, // IHDR chunk
+        let png_header = [
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, // IHDR chunk
             0, 0, 0, 10, // width = 10
             0, 0, 0, 20, // height = 20
         ];
@@ -2180,8 +2261,14 @@ mod tests {
 
     #[test]
     fn test_extract_label_key() {
-        assert_eq!(extract_label_key(r"\label{sec:intro}"), Some("sec:intro".to_string()));
-        assert_eq!(extract_label_key(r"hello\label{eq:1}world"), Some("eq:1".to_string()));
+        assert_eq!(
+            extract_label_key(r"\label{sec:intro}"),
+            Some("sec:intro".to_string())
+        );
+        assert_eq!(
+            extract_label_key(r"hello\label{eq:1}world"),
+            Some("eq:1".to_string())
+        );
         assert_eq!(extract_label_key("no label"), None);
     }
 
@@ -2224,14 +2311,14 @@ mod tests {
             .filter(|cmd| cmd.opcode() == ldir_ir::gir::GIROpcode::PutGlyph)
             .count();
         assert!(glyph_count > 0, "should have some glyphs");
-        let has_superscript = gir
-            .iter()
-            .flat_map(|page| page.iter())
-            .any(|cmd| {
-                cmd.opcode() == ldir_ir::gir::GIROpcode::PutGlyph
-                    && cmd.arg(0) == Some('\u{00B9}' as i32)
-            });
-        assert!(has_superscript, "should render superscript ¹ for footnote mark 1");
+        let has_superscript = gir.iter().flat_map(|page| page.iter()).any(|cmd| {
+            cmd.opcode() == ldir_ir::gir::GIROpcode::PutGlyph
+                && cmd.arg(0) == Some('\u{00B9}' as i32)
+        });
+        assert!(
+            has_superscript,
+            "should render superscript ¹ for footnote mark 1"
+        );
     }
 
     #[test]
@@ -2254,7 +2341,10 @@ mod tests {
             .iter()
             .flat_map(|page| page.iter())
             .any(|cmd| cmd.opcode() == ldir_ir::gir::GIROpcode::DrawRule);
-        assert!(has_rule, "should emit a DrawRule for the footnote separator");
+        assert!(
+            has_rule,
+            "should emit a DrawRule for the footnote separator"
+        );
     }
 
     #[test]
@@ -2306,7 +2396,10 @@ mod tests {
         let root_id = 0;
         let root_payload = doc.payload_mut().append(&[BlockType::Document as u8]);
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, root_id, ROOT_SENTINEL, root_payload,
+            SIROpcode::PushBlock,
+            root_id,
+            ROOT_SENTINEL,
+            root_payload,
         ));
         // Heading block
         let heading_id = 1;
@@ -2316,7 +2409,10 @@ mod tests {
             p
         });
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, heading_id, root_id, heading_payload,
+            SIROpcode::PushBlock,
+            heading_id,
+            root_id,
+            heading_payload,
         ));
         // Heading content
         let hc_id = 2;
@@ -2328,7 +2424,10 @@ mod tests {
         let para_id = 3;
         let para_payload = doc.payload_mut().append(&[BlockType::Paragraph as u8]);
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, para_id, root_id, para_payload,
+            SIROpcode::PushBlock,
+            para_id,
+            root_id,
+            para_payload,
         ));
         // Paragraph content
         let pc_id = 4;
@@ -2347,7 +2446,10 @@ mod tests {
         let root_id = 0;
         let root_payload = doc.payload_mut().append(&[BlockType::Document as u8]);
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, root_id, ROOT_SENTINEL, root_payload,
+            SIROpcode::PushBlock,
+            root_id,
+            ROOT_SENTINEL,
+            root_payload,
         ));
         let heading_id = 1;
         let heading_payload = doc.payload_mut().append(&{
@@ -2356,7 +2458,10 @@ mod tests {
             p
         });
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, heading_id, root_id, heading_payload,
+            SIROpcode::PushBlock,
+            heading_id,
+            root_id,
+            heading_payload,
         ));
         let hc_id = 2;
         doc.push_with_payload(
@@ -2366,7 +2471,10 @@ mod tests {
         let para_id = 3;
         let para_payload = doc.payload_mut().append(&[BlockType::Paragraph as u8]);
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, para_id, root_id, para_payload,
+            SIROpcode::PushBlock,
+            para_id,
+            root_id,
+            para_payload,
         ));
         let pc_id = 4;
         doc.push_with_payload(
@@ -2375,10 +2483,16 @@ mod tests {
         );
 
         let gir = compile_sir_with_font_variants_and_options(
-            &doc, None, &[],
-            Some((72, 72, 72, 72)), None, None, None,
+            &doc,
+            None,
+            &[],
+            Some((72, 72, 72, 72)),
+            None,
+            None,
+            None,
             true,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(gir.is_well_formed());
         assert!(!gir.is_empty());
     }
@@ -2389,7 +2503,10 @@ mod tests {
         let root_id = 0;
         let root_payload = doc.payload_mut().append(&[BlockType::Document as u8]);
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, root_id, ROOT_SENTINEL, root_payload,
+            SIROpcode::PushBlock,
+            root_id,
+            ROOT_SENTINEL,
+            root_payload,
         ));
 
         let mut next_id = 1u32;
@@ -2402,7 +2519,10 @@ mod tests {
                 p
             });
             doc.push(SIRInstruction::new(
-                SIROpcode::PushBlock, heading_id, root_id, heading_payload,
+                SIROpcode::PushBlock,
+                heading_id,
+                root_id,
+                heading_payload,
             ));
             let hc_id = next_id;
             next_id += 1;
@@ -2415,7 +2535,10 @@ mod tests {
             next_id += 1;
             let para_payload = doc.payload_mut().append(&[BlockType::Paragraph as u8]);
             doc.push(SIRInstruction::new(
-                SIROpcode::PushBlock, para_id, root_id, para_payload,
+                SIROpcode::PushBlock,
+                para_id,
+                root_id,
+                para_payload,
             ));
             let pc_id = next_id;
             next_id += 1;
@@ -2426,10 +2549,16 @@ mod tests {
         }
 
         let gir = compile_sir_with_font_variants_and_options(
-            &doc, None, &[],
-            Some((72, 72, 72, 72)), None, None, None,
+            &doc,
+            None,
+            &[],
+            Some((72, 72, 72, 72)),
+            None,
+            None,
+            None,
             true,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(gir.is_well_formed());
     }
 
@@ -2463,7 +2592,10 @@ mod tests {
         let root_id = 0;
         let root_payload = doc.payload_mut().append(&[BlockType::Document as u8]);
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, root_id, ROOT_SENTINEL, root_payload,
+            SIROpcode::PushBlock,
+            root_id,
+            ROOT_SENTINEL,
+            root_payload,
         ));
 
         let mut next_id = 1u32;
@@ -2477,7 +2609,10 @@ mod tests {
                 p
             });
             doc.push(SIRInstruction::new(
-                SIROpcode::PushBlock, heading_id, root_id, heading_payload,
+                SIROpcode::PushBlock,
+                heading_id,
+                root_id,
+                heading_payload,
             ));
             let hc_id = next_id;
             next_id += 1;
@@ -2488,10 +2623,16 @@ mod tests {
         }
 
         let gir = compile_sir_with_font_variants_and_options(
-            &doc, None, &[],
-            Some((72, 72, 72, 72)), None, None, None,
+            &doc,
+            None,
+            &[],
+            Some((72, 72, 72, 72)),
+            None,
+            None,
+            None,
             false,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(gir.is_well_formed());
         assert!(gir.page_count() >= 1);
     }
@@ -2502,7 +2643,10 @@ mod tests {
         let root_id = 0;
         let root_payload = doc.payload_mut().append(&[BlockType::Document as u8]);
         doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock, root_id, ROOT_SENTINEL, root_payload,
+            SIROpcode::PushBlock,
+            root_id,
+            ROOT_SENTINEL,
+            root_payload,
         ));
 
         let mut next_id = 1u32;
@@ -2516,7 +2660,10 @@ mod tests {
                 p
             });
             doc.push(SIRInstruction::new(
-                SIROpcode::PushBlock, heading_id, root_id, heading_payload,
+                SIROpcode::PushBlock,
+                heading_id,
+                root_id,
+                heading_payload,
             ));
             let hc_id = next_id;
             next_id += 1;
@@ -2527,10 +2674,16 @@ mod tests {
         }
 
         let gir = compile_sir_with_font_variants_and_options(
-            &doc, None, &[],
-            Some((72, 72, 72, 72)), None, None, None,
+            &doc,
+            None,
+            &[],
+            Some((72, 72, 72, 72)),
+            None,
+            None,
+            None,
             false,
-        ).unwrap();
+        )
+        .unwrap();
 
         let has_internal_link = gir
             .iter()
@@ -2581,10 +2734,16 @@ mod tests {
     fn test_toc_no_headings_no_toc() {
         let doc = make_simple_doc();
         let gir = compile_sir_with_font_variants_and_options(
-            &doc, None, &[],
-            Some((72, 72, 72, 72)), None, None, None,
+            &doc,
+            None,
+            &[],
+            Some((72, 72, 72, 72)),
+            None,
+            None,
+            None,
             false,
-        ).unwrap();
+        )
+        .unwrap();
         assert!(gir.is_well_formed());
         let has_internal_link = gir
             .iter()

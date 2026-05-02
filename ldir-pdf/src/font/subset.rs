@@ -115,7 +115,7 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
             new_glyf.extend_from_slice(&glyf_table.unwrap()[start..start + len]);
         }
         // Pad to 2-byte boundary (required by short loca format)
-        while new_glyf.len() % 2 != 0 {
+        while !new_glyf.len().is_multiple_of(2) {
             new_glyf.push(0);
         }
         new_loca.push(new_glyf.len() as u32);
@@ -403,7 +403,11 @@ mod tests {
         );
 
         let result = ttf_parser::Face::parse(&subsetted, 0);
-        assert!(result.is_ok(), "subset font should be valid: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "subset font should be valid: {:?}",
+            result.err()
+        );
 
         let subset_face = result.unwrap();
 

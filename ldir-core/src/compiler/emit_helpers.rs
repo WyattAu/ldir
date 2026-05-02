@@ -57,11 +57,10 @@ pub fn emit_attach_metadata(
     ));
 }
 
-/// Finalize a page by balancing any remaining stack depth.
+/// Emit PopStack commands to balance the stack back to the target depth.
 ///
-/// Emits PopStack commands to bring the stack back to the target depth.
 /// Returns the number of PopStack commands emitted.
-pub fn balance_stack(page: &mut GIRPage, current_depth: usize, target_depth: usize) -> usize {
+pub fn emit_balance_stack(page: &mut GIRPage, current_depth: usize, target_depth: usize) -> usize {
     let to_pop = current_depth.saturating_sub(target_depth);
     for _ in 0..to_pop {
         emit_pop_stack(page);
@@ -140,12 +139,12 @@ mod tests {
     }
 
     #[test]
-    fn test_balance_stack() {
+    fn test_emit_balance_stack() {
         let mut page = GIRPage::new();
         for _ in 0..3 {
             emit_push_stack(&mut page);
         }
-        let popped = balance_stack(&mut page, 3, 0);
+        let popped = emit_balance_stack(&mut page, 3, 0);
         assert_eq!(popped, 3);
         assert!(page.is_stack_balanced());
     }

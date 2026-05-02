@@ -1,9 +1,10 @@
 //! # LDIR IR
 //!
-//! S-IR and G-IR type definitions with rkyv serialization.
+//! S-IR, L-IR, and G-IR type definitions with rkyv serialization.
 //!
 //! This crate defines the intermediate representation types used throughout LDIR:
 //! - **S-IR** (Source IR): Tree-structured document representation
+//! - **L-IR** (Layout IR): Positioned box tree capturing all layout decisions
 //! - **G-IR** (Graphical IR): Linearized rendering commands
 //!
 //! ## S-IR (Source Intermediate Representation)
@@ -53,7 +54,9 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod fp266;
 pub mod gir;
+pub mod lir;
 pub mod sir;
 
 pub use sir::{EntityId, ROOT_SENTINEL};

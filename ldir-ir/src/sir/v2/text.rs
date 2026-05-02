@@ -13,10 +13,16 @@ pub fn text_to_module(text: &str) -> Result<SIRModuleV2, String> {
 
     for line in text.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with(";;") { continue; }
+        if line.is_empty() || line.starts_with(";;") {
+            continue;
+        }
 
-        if line.starts_with("@meta") { continue; }
-        if line.starts_with("@body") { continue; }
+        if line.starts_with("@meta") {
+            continue;
+        }
+        if line.starts_with("@body") {
+            continue;
+        }
 
         if line.starts_with("@font") {
             if let Some(name) = extract_quoted(line, "font ") {
@@ -63,7 +69,9 @@ pub fn text_to_module(text: &str) -> Result<SIRModuleV2, String> {
             let style = extract_attr_quoted(attrs_str, "style=");
             let counter = extract_attr_quoted(attrs_str, "counter=");
 
-            if id >= next_id { next_id = id + 1; }
+            if id >= next_id {
+                next_id = id + 1;
+            }
 
             let node_type = match tag {
                 "document" => nodes::NodeType::Document,
@@ -126,17 +134,28 @@ pub fn text_to_module(text: &str) -> Result<SIRModuleV2, String> {
                     num_cols: 0,
                 },
                 "table-row" => nodes::NodeType::TableRow { is_header: false },
-                "table-cell" => nodes::NodeType::TableCell { colspan: 1, rowspan: 1 },
+                "table-cell" => nodes::NodeType::TableCell {
+                    colspan: 1,
+                    rowspan: 1,
+                },
                 "footnote-block" => nodes::NodeType::FootnoteBlock,
                 "br" => nodes::NodeType::LineBreak,
                 _ => continue,
             };
 
             let mut node = nodes::Node::new(id, node_type);
-            if let Some(pid) = parent_id { node = node.with_parent(pid); }
-            if let Some(l) = label { node.label = Some(l); }
-            if let Some(s) = style { node.style = Some(s); }
-            if let Some(c) = counter { node.counter = Some(c); }
+            if let Some(pid) = parent_id {
+                node = node.with_parent(pid);
+            }
+            if let Some(l) = label {
+                node.label = Some(l);
+            }
+            if let Some(s) = style {
+                node.style = Some(s);
+            }
+            if let Some(c) = counter {
+                node.counter = Some(c);
+            }
 
             if let Some(ref l) = node.label {
                 let category = if node.is_heading() {
@@ -180,7 +199,9 @@ fn extract_attr_quoted(attrs: &str, key: &str) -> Option<String> {
 }
 
 fn parse_node_line(line: &str) -> Option<(&str, &str, &str)> {
-    if !line.starts_with('@') { return None; }
+    if !line.starts_with('@') {
+        return None;
+    }
     let tag_end = line[1..].find(|c: char| c.is_whitespace() || c == '[' || c == '{')?;
     let tag = &line[1..tag_end + 1];
     let rest = line[tag_end + 1..].trim_start();
@@ -191,7 +212,9 @@ fn parse_node_line(line: &str) -> Option<(&str, &str, &str)> {
         let body = if rest2.starts_with('{') {
             let brace_end = rest2.rfind('}')?;
             &rest2[1..brace_end]
-        } else { "" };
+        } else {
+            ""
+        };
         (attrs, body)
     } else if rest.starts_with('{') {
         let brace_end = rest.rfind('}')?;
@@ -220,15 +243,17 @@ fn extract_braced_field(s: &str, key: &str) -> Option<String> {
 /// Serialize a module to text format.
 pub fn module_to_text(module: &SIRModuleV2) -> String {
     let mut out = String::new();
-    
+
     // Header comment
-    out.push_str(&format!(";; ldir-ir v{}.{}.{}\n", 
-        module.header.version.0, module.header.version.1, module.header.version.2));
+    out.push_str(&format!(
+        ";; ldir-ir v{}.{}.{}\n",
+        module.header.version.0, module.header.version.1, module.header.version.2
+    ));
     if let Some(ref fmt) = module.header.source_format {
         out.push_str(&format!(";; source: {}\n", fmt));
     }
     out.push('\n');
-    
+
     // Metadata
     out.push_str("@meta {\n");
     if let Some(ref title) = module.metadata.title {
@@ -242,34 +267,43 @@ pub fn module_to_text(module: &SIRModuleV2) -> String {
         out.push_str(&format!("  class = {:?}\n", cls));
     }
     out.push_str("}\n\n");
-    
+
     // Fonts
     for font in &module.resources.fonts {
-        out.push_str(&format!("@font {:?} {{ family = {:?}, weight = {:?} }}\n",
-            font.name, font.family,
+        out.push_str(&format!(
+            "@font {:?} {{ family = {:?}, weight = {:?} }}\n",
+            font.name,
+            font.family,
             match font.weight {
                 crate::sir::v2::resources::FontWeight::Regular => "regular",
                 crate::sir::v2::resources::FontWeight::Bold => "bold",
                 crate::sir::v2::resources::FontWeight::Light => "light",
                 crate::sir::v2::resources::FontWeight::Thin => "thin",
                 _ => "regular",
-            }));
+            }
+        ));
     }
-    if !module.resources.fonts.is_empty() { out.push('\n'); }
-    
+    if !module.resources.fonts.is_empty() {
+        out.push('\n');
+    }
+
     // Counters
     for counter in &module.resources.counters {
-        out.push_str(&format!("@counter {:?} {{ format = {:?} }}\n",
+        out.push_str(&format!(
+            "@counter {:?} {{ format = {:?} }}\n",
             counter.name,
             match &counter.format {
                 crate::sir::v2::resources::CounterFormat::Arabic => "arabic",
                 crate::sir::v2::resources::CounterFormat::RomanLower => "roman-lower",
                 crate::sir::v2::resources::CounterFormat::Custom(s) => s.as_str(),
                 _ => "arabic",
-            }));
+            }
+        ));
     }
-    if !module.resources.counters.is_empty() { out.push('\n'); }
-    
+    if !module.resources.counters.is_empty() {
+        out.push('\n');
+    }
+
     // Styles
     for style in &module.styles.styles {
         out.push_str(&format!("@style {:?} {{\n", style.name));
@@ -278,21 +312,21 @@ pub fn module_to_text(module: &SIRModuleV2) -> String {
         }
         out.push_str("}\n\n");
     }
-    
+
     // Body nodes
     out.push_str("@body {\n");
     for node in module.body.iter() {
         emit_node(&mut out, node, 1);
     }
     out.push_str("}\n");
-    
+
     out
 }
 
 fn emit_node(out: &mut String, node: &crate::sir::v2::nodes::Node, indent: usize) {
     let pad = "  ".repeat(indent);
     let (tag, extra) = node_tag(node);
-    
+
     let mut attrs = Vec::new();
     attrs.push(format!("id={}", node.id));
     if let Some(pid) = node.parent_id {
@@ -304,9 +338,15 @@ fn emit_node(out: &mut String, node: &crate::sir::v2::nodes::Node, indent: usize
     if let Some(ref style) = node.style {
         attrs.push(format!("style={:?}", style));
     }
-    
-    out.push_str(&format!("{}@{} [{}] {}\n", pad, tag, attrs.join(", "), extra));
-    
+
+    out.push_str(&format!(
+        "{}@{} [{}] {}\n",
+        pad,
+        tag,
+        attrs.join(", "),
+        extra
+    ));
+
     for _child_id in &node.child_ids {
         // Children are emitted at higher indent when we have access to them
         // For now, just reference
@@ -318,30 +358,39 @@ fn node_tag(node: &crate::sir::v2::nodes::Node) -> (&'static str, String) {
         crate::sir::v2::nodes::NodeType::Document => ("document", "{}".into()),
         crate::sir::v2::nodes::NodeType::Section => ("section", "{}".into()),
         crate::sir::v2::nodes::NodeType::Paragraph => ("paragraph", "{}".into()),
-        crate::sir::v2::nodes::NodeType::Text { content } => 
-            ("text", format!("{{ {:?} }}", content)),
-        crate::sir::v2::nodes::NodeType::MathBlock { numbered, .. } =>
-            ("equation", format!("{{ numbered={} }}", numbered)),
-        crate::sir::v2::nodes::NodeType::List { ordered, .. } =>
-            ("list", format!("{{ ordered={} }}", ordered)),
-        crate::sir::v2::nodes::NodeType::Image { source, .. } =>
-            ("image", format!("{{ src={:?} }}", source)),
-        crate::sir::v2::nodes::NodeType::Link { url, .. } =>
-            ("link", format!("{{ url={:?} }}", url)),
-        crate::sir::v2::nodes::NodeType::Footnote { content } =>
-            ("footnote", format!("{{ {:?} }}", content)),
-        crate::sir::v2::nodes::NodeType::Figure { .. } =>
-            ("figure", "{}".into()),
-        crate::sir::v2::nodes::NodeType::CodeBlock { language } =>
-            ("code-block", format!("{{ lang={:?} }}", language.as_deref().unwrap_or(""))),
+        crate::sir::v2::nodes::NodeType::Text { content } => {
+            ("text", format!("{{ {:?} }}", content))
+        }
+        crate::sir::v2::nodes::NodeType::MathBlock { numbered, .. } => {
+            ("equation", format!("{{ numbered={} }}", numbered))
+        }
+        crate::sir::v2::nodes::NodeType::List { ordered, .. } => {
+            ("list", format!("{{ ordered={} }}", ordered))
+        }
+        crate::sir::v2::nodes::NodeType::Image { source, .. } => {
+            ("image", format!("{{ src={:?} }}", source))
+        }
+        crate::sir::v2::nodes::NodeType::Link { url, .. } => {
+            ("link", format!("{{ url={:?} }}", url))
+        }
+        crate::sir::v2::nodes::NodeType::Footnote { content } => {
+            ("footnote", format!("{{ {:?} }}", content))
+        }
+        crate::sir::v2::nodes::NodeType::Figure { .. } => ("figure", "{}".into()),
+        crate::sir::v2::nodes::NodeType::CodeBlock { language } => (
+            "code-block",
+            format!("{{ lang={:?} }}", language.as_deref().unwrap_or("")),
+        ),
         crate::sir::v2::nodes::NodeType::BlockQuote => ("blockquote", "{}".into()),
-        crate::sir::v2::nodes::NodeType::TableOfContents { max_depth } =>
-            ("toc", format!("{{ depth={} }}", max_depth)),
+        crate::sir::v2::nodes::NodeType::TableOfContents { max_depth } => {
+            ("toc", format!("{{ depth={} }}", max_depth))
+        }
         crate::sir::v2::nodes::NodeType::ThematicBreak => ("hr", "{}".into()),
         crate::sir::v2::nodes::NodeType::PageBreak => ("page-break", "{}".into()),
         crate::sir::v2::nodes::NodeType::Caption => ("caption", "{}".into()),
-        crate::sir::v2::nodes::NodeType::Styled { style_name } =>
-            ("styled", format!("{{ style={:?} }}", style_name)),
+        crate::sir::v2::nodes::NodeType::Styled { style_name } => {
+            ("styled", format!("{{ style={:?} }}", style_name))
+        }
         crate::sir::v2::nodes::NodeType::Bold => ("bold", "{}".into()),
         crate::sir::v2::nodes::NodeType::Italic => ("italic", "{}".into()),
         crate::sir::v2::nodes::NodeType::Mono => ("mono", "{}".into()),
@@ -351,8 +400,9 @@ fn node_tag(node: &crate::sir::v2::nodes::Node) -> (&'static str, String) {
         crate::sir::v2::nodes::NodeType::Subsection => ("subsection", "{}".into()),
         crate::sir::v2::nodes::NodeType::Subsubsection => ("subsubsection", "{}".into()),
         crate::sir::v2::nodes::NodeType::ListItem => ("list-item", "{}".into()),
-        crate::sir::v2::nodes::NodeType::MathInline { content } =>
-            ("math", format!("{{ {:?} }}", content)),
+        crate::sir::v2::nodes::NodeType::MathInline { content } => {
+            ("math", format!("{{ {:?} }}", content))
+        }
         crate::sir::v2::nodes::NodeType::LineBreak => ("br", "{}".into()),
         crate::sir::v2::nodes::NodeType::Underline => ("underline", "{}".into()),
         crate::sir::v2::nodes::NodeType::Strikethrough => ("strike", "{}".into()),
@@ -361,8 +411,9 @@ fn node_tag(node: &crate::sir::v2::nodes::Node) -> (&'static str, String) {
         crate::sir::v2::nodes::NodeType::TableRow { .. } => ("table-row", "{}".into()),
         crate::sir::v2::nodes::NodeType::TableCell { .. } => ("table-cell", "{}".into()),
         crate::sir::v2::nodes::NodeType::FootnoteBlock => ("footnote-block", "{}".into()),
-        crate::sir::v2::nodes::NodeType::Citation { keys, .. } =>
-            ("citation", format!("{{ keys={:?} }}", keys)),
+        crate::sir::v2::nodes::NodeType::Citation { keys, .. } => {
+            ("citation", format!("{{ keys={:?} }}", keys))
+        }
     }
 }
 
@@ -397,9 +448,19 @@ mod tests {
     #[test]
     fn test_text_with_nodes() {
         let mut m = SIRModuleV2::new();
-        m.body.push(Node::new(1, NodeType::Section).with_label("sec:intro"));
-        m.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
-        m.body.push(Node::new(3, NodeType::Text { content: "Hello".to_string() }).with_parent(2));
+        m.body
+            .push(Node::new(1, NodeType::Section).with_label("sec:intro"));
+        m.body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Hello".to_string(),
+                },
+            )
+            .with_parent(2),
+        );
 
         let text = module_to_text(&m);
         assert!(text.contains("@section [id=1, label=\"sec:intro\"]"));
@@ -468,9 +529,19 @@ mod tests {
     fn test_text_roundtrip() {
         let mut m = SIRModuleV2::new();
         m.metadata.title = Some("Roundtrip Test".to_string());
-        m.body.push(Node::new(1, NodeType::Section).with_label("sec:a"));
-        m.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
-        m.body.push(Node::new(3, NodeType::Text { content: "Hi".to_string() }).with_parent(2));
+        m.body
+            .push(Node::new(1, NodeType::Section).with_label("sec:a"));
+        m.body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Hi".to_string(),
+                },
+            )
+            .with_parent(2),
+        );
 
         let text = module_to_text(&m);
         let m2 = text_to_module(&text).unwrap();

@@ -73,7 +73,7 @@ pub fn shape_harfbuzz(
     let face = unsafe { hb::hb_face_create(blob, 0) };
     let font = unsafe { hb::hb_font_create(face) };
 
-    let (scale, ptem) = match ttf_parser::Face::from_slice(font_data, 0) {
+    let (scale, ptem) = match ttf_parser::Face::parse(font_data, 0) {
         Ok(tp_face) => {
             let upem = tp_face.units_per_em();
             let design_size_pt = font_size.to_f64();
@@ -81,7 +81,9 @@ pub fn shape_harfbuzz(
             (s, design_size_pt as f32)
         }
         Err(_) => {
-            tracing::warn!("harfbuzz: failed to parse font with ttf_parser, falling back to raw scale");
+            tracing::warn!(
+                "harfbuzz: failed to parse font with ttf_parser, falling back to raw scale"
+            );
             (font_size.raw() as i32, font_size.to_f64() as f32)
         }
     };
@@ -233,7 +235,15 @@ mod tests {
     #[test]
     fn shape_with_language() {
         let data = test_font_data();
-        let run = shape_harfbuzz(&data, "hello", Fp266::from_int(12), None, Some("en"), None, None);
+        let run = shape_harfbuzz(
+            &data,
+            "hello",
+            Fp266::from_int(12),
+            None,
+            Some("en"),
+            None,
+            None,
+        );
         assert_eq!(run.glyphs.len(), 5);
     }
 

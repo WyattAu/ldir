@@ -106,13 +106,7 @@ impl TextRenderer {
         out.push('\n');
     }
 
-    fn render_node(
-        &mut self,
-        out: &mut String,
-        module: &SIRModuleV2,
-        node: &Node,
-        depth: usize,
-    ) {
+    fn render_node(&mut self, out: &mut String, module: &SIRModuleV2, node: &Node, depth: usize) {
         match &node.node_type {
             NodeType::Document => {
                 for &child_id in &node.child_ids {
@@ -122,8 +116,11 @@ impl TextRenderer {
                 }
             }
 
-            NodeType::Part | NodeType::Chapter | NodeType::Section
-            | NodeType::Subsection | NodeType::Subsubsection => {
+            NodeType::Part
+            | NodeType::Chapter
+            | NodeType::Section
+            | NodeType::Subsection
+            | NodeType::Subsubsection => {
                 let level = node.heading_level().unwrap_or(2);
                 if level > 0 && (level as usize) < 6 {
                     self.heading_counter[level as usize] += 1;
@@ -152,9 +149,8 @@ impl TextRenderer {
                 out.push('\n');
 
                 if self.options.underline_headings {
-                    let content_len = prefix.len()
-                        + if num.is_empty() { 0 } else { num.len() + 1 }
-                        + text.len();
+                    let content_len =
+                        prefix.len() + if num.is_empty() { 0 } else { num.len() + 1 } + text.len();
                     let ch = if level <= 1 { '=' } else { '-' };
                     out.push_str(&String::from(ch).repeat(content_len));
                     out.push('\n');
@@ -421,12 +417,7 @@ impl TextRenderer {
         text
     }
 
-    fn collect_inline_text_recursive(
-        &self,
-        module: &SIRModuleV2,
-        node: &Node,
-        out: &mut String,
-    ) {
+    fn collect_inline_text_recursive(&self, module: &SIRModuleV2, node: &Node, out: &mut String) {
         match &node.node_type {
             NodeType::Text { content } => {
                 out.push_str(content);
@@ -498,11 +489,24 @@ mod tests {
                 .with_label("sec:intro"),
         );
         m.body.push(
-            Node::new(2, NodeType::Text { content: "Introduction".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Introduction".into(),
+                },
+            )
+            .with_parent(1),
         );
-        m.body.push(Node::new(3, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(0));
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Hello, world!".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Hello, world!".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(0).unwrap().add_child(3);
@@ -563,11 +567,23 @@ mod tests {
         );
         m.body.push(Node::new(2, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "item 1".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "item 1".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.push(Node::new(4, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(5, NodeType::Text { content: "item 2".into() }).with_parent(4),
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "item 2".into(),
+                },
+            )
+            .with_parent(4),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -597,11 +613,23 @@ mod tests {
         );
         m.body.push(Node::new(2, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "first".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "first".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.push(Node::new(4, NodeType::ListItem).with_parent(1));
         m.body.push(
-            Node::new(5, NodeType::Text { content: "second".into() }).with_parent(4),
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "second".into(),
+                },
+            )
+            .with_parent(4),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -618,7 +646,8 @@ mod tests {
     fn test_link_rendered() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -630,7 +659,13 @@ mod tests {
             .with_parent(1),
         );
         m.body.push(
-            Node::new(3, NodeType::Text { content: "link".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "link".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -654,7 +689,13 @@ mod tests {
             .with_parent(0),
         );
         m.body.push(
-            Node::new(2, NodeType::Text { content: "fn main() {}".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "fn main() {}".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -669,7 +710,8 @@ mod tests {
     fn test_math_inline() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -690,7 +732,8 @@ mod tests {
     fn test_thematic_break() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
         m.body.get_mut(0).unwrap().add_child(1);
 
         let text = TextRenderer::new().render(&m);
@@ -701,10 +744,18 @@ mod tests {
     fn test_blockquote() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::BlockQuote).with_parent(0));
-        m.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        m.body
+            .push(Node::new(1, NodeType::BlockQuote).with_parent(0));
+        m.body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "A quote".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "A quote".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -718,17 +769,36 @@ mod tests {
     fn test_inline_styles() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(Node::new(2, NodeType::Bold).with_parent(1));
         m.body.push(
-            Node::new(3, NodeType::Text { content: "bold".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "bold".into(),
+                },
+            )
+            .with_parent(2),
         );
         m.body.push(
-            Node::new(4, NodeType::Text { content: " and ".into() }).with_parent(1),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: " and ".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.push(Node::new(5, NodeType::Mono).with_parent(1));
         m.body.push(
-            Node::new(6, NodeType::Text { content: "code".into() }).with_parent(5),
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "code".into(),
+                },
+            )
+            .with_parent(5),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -755,9 +825,8 @@ mod tests {
             )
             .with_parent(0),
         );
-        m.body.push(
-            Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1),
-        );
+        m.body
+            .push(Node::new(2, NodeType::TableRow { is_header: true }).with_parent(1));
         m.body.push(
             Node::new(
                 3,
@@ -769,7 +838,13 @@ mod tests {
             .with_parent(2),
         );
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Name".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Name".into(),
+                },
+            )
+            .with_parent(3),
         );
         m.body.push(
             Node::new(
@@ -782,11 +857,16 @@ mod tests {
             .with_parent(2),
         );
         m.body.push(
-            Node::new(6, NodeType::Text { content: "Value".into() }).with_parent(5),
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "Value".into(),
+                },
+            )
+            .with_parent(5),
         );
-        m.body.push(
-            Node::new(7, NodeType::TableRow { is_header: false }).with_parent(1),
-        );
+        m.body
+            .push(Node::new(7, NodeType::TableRow { is_header: false }).with_parent(1));
         m.body.push(
             Node::new(
                 8,
@@ -798,7 +878,13 @@ mod tests {
             .with_parent(7),
         );
         m.body.push(
-            Node::new(9, NodeType::Text { content: "A".into() }).with_parent(8),
+            Node::new(
+                9,
+                NodeType::Text {
+                    content: "A".into(),
+                },
+            )
+            .with_parent(8),
         );
         m.body.push(
             Node::new(
@@ -811,7 +897,13 @@ mod tests {
             .with_parent(7),
         );
         m.body.push(
-            Node::new(11, NodeType::Text { content: "1".into() }).with_parent(10),
+            Node::new(
+                11,
+                NodeType::Text {
+                    content: "1".into(),
+                },
+            )
+            .with_parent(10),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(1).unwrap().add_child(2);
@@ -843,7 +935,8 @@ mod tests {
     fn test_no_html_entities() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,
@@ -868,15 +961,34 @@ mod tests {
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(Node::new(1, NodeType::Section).with_parent(0));
         m.body.push(
-            Node::new(2, NodeType::Text { content: "First".into() }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "First".into(),
+                },
+            )
+            .with_parent(1),
         );
         m.body.push(Node::new(3, NodeType::Section).with_parent(0));
         m.body.push(
-            Node::new(4, NodeType::Text { content: "Second".into() }).with_parent(3),
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Second".into(),
+                },
+            )
+            .with_parent(3),
         );
-        m.body.push(Node::new(5, NodeType::Subsection).with_parent(0));
+        m.body
+            .push(Node::new(5, NodeType::Subsection).with_parent(0));
         m.body.push(
-            Node::new(6, NodeType::Text { content: "Sub".into() }).with_parent(5),
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "Sub".into(),
+                },
+            )
+            .with_parent(5),
         );
         m.body.get_mut(0).unwrap().add_child(1);
         m.body.get_mut(0).unwrap().add_child(3);
@@ -895,7 +1007,8 @@ mod tests {
     fn test_image_alt_text() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body.push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body.push(
             Node::new(
                 2,

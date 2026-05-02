@@ -2,5 +2,5 @@
 
 mod render;
 
-pub use render::TextRenderer;
 pub use render::TextOptions;
+pub use render::TextRenderer;

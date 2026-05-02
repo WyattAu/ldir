@@ -28,7 +28,10 @@ enum MathToken {
     BinOp(String),
     BeginCases,
     EndCases,
-    BeginMatrix { left: Option<char>, right: Option<char> },
+    BeginMatrix {
+        left: Option<char>,
+        right: Option<char>,
+    },
     EndMatrix,
     LeftDelim(char),
     RightDelim(char),
@@ -39,14 +42,27 @@ enum MathToken {
 #[derive(Debug, Clone)]
 enum MathNode {
     Text(String),
-    Subscript { base: String, sub: String },
-    Superscript { base: String, sup: String },
-    Fraction { num: String, den: String },
-    Radical { inner: Box<MathToken> },
+    Subscript {
+        base: String,
+        sub: String,
+    },
+    Superscript {
+        base: String,
+        sup: String,
+    },
+    Fraction {
+        num: String,
+        den: String,
+    },
+    Radical {
+        inner: Box<MathToken>,
+    },
     BigOp(String),
     BinOp(String),
     Delimiter(char),
-    Cases { rows: Vec<Vec<Vec<MathNode>>> },
+    Cases {
+        rows: Vec<Vec<Vec<MathNode>>>,
+    },
     Matrix {
         rows: Vec<Vec<Vec<MathNode>>>,
         delimiters: (Option<char>, Option<char>),
@@ -166,9 +182,7 @@ fn tokenize_math(content: &str) -> Vec<MathToken> {
                                 inner_tokens.into_iter().next().unwrap(),
                             )));
                         } else {
-                            tokens.push(MathToken::Radical(Box::new(MathToken::Text(
-                                inner,
-                            ))));
+                            tokens.push(MathToken::Radical(Box::new(MathToken::Text(inner))));
                         }
                     }
                 }
@@ -374,7 +388,7 @@ fn shape_text_run(
     let raw_glyphs: Vec<ShapedGlyph> = if let Some(data) = font_data {
         crate::shaping::shape_text(data, text, font_size).glyphs
     } else {
-        crate::shaping::fast_path::shape_unicode_stub(text, font_size, 0).glyphs
+        crate::shaping::fast_path::shape_unicode_basic(&[], text, font_size, 0).glyphs
     };
 
     let mut cursor_x = Fp266::ZERO;
@@ -454,8 +468,7 @@ impl LayoutState {
         let saved_x = self.cursor_x;
 
         self.font_size = sup_size;
-        let sup_y = self.base_y
-            + Fp266::from_frac(saved_font_size.to_int() * 6, 10);
+        let sup_y = self.base_y + Fp266::from_frac(saved_font_size.to_int() * 6, 10);
         let saved_base_y = self.base_y;
         self.base_y = sup_y;
         self.cursor_x = saved_x + base_box.width + Fp266::from_int(1);
@@ -483,8 +496,7 @@ impl LayoutState {
         let saved_x = self.cursor_x;
 
         self.font_size = sub_size;
-        let sub_y = self.base_y
-            + Fp266::from_frac(saved_font_size.to_int() * 2, 10);
+        let sub_y = self.base_y + Fp266::from_frac(saved_font_size.to_int() * 2, 10);
         let saved_base_y = self.base_y;
         self.base_y = sub_y;
         self.cursor_x = saved_x + base_box.width + Fp266::from_int(1);
@@ -519,8 +531,7 @@ impl LayoutState {
         self.font_size = num_size;
         let (num_glyphs, num_box) = shape_text_run(numerator, num_size, self.font_data_ref());
         self.font_size = den_size;
-        let (den_glyphs, den_box) =
-            shape_text_run(denominator, den_size, self.font_data_ref());
+        let (den_glyphs, den_box) = shape_text_run(denominator, den_size, self.font_data_ref());
 
         self.font_size = saved_font_size;
 
@@ -821,8 +832,16 @@ impl LayoutState {
             for (i, m) in row_measures.iter().enumerate() {
                 max_col_widths[i] = max_col_widths[i].max(m.width);
             }
-            let rh = row_measures.iter().map(|m| m.height).max().unwrap_or(Fp266::ZERO);
-            let rd = row_measures.iter().map(|m| m.depth).max().unwrap_or(Fp266::ZERO);
+            let rh = row_measures
+                .iter()
+                .map(|m| m.height)
+                .max()
+                .unwrap_or(Fp266::ZERO);
+            let rd = row_measures
+                .iter()
+                .map(|m| m.depth)
+                .max()
+                .unwrap_or(Fp266::ZERO);
             max_row_height = max_row_height.max(rh);
             max_row_depth = max_row_depth.max(rd);
             cell_boxes.push(row_measures);
@@ -834,13 +853,7 @@ impl LayoutState {
         let total_content_width: Fp266 = max_col_widths
             .iter()
             .enumerate()
-            .map(|(i, w)| {
-                if i > 0 {
-                    *w + col_gap
-                } else {
-                    *w
-                }
-            })
+            .map(|(i, w)| if i > 0 { *w + col_gap } else { *w })
             .fold(Fp266::ZERO, |acc, v| acc + v);
 
         for (row_idx, row) in rows.iter().enumerate() {
@@ -864,12 +877,7 @@ impl LayoutState {
 
         let brace_total = max_row_height + total_height + max_row_depth;
         let brace_y = saved_base_y + total_height.div(Fp266::from_int(2));
-        self.emit_scaled_delimiter(
-            "{",
-            brace_total,
-            saved_cursor_x,
-            brace_y,
-        );
+        self.emit_scaled_delimiter("{", brace_total, saved_cursor_x, brace_y);
 
         self.cursor_x = content_start_x + total_content_width;
 
@@ -913,25 +921,26 @@ impl LayoutState {
             for (i, m) in row_measures.iter().enumerate() {
                 max_col_widths[i] = max_col_widths[i].max(m.width);
             }
-            let rh = row_measures.iter().map(|m| m.height).max().unwrap_or(Fp266::ZERO);
-            let rd = row_measures.iter().map(|m| m.depth).max().unwrap_or(Fp266::ZERO);
+            let rh = row_measures
+                .iter()
+                .map(|m| m.height)
+                .max()
+                .unwrap_or(Fp266::ZERO);
+            let rd = row_measures
+                .iter()
+                .map(|m| m.depth)
+                .max()
+                .unwrap_or(Fp266::ZERO);
             max_row_height = max_row_height.max(rh);
             max_row_depth = max_row_depth.max(rd);
             cell_boxes.push(row_measures);
         }
 
-        let content_start_x =
-            saved_cursor_x + delimiters.0.map_or(Fp266::ZERO, |_| delim_pad);
+        let content_start_x = saved_cursor_x + delimiters.0.map_or(Fp266::ZERO, |_| delim_pad);
         let total_content_width: Fp266 = max_col_widths
             .iter()
             .enumerate()
-            .map(|(i, w)| {
-                if i > 0 {
-                    *w + col_gap
-                } else {
-                    *w
-                }
-            })
+            .map(|(i, w)| if i > 0 { *w + col_gap } else { *w })
             .fold(Fp266::ZERO, |acc, v| acc + v);
 
         for (row_idx, row) in rows.iter().enumerate() {
@@ -939,7 +948,10 @@ impl LayoutState {
             let mut cell_x = content_start_x;
 
             for (col_idx, cell_nodes) in row.iter().enumerate() {
-                let col_center_offset = if col_idx < max_col_widths.len() && row_idx < cell_boxes.len() && col_idx < cell_boxes[row_idx].len() {
+                let col_center_offset = if col_idx < max_col_widths.len()
+                    && row_idx < cell_boxes.len()
+                    && col_idx < cell_boxes[row_idx].len()
+                {
                     (max_col_widths[col_idx] - cell_boxes[row_idx][col_idx].width)
                         .div(Fp266::from_int(2))
                 } else {
@@ -963,22 +975,12 @@ impl LayoutState {
         let delim_y = saved_base_y + total_height.div(Fp266::from_int(2));
 
         if let Some(left_ch) = delimiters.0 {
-            self.emit_scaled_delimiter(
-                &left_ch.to_string(),
-                delim_total,
-                saved_cursor_x,
-                delim_y,
-            );
+            self.emit_scaled_delimiter(&left_ch.to_string(), delim_total, saved_cursor_x, delim_y);
         }
 
         if let Some(right_ch) = delimiters.1 {
             let right_x = content_start_x + total_content_width + delim_pad;
-            self.emit_scaled_delimiter(
-                &right_ch.to_string(),
-                delim_total,
-                right_x,
-                delim_y,
-            );
+            self.emit_scaled_delimiter(&right_ch.to_string(), delim_total, right_x, delim_y);
         }
 
         let left_w = delimiters.0.map_or(Fp266::ZERO, |_| delim_pad);
@@ -1011,22 +1013,12 @@ impl LayoutState {
         let delim_y = saved_base_y;
 
         if let Some(left_ch) = left {
-            self.emit_scaled_delimiter(
-                &left_ch.to_string(),
-                delim_total,
-                saved_cursor_x,
-                delim_y,
-            );
+            self.emit_scaled_delimiter(&left_ch.to_string(), delim_total, saved_cursor_x, delim_y);
         }
 
         if let Some(right_ch) = right {
             let right_x = content_start_x + content_width + delim_pad;
-            self.emit_scaled_delimiter(
-                &right_ch.to_string(),
-                delim_total,
-                right_x,
-                delim_y,
-            );
+            self.emit_scaled_delimiter(&right_ch.to_string(), delim_total, right_x, delim_y);
         }
 
         let left_w = left.map_or(Fp266::ZERO, |_| delim_pad);
@@ -1090,18 +1082,12 @@ impl MathTokenParser {
                         MathToken::Subscript(sub) => {
                             let sub = sub.clone();
                             self.pos += 1;
-                            return Some(MathNode::Subscript {
-                                base: text,
-                                sub,
-                            });
+                            return Some(MathNode::Subscript { base: text, sub });
                         }
                         MathToken::Superscript(sup) => {
                             let sup = sup.clone();
                             self.pos += 1;
-                            return Some(MathNode::Superscript {
-                                base: text,
-                                sup,
-                            });
+                            return Some(MathNode::Superscript { base: text, sup });
                         }
                         _ => {}
                     }
@@ -1618,12 +1604,7 @@ mod tests {
 
     #[test]
     fn test_layout_fraction() {
-        let result = layout_math(
-            "\\frac{a}{b}",
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math("\\frac{a}{b}", None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(result.height.to_f64() > 0.0);
         let has_overbar = result.glyphs.iter().any(|g| g.glyph_id == -1);
@@ -1632,12 +1613,7 @@ mod tests {
 
     #[test]
     fn test_layout_sqrt() {
-        let result = layout_math(
-            "\\sqrt{x}",
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math("\\sqrt{x}", None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
         let has_overbar = result.glyphs.iter().any(|g| g.glyph_id == -1);
@@ -1646,24 +1622,14 @@ mod tests {
 
     #[test]
     fn test_layout_greek() {
-        let result = layout_math(
-            "α + β = γ",
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math("α + β = γ", None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
 
     #[test]
     fn test_layout_complex() {
-        let result = layout_math(
-            "x^2 + \\frac{a}{b}",
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math("x^2 + \\frac{a}{b}", None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1678,12 +1644,7 @@ mod tests {
     #[test]
     fn test_layout_quadratic_formula() {
         let content = "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1699,12 +1660,7 @@ mod tests {
     #[test]
     fn test_layout_cases() {
         let content = "\\begin{cases} x^2 & y \\\\ -x & z \\end{cases}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(result.height.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
@@ -1713,12 +1669,7 @@ mod tests {
     #[test]
     fn test_layout_pmatrix() {
         let content = "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(result.height.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
@@ -1727,12 +1678,7 @@ mod tests {
     #[test]
     fn test_layout_bmatrix() {
         let content = "\\begin{bmatrix} 1 & 0 \\\\ 0 & 1 \\end{bmatrix}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1740,12 +1686,7 @@ mod tests {
     #[test]
     fn test_layout_matrix_no_delim() {
         let content = "\\begin{matrix} a \\\\ b \\end{matrix}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1753,12 +1694,7 @@ mod tests {
     #[test]
     fn test_layout_stretchy_parens() {
         let content = "\\left( x + y \\right)";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1766,12 +1702,7 @@ mod tests {
     #[test]
     fn test_layout_stretchy_fraction() {
         let content = "\\left( \\frac{a}{b} \\right)";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(result.height.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
@@ -1780,12 +1711,7 @@ mod tests {
     #[test]
     fn test_layout_stretchy_brackets() {
         let content = "\\left[ x \\right]";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1793,12 +1719,7 @@ mod tests {
     #[test]
     fn test_layout_stretchy_braces() {
         let content = "\\left{ x \\right}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1806,12 +1727,7 @@ mod tests {
     #[test]
     fn test_layout_stretchy_empty_left() {
         let content = "\\left. x \\right)";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1819,12 +1735,7 @@ mod tests {
     #[test]
     fn test_layout_cases_single_row() {
         let content = "\\begin{cases} x \\end{cases}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }
@@ -1832,12 +1743,7 @@ mod tests {
     #[test]
     fn test_layout_3x3_matrix() {
         let content = "\\begin{pmatrix} 1 & 2 & 3 \\\\ 4 & 5 & 6 \\\\ 7 & 8 & 9 \\end{pmatrix}";
-        let result = layout_math(
-            content,
-            None,
-            Fp266::from_int(12),
-            Fp266::ZERO,
-        );
+        let result = layout_math(content, None, Fp266::from_int(12), Fp266::ZERO);
         assert!(result.width.to_f64() > 0.0);
         assert!(!result.glyphs.is_empty());
     }

@@ -13,10 +13,10 @@ pub enum Direction {
 /// A physical dimension with units.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Dimension {
-    Pt(f64),   // points (1/72 inch)
-    Mm(f64),   // millimeters
-    In(f64),   // inches
-    Cm(f64),   // centimeters
+    Pt(f64),      // points (1/72 inch)
+    Mm(f64),      // millimeters
+    In(f64),      // inches
+    Cm(f64),      // centimeters
     Percent(f64), // percentage of parent
 }
 
@@ -67,9 +67,9 @@ pub struct DocumentMetadata {
     pub author: Option<String>,
     pub subject: Option<String>,
     pub date: Option<String>,
-    pub language: String,          // BCP 47
+    pub language: String, // BCP 47
     pub direction: Direction,
-    pub document_class: Option<String>,  // "article", "book", "report"
+    pub document_class: Option<String>, // "article", "book", "report"
     pub page_geometry: Option<PageGeometry>,
 }
 

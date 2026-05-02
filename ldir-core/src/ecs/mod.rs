@@ -31,7 +31,11 @@ pub mod component;
 pub mod entity;
 pub mod storage;
 
+#[allow(unused_imports)]
 pub use arena::Arena;
+#[allow(unused_imports)]
 pub use component::{ComponentId, ComponentStore, SparseSet};
+#[allow(unused_imports)]
 pub use entity::{Entity, EntityAllocator, EntityId};
+#[allow(unused_imports)]
 pub use storage::World;

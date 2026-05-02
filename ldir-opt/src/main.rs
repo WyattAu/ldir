@@ -57,9 +57,8 @@ fn main() {
         }
     } else {
         let all = ldir_opt::all_passes();
-        let by_name: std::collections::HashMap<&str, _> = all.iter()
-            .map(|p| (p.name(), p.as_ref()))
-            .collect();
+        let by_name: std::collections::HashMap<&str, _> =
+            all.iter().map(|p| (p.name(), p.as_ref())).collect();
         for name in &cli.passes {
             match by_name.get(name.as_str()) {
                 Some(_) => pm.add_pass(Box::new(DummyPass(name.clone()))),
@@ -75,16 +74,24 @@ fn main() {
     let report = pm.run(&mut module);
 
     for pr in &report.pass_reports {
-        eprintln!("[ldir-opt] pass: changed={}, removed={}, added={}, {}", pr.changed, pr.nodes_removed, pr.nodes_added, pr.details);
+        eprintln!(
+            "[ldir-opt] pass: changed={}, removed={}, added={}, {}",
+            pr.changed, pr.nodes_removed, pr.nodes_added, pr.details
+        );
     }
-    eprintln!("[ldir-opt] Total: {} passes, {} iterations, {} nodes removed, {} nodes added",
-        report.passes_run, report.iterations, report.total_nodes_removed, report.total_nodes_added);
+    eprintln!(
+        "[ldir-opt] Total: {} passes, {} iterations, {} nodes removed, {} nodes added",
+        report.passes_run, report.iterations, report.total_nodes_removed, report.total_nodes_added
+    );
 
     let output_bytes = match cli.output_format.as_str() {
         "binary" => ldir_ir::sir::v2::serialize_module(&module),
         "text" => ldir_ir::sir::v2::module_to_text(&module).into_bytes(),
         other => {
-            eprintln!("[ldir-opt] Unknown format: {} (use 'binary' or 'text')", other);
+            eprintln!(
+                "[ldir-opt] Unknown format: {} (use 'binary' or 'text')",
+                other
+            );
             std::process::exit(1);
         }
     };
@@ -95,14 +102,20 @@ fn main() {
                 eprintln!("[ldir-opt] Error writing {}: {}", out.display(), e);
                 std::process::exit(1);
             });
-            eprintln!("[ldir-opt] Wrote {} bytes to {}", output_bytes.len(), out.display());
+            eprintln!(
+                "[ldir-opt] Wrote {} bytes to {}",
+                output_bytes.len(),
+                out.display()
+            );
         }
         None => {
             use std::io::Write;
-            std::io::stdout().write_all(&output_bytes).unwrap_or_else(|e| {
-                eprintln!("[ldir-opt] Error writing stdout: {}", e);
-                std::process::exit(1);
-            });
+            std::io::stdout()
+                .write_all(&output_bytes)
+                .unwrap_or_else(|e| {
+                    eprintln!("[ldir-opt] Error writing stdout: {}", e);
+                    std::process::exit(1);
+                });
         }
     }
 }
@@ -123,7 +136,10 @@ fn parse_bytes(bytes: &[u8]) -> ldir_ir::sir::v2::SIRModuleV2 {
         })
     } else {
         let text = String::from_utf8(bytes.to_vec()).unwrap_or_else(|e| {
-            eprintln!("[ldir-opt] Error: not valid binary S-IR or UTF-8 text: {}", e);
+            eprintln!(
+                "[ldir-opt] Error: not valid binary S-IR or UTF-8 text: {}",
+                e
+            );
             std::process::exit(1);
         });
         ldir_ir::sir::v2::text_to_module(&text).unwrap_or_else(|e| {
@@ -135,7 +151,9 @@ fn parse_bytes(bytes: &[u8]) -> ldir_ir::sir::v2::SIRModuleV2 {
 
 struct DummyPass(String);
 impl ldir_opt::Pass for DummyPass {
-    fn name(&self) -> &str { &self.0 }
+    fn name(&self) -> &str {
+        &self.0
+    }
     fn run(&self, _: &mut ldir_ir::sir::v2::SIRModuleV2) -> ldir_opt::PassResult {
         ldir_opt::PassResult {
             changed: false,

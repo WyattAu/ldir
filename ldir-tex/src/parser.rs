@@ -63,12 +63,7 @@ impl<'a> TeXParser<'a> {
                 Token::ControlSequence(name)
                     if matches!(
                         name.as_str(),
-                        "documentclass"
-                            | "usepackage"
-                            | "title"
-                            | "author"
-                            | "date"
-                            | "maketitle"
+                        "documentclass" | "usepackage" | "title" | "author" | "date" | "maketitle"
                     ) =>
                 {
                     self.advance();
@@ -236,8 +231,7 @@ impl<'a> TeXParser<'a> {
                         let env_name = self.parse_group_content();
                         self.parse_environment(&env_name, parent_id);
                     }
-                    "documentclass" | "usepackage" | "title" | "author" | "date"
-                    | "maketitle" => {
+                    "documentclass" | "usepackage" | "title" | "author" | "date" | "maketitle" => {
                         self.flush_paragraph(&mut text_buffer, parent_id);
                         self.advance();
                         self.skip_group();
@@ -281,22 +275,42 @@ impl<'a> TeXParser<'a> {
                     "textbf" => {
                         self.advance();
                         let content = self.parse_group_content();
-                        self.emit_styled_text(parent_id, &mut text_buffer, StyleModifier::BOLD_STYLE, &content);
+                        self.emit_styled_text(
+                            parent_id,
+                            &mut text_buffer,
+                            StyleModifier::BOLD_STYLE,
+                            &content,
+                        );
                     }
                     "textit" => {
                         self.advance();
                         let content = self.parse_group_content();
-                        self.emit_styled_text(parent_id, &mut text_buffer, StyleModifier::ITALIC_STYLE, &content);
+                        self.emit_styled_text(
+                            parent_id,
+                            &mut text_buffer,
+                            StyleModifier::ITALIC_STYLE,
+                            &content,
+                        );
                     }
                     "texttt" => {
                         self.advance();
                         let content = self.parse_group_content();
-                        self.emit_styled_text(parent_id, &mut text_buffer, StyleModifier::MONO_STYLE, &content);
+                        self.emit_styled_text(
+                            parent_id,
+                            &mut text_buffer,
+                            StyleModifier::MONO_STYLE,
+                            &content,
+                        );
                     }
                     "emph" => {
                         self.advance();
                         let content = self.parse_group_content();
-                        self.emit_styled_text(parent_id, &mut text_buffer, StyleModifier::ITALIC_STYLE, &content);
+                        self.emit_styled_text(
+                            parent_id,
+                            &mut text_buffer,
+                            StyleModifier::ITALIC_STYLE,
+                            &content,
+                        );
                     }
                     "url" => {
                         self.advance();
@@ -615,8 +629,11 @@ impl<'a> TeXParser<'a> {
                 let math = self.collect_math_env_content("align");
                 self.emit_math_block(BlockType::Math, parent_id, false, &math);
             }
-            "figure" | "table" | "document" => {
-                self.skip_to_end(name);
+            "figure" => {
+                self.parse_figure_env(parent_id);
+            }
+            "table" => {
+                self.parse_table_env(parent_id);
             }
             "tabular" => {
                 self.parse_tabular_env(parent_id);
@@ -706,50 +723,107 @@ impl<'a> TeXParser<'a> {
         }
     }
 
-    fn collect_env_content(&mut self, env_name: &str) -> String {
-        let mut content = String::new();
-        while let Some(tok) = self.peek() {
-            match tok {
+    fn parse_figure_env(&mut self, parent_id: u32) {
+        let fig_id = self.emit_block(BlockType::Figure, parent_id, None, "");
+
+        while let Some(tok) = self.peek().cloned() {
+            match &tok {
                 Token::ControlSequence(name) if name == "end" => {
-                    if self.is_end_env(env_name) {
-                        self.consume_end_env(env_name);
+                    if self.is_end_env("figure") {
+                        self.consume_end_env("figure");
                         break;
                     }
-                    content.push_str(&format!("\\{name}"));
+                    self.advance();
+                    self.skip_group();
+                }
+                Token::ControlSequence(name) if name == "includegraphics" => {
+                    self.advance();
+                    self.parse_optional();
+                    let path = self.parse_group_content();
+                    self.emit_block(BlockType::Image, fig_id, None, &path);
+                }
+                Token::ControlSequence(name) if name == "caption" => {
+                    self.advance();
+                    let caption = self.parse_group_content();
+                    if !caption.is_empty() {
+                        let content_id = self.next_entity_id();
+                        self.doc.push_with_payload(
+                            SIRInstruction::new(SIROpcode::SetContent, content_id, fig_id, 0),
+                            caption.as_bytes(),
+                        );
+                    }
+                }
+                Token::ControlSequence(name) if name == "centering" => {
                     self.advance();
                 }
-                Token::ControlSequence(name) => {
-                    content.push_str(&format!("\\{name}"));
+                Token::ControlSequence(_) => {
                     self.advance();
-                }
-                Token::Text(t) => {
-                    content.push_str(t);
-                    self.advance();
-                }
-                Token::LineBreak => {
-                    content.push(' ');
-                    self.advance();
-                }
-                Token::Tilde => {
-                    content.push('\u{00A0}');
-                    self.advance();
-                }
-                Token::Comment(_) => {
-                    self.advance();
+                    self.skip_group();
                 }
                 _ => {
                     self.advance();
                 }
             }
         }
-        content.trim().to_string()
     }
 
-    fn parse_tabular_env(&mut self, parent_id: u32) {
-        // Skip column specification (already consumed as env_name was parsed)
+    fn parse_table_env(&mut self, parent_id: u32) {
+        let table_id = self.emit_block(BlockType::Table, parent_id, None, "");
+
+        while let Some(tok) = self.peek().cloned() {
+            match &tok {
+                Token::ControlSequence(name) if name == "end" => {
+                    if self.is_end_env("table") {
+                        self.consume_end_env("table");
+                        break;
+                    }
+                    self.advance();
+                    self.skip_group();
+                }
+                Token::ControlSequence(name) if name == "caption" => {
+                    self.advance();
+                    let caption = self.parse_group_content();
+                    if !caption.is_empty() {
+                        let content_id = self.next_entity_id();
+                        self.doc.push_with_payload(
+                            SIRInstruction::new(SIROpcode::SetContent, content_id, table_id, 0),
+                            caption.as_bytes(),
+                        );
+                    }
+                }
+                Token::ControlSequence(name) if name == "centering" => {
+                    self.advance();
+                }
+                Token::ControlSequence(name) if name == "begin" => {
+                    if self.is_begin_env("tabular") {
+                        self.advance();
+                        self.parse_group_content();
+                        self.parse_tabular_as_children(table_id);
+                    } else {
+                        self.advance();
+                        self.skip_group();
+                    }
+                }
+                Token::ControlSequence(_) => {
+                    self.advance();
+                    self.skip_group();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+    }
+
+    fn parse_tabular_as_children(&mut self, table_id: u32) {
+        if let Some(&Token::BraceOpen) = self.peek() {
+            self.skip_group();
+        }
+
         let mut rows: Vec<Vec<String>> = Vec::new();
         let mut current_row: Vec<String> = Vec::new();
         let mut current_cell = String::new();
+        let mut next_is_header = false;
 
         while let Some(tok) = self.peek().cloned() {
             match &tok {
@@ -764,7 +838,19 @@ impl<'a> TeXParser<'a> {
                         self.consume_end_env("tabular");
                         break;
                     }
-                    current_cell.push_str(&format!("\\{name}"));
+                    if name == "hline" || name == "toprule" || name == "midrule" || name == "bottomrule" {
+                        if !current_cell.trim().is_empty() {
+                            current_row.push(current_cell.trim().to_string());
+                        }
+                        if !current_row.is_empty() {
+                            rows.push(current_row);
+                        }
+                        current_row = Vec::new();
+                        current_cell.clear();
+                        next_is_header = true;
+                    } else {
+                        current_cell.push_str(&format!("\\{name}"));
+                    }
                     self.advance();
                 }
                 Token::ControlSequence(name) => {
@@ -811,15 +897,72 @@ impl<'a> TeXParser<'a> {
             }
         }
 
-        let table_text = rows
-            .iter()
-            .map(|row| row.join(" | "))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let num_cols = rows.iter().map(|r| r.len()).max().unwrap_or(0);
 
-        if !table_text.is_empty() {
-            self.emit_block(BlockType::Table, parent_id, None, &table_text);
+        for (row_idx, row_cells) in rows.iter().enumerate() {
+            let is_header = next_is_header && row_idx == 0;
+            let row_id = self.emit_block(
+                BlockType::TableRow,
+                table_id,
+                Some(&[if is_header { 1u32 } else { 0u32 }]),
+                "",
+            );
+            for cell_text in row_cells {
+                self.emit_block(BlockType::TableCell, row_id, None, cell_text);
+            }
         }
+
+        if num_cols > 0 {
+            let num_cols_id = self.next_entity_id();
+            self.doc.push_with_payload(
+                SIRInstruction::new(SIROpcode::SetContent, num_cols_id, table_id, 0),
+                num_cols.to_string().as_bytes(),
+            );
+        }
+    }
+
+    fn collect_env_content(&mut self, env_name: &str) -> String {
+        let mut content = String::new();
+        while let Some(tok) = self.peek() {
+            match tok {
+                Token::ControlSequence(name) if name == "end" => {
+                    if self.is_end_env(env_name) {
+                        self.consume_end_env(env_name);
+                        break;
+                    }
+                    content.push_str(&format!("\\{name}"));
+                    self.advance();
+                }
+                Token::ControlSequence(name) => {
+                    content.push_str(&format!("\\{name}"));
+                    self.advance();
+                }
+                Token::Text(t) => {
+                    content.push_str(t);
+                    self.advance();
+                }
+                Token::LineBreak => {
+                    content.push(' ');
+                    self.advance();
+                }
+                Token::Tilde => {
+                    content.push('\u{00A0}');
+                    self.advance();
+                }
+                Token::Comment(_) => {
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+        content.trim().to_string()
+    }
+
+    fn parse_tabular_env(&mut self, parent_id: u32) {
+        let table_id = self.emit_block(BlockType::Table, parent_id, None, "");
+        self.parse_tabular_as_children(table_id);
     }
 
     fn collect_verbatim_content(&mut self) -> String {

@@ -71,11 +71,7 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
                     let escaped = escape_html(text);
 
                     if let Some(url) = link_url_for_block.get(&parent_id) {
-                        html.push_str(&format!(
-                            "<a href=\"{}\">{}</a>",
-                            escape_attr(url),
-                            escaped
-                        ));
+                        html.push_str(&format!("<a href=\"{}\">{}</a>", escape_attr(url), escaped));
                     } else {
                         html.push_str(&escaped);
                     }
@@ -132,7 +128,13 @@ fn read_heading_level(doc: &SIRDocument, payload_offset: u32) -> u32 {
     1
 }
 
-fn emit_block_open(html: &mut String, bt: BlockType, heading_level: u32, _doc: &SIRDocument, _payload_offset: u32) {
+fn emit_block_open(
+    html: &mut String,
+    bt: BlockType,
+    heading_level: u32,
+    _doc: &SIRDocument,
+    _payload_offset: u32,
+) {
     match bt {
         BlockType::Document => {}
         BlockType::Paragraph => {
@@ -158,6 +160,19 @@ fn emit_block_open(html: &mut String, bt: BlockType, heading_level: u32, _doc: &
             html.push_str("<table>");
         }
         BlockType::Math => {}
+        BlockType::TableRow => {
+            html.push_str("<tr>");
+        }
+        BlockType::TableCell => {
+            html.push_str("<td>");
+        }
+        BlockType::Footnote => {}
+        BlockType::FootnoteBlock => {
+            html.push_str("<div class=\"footnotes\">");
+        }
+        BlockType::Figure => {
+            html.push_str("<figure>");
+        }
     }
 }
 
@@ -185,6 +200,19 @@ fn emit_block_close(html: &mut String, bt: BlockType, heading_level: u32) {
             html.push_str("</table>");
         }
         BlockType::Math => {}
+        BlockType::TableRow => {
+            html.push_str("</tr>");
+        }
+        BlockType::TableCell => {
+            html.push_str("</td>");
+        }
+        BlockType::Footnote => {}
+        BlockType::FootnoteBlock => {
+            html.push_str("</div>");
+        }
+        BlockType::Figure => {
+            html.push_str("</figure>");
+        }
     }
 }
 
@@ -246,8 +274,14 @@ mod tests {
         for level in 1..=6 {
             let md = format!("{} Heading {}", "#".repeat(level), level);
             let html = render_markdown(&md);
-            assert!(html.contains(&format!("<h{}>", level)), "missing <h{level}> in: {html}");
-            assert!(html.contains(&format!("</h{}>", level)), "missing </h{level}> in: {html}");
+            assert!(
+                html.contains(&format!("<h{}>", level)),
+                "missing <h{level}> in: {html}"
+            );
+            assert!(
+                html.contains(&format!("</h{}>", level)),
+                "missing </h{level}> in: {html}"
+            );
         }
     }
 
@@ -277,8 +311,14 @@ mod tests {
     #[test]
     fn test_blockquote() {
         let html = render_markdown("> quoted");
-        assert!(html.contains("<blockquote>"), "missing <blockquote> in: {html}");
-        assert!(html.contains("</blockquote>"), "missing </blockquote> in: {html}");
+        assert!(
+            html.contains("<blockquote>"),
+            "missing <blockquote> in: {html}"
+        );
+        assert!(
+            html.contains("</blockquote>"),
+            "missing </blockquote> in: {html}"
+        );
         assert!(html.contains("quoted"), "missing text in: {html}");
     }
 
@@ -303,7 +343,10 @@ mod tests {
     #[test]
     fn test_link() {
         let html = render_markdown("[click](https://example.com)");
-        assert!(html.contains("href=\"https://example.com\""), "missing link href in: {html}");
+        assert!(
+            html.contains("href=\"https://example.com\""),
+            "missing link href in: {html}"
+        );
         assert!(html.contains("click"), "missing link text in: {html}");
     }
 
@@ -351,7 +394,10 @@ mod tests {
     #[test]
     fn test_inline_code() {
         let html = render_markdown("use `cargo build`");
-        assert!(html.contains("cargo build"), "missing inline code text in: {html}");
+        assert!(
+            html.contains("cargo build"),
+            "missing inline code text in: {html}"
+        );
     }
 
     #[test]

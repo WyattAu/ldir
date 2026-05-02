@@ -32,18 +32,33 @@ pub fn is_cjk_text(text: &str) -> bool {
 pub fn is_prohibited_at_line_start(ch: char) -> bool {
     matches!(
         ch,
-        '，' | '。' | '、' | '：' | '；' | '！' | '？' | '〜' | '～'
-        | '）' | '】' | '」' | '』' | '》'
-        | ',' | '.' | ':' | ';' | '!' | '?' | ')' | ']' | '}'
+        '，' | '。'
+            | '、'
+            | '：'
+            | '；'
+            | '！'
+            | '？'
+            | '〜'
+            | '～'
+            | '）'
+            | '】'
+            | '」'
+            | '』'
+            | '》'
+            | ','
+            | '.'
+            | ':'
+            | ';'
+            | '!'
+            | '?'
+            | ')'
+            | ']'
+            | '}'
     )
 }
 
 pub fn is_prohibited_at_line_end(ch: char) -> bool {
-    matches!(
-        ch,
-        '（' | '【' | '「' | '『' | '《'
-        | '(' | '[' | '{'
-    )
+    matches!(ch, '（' | '【' | '「' | '『' | '《' | '(' | '[' | '{')
 }
 
 pub fn insert_cjk_breaks(text: &str, items: &[LineBreakItem]) -> Vec<LineBreakItem> {
@@ -311,7 +326,15 @@ mod tests {
         // Hello(CJK=false) 你(CJK=true) 好(CJK=true)
         // Break: 你|好 only
         let text = "Hello你好";
-        let items = vec![item(7), item(7), item(7), item(7), item(7), item(10), item(10)];
+        let items = vec![
+            item(7),
+            item(7),
+            item(7),
+            item(7),
+            item(7),
+            item(10),
+            item(10),
+        ];
         let result = insert_cjk_breaks(text, &items);
         assert_eq!(result.len(), 8); // 7 items + 1 break
     }

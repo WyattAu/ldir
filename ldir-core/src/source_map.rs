@@ -30,9 +30,9 @@ pub struct SourceLocation {
 /// (entity → offset) uses a linear scan over a flat entry list.
 ///
 /// # Examples
-    ///
-    /// ```
-    /// use ldir_core::source_map::SourceMap;
+///
+/// ```
+/// use ldir_core::source_map::SourceMap;
 ///
 /// let mut map = SourceMap::new();
 /// map.insert(1, 10, 1, 0);

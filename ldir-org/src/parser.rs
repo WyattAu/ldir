@@ -1,7 +1,7 @@
 //! Recursive descent parser for Org-mode → S-IR v2.
 
-use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
 
 pub fn parse_org(text: &str) -> SIRModuleV2 {
     let lines: Vec<&str> = text.lines().collect();
@@ -206,7 +206,9 @@ impl OrgParser {
 
             if ch == '\\' && i + 1 < len {
                 i += 1;
-                nodes.push(NodeType::Text { content: chars[i].to_string() });
+                nodes.push(NodeType::Text {
+                    content: chars[i].to_string(),
+                });
                 i += 1;
                 continue;
             }
@@ -365,7 +367,9 @@ impl OrgParser {
             if !trimmed.is_empty() {
                 nodes.push(NodeType::Text { content: trimmed });
             } else if i < len {
-                nodes.push(NodeType::Text { content: chars[i].to_string() });
+                nodes.push(NodeType::Text {
+                    content: chars[i].to_string(),
+                });
                 i += 1;
             }
         }
@@ -384,10 +388,17 @@ impl OrgParser {
         None
     }
 
-    fn add_children(&mut self, module: &mut SIRModuleV2, parent_id: u32, child_nodes: Vec<NodeType>) {
+    fn add_children(
+        &mut self,
+        module: &mut SIRModuleV2,
+        parent_id: u32,
+        child_nodes: Vec<NodeType>,
+    ) {
         for node_type in child_nodes {
             let child_id = self.gen_id();
-            module.body.push(Node::new(child_id, node_type).with_parent(parent_id));
+            module
+                .body
+                .push(Node::new(child_id, node_type).with_parent(parent_id));
             if let Some(parent) = module.body.get_mut(parent_id) {
                 parent.add_child(child_id);
             }
@@ -413,10 +424,18 @@ impl OrgParser {
                 if Self::is_metadata_line(line) {
                     if let Some((key, val)) = Self::parse_metadata_key_value(line) {
                         match key.as_str() {
-                            "TITLE" => { module.metadata.title = Some(val); }
-                            "AUTHOR" => { module.metadata.author = Some(val); }
-                            "LANGUAGE" => { module.metadata.language = val; }
-                            "DESCRIPTION" | "SUBJECT" => { module.metadata.subject = Some(val); }
+                            "TITLE" => {
+                                module.metadata.title = Some(val);
+                            }
+                            "AUTHOR" => {
+                                module.metadata.author = Some(val);
+                            }
+                            "LANGUAGE" => {
+                                module.metadata.language = val;
+                            }
+                            "DESCRIPTION" | "SUBJECT" => {
+                                module.metadata.subject = Some(val);
+                            }
                             _ => {}
                         }
                     }
@@ -431,7 +450,9 @@ impl OrgParser {
 
                 if Self::is_horizontal_rule(line) {
                     let hr_id = self.gen_id();
-                    module.body.push(Node::new(hr_id, NodeType::ThematicBreak).with_parent(doc_id));
+                    module
+                        .body
+                        .push(Node::new(hr_id, NodeType::ThematicBreak).with_parent(doc_id));
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(hr_id);
                     }
@@ -501,7 +522,9 @@ impl OrgParser {
                         "QUOTE" => {
                             let inline_nodes = Self::parse_inline_content(&block_content);
                             let bq_id = self.gen_id();
-                            module.body.push(Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id));
+                            module
+                                .body
+                                .push(Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id));
                             self.add_children(&mut module, bq_id, inline_nodes);
                             if let Some(doc) = module.body.get_mut(doc_id) {
                                 doc.add_child(bq_id);
@@ -517,8 +540,13 @@ impl OrgParser {
                             if !block_content.is_empty() {
                                 let text_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(text_id, NodeType::Text { content: block_content })
-                                        .with_parent(cb_id),
+                                    Node::new(
+                                        text_id,
+                                        NodeType::Text {
+                                            content: block_content,
+                                        },
+                                    )
+                                    .with_parent(cb_id),
                                 );
                                 if let Some(cb) = module.body.get_mut(cb_id) {
                                     cb.add_child(text_id);
@@ -537,8 +565,13 @@ impl OrgParser {
                             if !block_content.is_empty() {
                                 let text_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(text_id, NodeType::Text { content: block_content })
-                                        .with_parent(cb_id),
+                                    Node::new(
+                                        text_id,
+                                        NodeType::Text {
+                                            content: block_content,
+                                        },
+                                    )
+                                    .with_parent(cb_id),
                                 );
                                 if let Some(cb) = module.body.get_mut(cb_id) {
                                     cb.add_child(text_id);
@@ -565,7 +598,9 @@ impl OrgParser {
                         _ => {
                             let inline_nodes = Self::parse_inline_content(&block_content);
                             let group_id = self.gen_id();
-                            module.body.push(Node::new(group_id, NodeType::Group).with_parent(doc_id));
+                            module
+                                .body
+                                .push(Node::new(group_id, NodeType::Group).with_parent(doc_id));
                             self.add_children(&mut module, group_id, inline_nodes);
                             if let Some(doc) = module.body.get_mut(doc_id) {
                                 doc.add_child(group_id);
@@ -579,11 +614,14 @@ impl OrgParser {
                 if Self::is_unordered_list_item(line) {
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(list_id, NodeType::List {
-                            list_type: ListType::Unordered,
-                            ordered: false,
-                            start: None,
-                        })
+                        Node::new(
+                            list_id,
+                            NodeType::List {
+                                list_type: ListType::Unordered,
+                                ordered: false,
+                                start: None,
+                            },
+                        )
                         .with_parent(doc_id),
                     );
 
@@ -596,10 +634,15 @@ impl OrgParser {
                             break;
                         }
                         let item_text = self.advance().unwrap();
-                        let content = item_text.trim_start_matches('-').trim_start_matches('+').trim();
+                        let content = item_text
+                            .trim_start_matches('-')
+                            .trim_start_matches('+')
+                            .trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module.body.push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module
+                            .body
+                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -616,11 +659,14 @@ impl OrgParser {
                 if Self::is_ordered_list_item(line) {
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(list_id, NodeType::List {
-                            list_type: ListType::Ordered,
-                            ordered: true,
-                            start: None,
-                        })
+                        Node::new(
+                            list_id,
+                            NodeType::List {
+                                list_type: ListType::Ordered,
+                                ordered: true,
+                                start: None,
+                            },
+                        )
                         .with_parent(doc_id),
                     );
 
@@ -638,7 +684,9 @@ impl OrgParser {
                         let content = trimmed[dot_pos + 1..].trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module.body.push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module
+                            .body
+                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -686,11 +734,20 @@ impl OrgParser {
                     if !rows.is_empty() {
                         let table_id = self.gen_id();
                         let col_specs: Vec<ColSpec> = (0..num_cols)
-                            .map(|_| ColSpec { align: ColumnAlign::Left, width: None })
+                            .map(|_| ColSpec {
+                                align: ColumnAlign::Left,
+                                width: None,
+                            })
                             .collect();
                         module.body.push(
-                            Node::new(table_id, NodeType::Table { col_specs, num_cols })
-                                .with_parent(doc_id),
+                            Node::new(
+                                table_id,
+                                NodeType::Table {
+                                    col_specs,
+                                    num_cols,
+                                },
+                            )
+                            .with_parent(doc_id),
                         );
 
                         for (row_idx, row) in rows.iter().enumerate() {
@@ -707,16 +764,27 @@ impl OrgParser {
                             for cell_text in row {
                                 let tc_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(tc_id, NodeType::TableCell { colspan: 1, rowspan: 1 })
-                                        .with_parent(row_id),
+                                    Node::new(
+                                        tc_id,
+                                        NodeType::TableCell {
+                                            colspan: 1,
+                                            rowspan: 1,
+                                        },
+                                    )
+                                    .with_parent(row_id),
                                 );
                                 if let Some(row_node) = module.body.get_mut(row_id) {
                                     row_node.add_child(tc_id);
                                 }
                                 let text_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(text_id, NodeType::Text { content: cell_text.clone() })
-                                        .with_parent(tc_id),
+                                    Node::new(
+                                        text_id,
+                                        NodeType::Text {
+                                            content: cell_text.clone(),
+                                        },
+                                    )
+                                    .with_parent(tc_id),
                                 );
                                 if let Some(tc) = module.body.get_mut(tc_id) {
                                     tc.add_child(text_id);
@@ -761,7 +829,9 @@ impl OrgParser {
                 if !para_text.is_empty() {
                     let inline_nodes = Self::parse_inline_content(&para_text);
                     let para_id = self.gen_id();
-                    module.body.push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
+                    module
+                        .body
+                        .push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
                     self.add_children(&mut module, para_id, inline_nodes);
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(para_id);
@@ -870,7 +940,9 @@ mod tests {
     #[test]
     fn test_unordered_list() {
         let module = parse_org("- Item one\n- Item two\n");
-        let lists = find_nodes(&module, |nt| matches!(nt, NodeType::List { ordered: false, .. }));
+        let lists = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: false, .. })
+        });
         assert_eq!(lists.len(), 1);
         let items = find_nodes(&module, |nt| matches!(nt, NodeType::ListItem));
         assert!(items.len() >= 2);
@@ -879,14 +951,19 @@ mod tests {
     #[test]
     fn test_ordered_list() {
         let module = parse_org("1. First item\n2. Second item\n");
-        let lists = find_nodes(&module, |nt| matches!(nt, NodeType::List { ordered: true, .. }));
+        let lists = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::List { ordered: true, .. })
+        });
         assert_eq!(lists.len(), 1);
     }
 
     #[test]
     fn test_source_block() {
         let module = parse_org("#+BEGIN_SRC rust\nfn main() {}\n#+END_SRC\n");
-        let cbs = find_nodes(&module, |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"));
+        let cbs = find_nodes(
+            &module,
+            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"),
+        );
         assert_eq!(cbs.len(), 1);
     }
 
@@ -899,13 +976,17 @@ mod tests {
 
     #[test]
     fn test_table() {
-        let module = parse_org("| Header 1 | Header 2 |\n|----------+----------|\n| Cell 1   | Cell 2   |\n");
+        let module = parse_org(
+            "| Header 1 | Header 2 |\n|----------+----------|\n| Cell 1   | Cell 2   |\n",
+        );
         let tables = find_nodes(&module, |nt| matches!(nt, NodeType::Table { .. }));
         assert_eq!(tables.len(), 1);
         if let NodeType::Table { num_cols, .. } = &tables[0].node_type {
             assert_eq!(*num_cols, 2);
         }
-        let header_rows = find_nodes(&module, |nt| matches!(nt, NodeType::TableRow { is_header: true }));
+        let header_rows = find_nodes(&module, |nt| {
+            matches!(nt, NodeType::TableRow { is_header: true })
+        });
         assert_eq!(header_rows.len(), 1);
     }
 
@@ -958,8 +1039,12 @@ mod tests {
     fn test_comment_stripped() {
         let module = parse_org("# This is a comment\nHello\n");
         let texts = find_nodes(&module, |nt| matches!(nt, NodeType::Text { .. }));
-        assert!(!texts.iter().any(|n| matches!(&n.node_type, NodeType::Text { content } if content.contains("comment"))));
-        assert!(texts.iter().any(|n| matches!(&n.node_type, NodeType::Text { content } if content.contains("Hello"))));
+        assert!(!texts.iter().any(
+            |n| matches!(&n.node_type, NodeType::Text { content } if content.contains("comment"))
+        ));
+        assert!(texts.iter().any(
+            |n| matches!(&n.node_type, NodeType::Text { content } if content.contains("Hello"))
+        ));
     }
 
     #[test]
@@ -967,7 +1052,13 @@ mod tests {
         let module = parse_org("#+BEGIN_EXPORT html\n<h1>Raw HTML</h1>\n#+END_EXPORT\n");
         let groups = find_nodes(&module, |nt| matches!(nt, NodeType::Group { .. }));
         assert_eq!(groups.len(), 1);
-        assert!(groups[0].style.as_deref().unwrap_or("").starts_with("export:"));
+        assert!(
+            groups[0]
+                .style
+                .as_deref()
+                .unwrap_or("")
+                .starts_with("export:")
+        );
     }
 
     #[test]
