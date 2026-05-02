@@ -13,6 +13,9 @@ pub mod backend;
 /// Diagnostic computation for supported document formats.
 pub mod diagnostics;
 
+/// Live PDF preview support with debounced compilation.
+pub mod preview;
+
 /// Document symbol extraction from headings and environments.
 pub mod symbols;
 

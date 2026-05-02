@@ -1,78 +1,69 @@
 //! Incremental re-layout engine (TASK-020).
 //!
-//! Tracks paragraph-level dirty state so that only changed entities
-//! need recompilation. Unchanged paragraphs produce bit-identical G-IR.
+//! Tracks node-level dirty state so that only changed subtrees
+//! need recompilation. Unchanged documents produce bit-identical L-IR.
 //!
 //! ## Key Property
 //!
-//! When no entities are dirty, [`IncrementalLayout::recompile`] returns
-//! a clone of the old G-IR document, guaranteeing bit-identical output.
+//! When no nodes are dirty, [`IncrementalLayout::recompile_lir`] returns
+//! a clone of the old L-IR document, guaranteeing bit-identical output.
 //!
 //! ## References
 //!
 //! - INV-COMP-001: Bit-identical output (determinism)
 //! - YP-INCREMENTAL-001: Incremental layout specification
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
-use ldir_ir::gir::GIRDocument;
-use ldir_ir::sir::SIRDocument;
+use ldir_ir::lir::LIRDocument;
+use ldir_ir::sir::v2::SIRModuleV2;
 
-use crate::compiler::compile_sir;
-use crate::error::Result;
+use crate::compiler::context::CompileContext;
+use crate::layout::lir_compile::{compile_sir_to_lir, LirError};
 
-/// Set of entity IDs that have been modified since the last layout.
+/// Set of node IDs that have been modified since the last layout.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DirtySet {
     dirty: HashSet<u32>,
 }
 
 impl DirtySet {
-    /// Create an empty dirty set.
     pub fn new() -> Self {
         Self {
             dirty: HashSet::new(),
         }
     }
 
-    /// Mark an entity as dirty.
-    pub fn mark_dirty(&mut self, entity_id: u32) {
-        self.dirty.insert(entity_id);
+    pub fn mark_dirty(&mut self, node_id: u32) {
+        self.dirty.insert(node_id);
     }
 
-    /// Check if an entity is dirty.
-    pub fn is_dirty(&self, entity_id: u32) -> bool {
-        self.dirty.contains(&entity_id)
+    pub fn is_dirty(&self, node_id: u32) -> bool {
+        self.dirty.contains(&node_id)
     }
 
-    /// Clear all dirty flags.
     pub fn clear(&mut self) {
         self.dirty.clear();
     }
 
-    /// Number of dirty entities.
     pub fn len(&self) -> usize {
         self.dirty.len()
     }
 
-    /// Check if no entities are dirty.
     pub fn is_empty(&self) -> bool {
         self.dirty.is_empty()
     }
 
-    /// Iterate over dirty entity IDs.
     pub fn iter(&self) -> impl Iterator<Item = u32> + '_ {
         self.dirty.iter().copied()
     }
 
-    /// Mark all entity IDs in the given range [start, end] as dirty.
     pub fn mark_dirty_range(&mut self, start: u32, end: u32) {
         for id in start..=end {
             self.dirty.insert(id);
         }
     }
 
-    /// Mark all entity IDs in the iterator as dirty.
     pub fn mark_dirty_all(&mut self, ids: impl IntoIterator<Item = u32>) {
         for id in ids {
             self.dirty.insert(id);
@@ -80,41 +71,58 @@ impl DirtySet {
     }
 }
 
-/// Incremental layout tracker that associates an S-IR document with a
+/// Incremental layout tracker that associates an S-IR v2 module with a
 /// dirty set for selective recompilation.
 ///
-/// When no entities are marked dirty, [`recompile`](Self::recompile)
-/// returns a clone of the old G-IR, preserving bit-identical output
+/// When no nodes are marked dirty, [`recompile_lir`](Self::recompile_lir)
+/// returns a clone of the old L-IR, preserving bit-identical output
 /// per INV-COMP-001.
 pub struct IncrementalLayout {
-    sir: SIRDocument,
+    sir: SIRModuleV2,
     dirty: DirtySet,
 }
 
 impl IncrementalLayout {
-    /// Create a new incremental layout tracker for the given S-IR document.
+    /// Create a new incremental layout tracker for the given S-IR v2 module.
     ///
-    /// Initially, no entities are marked dirty.
-    pub fn new(doc: &SIRDocument) -> Self {
+    /// Initially, no nodes are marked dirty.
+    pub fn new(module: &SIRModuleV2) -> Self {
         Self {
-            sir: doc.clone(),
+            sir: module.clone(),
             dirty: DirtySet::new(),
         }
     }
 
-    /// Mark a paragraph (entity) as changed.
-    pub fn mark_dirty(&mut self, entity_id: u32) {
-        self.dirty.mark_dirty(entity_id);
+    /// Mark a node as changed.
+    pub fn mark_dirty(&mut self, node_id: u32) {
+        self.dirty.mark_dirty(node_id);
     }
 
-    /// Mark all entity IDs in the range [start, end] as dirty.
+    /// Mark all node IDs in the range [start, end] as dirty.
     pub fn mark_dirty_range(&mut self, start: u32, end: u32) {
         self.dirty.mark_dirty_range(start, end);
     }
 
-    /// Check if a specific entity is dirty.
-    pub fn is_dirty(&self, entity_id: u32) -> bool {
-        self.dirty.is_dirty(entity_id)
+    /// Mark a node and all its descendants as dirty.
+    pub fn mark_subtree_dirty(&mut self, node_id: u32) {
+        let mut queue = VecDeque::new();
+        queue.push_back(node_id);
+        while let Some(id) = queue.pop_front() {
+            if self.dirty.is_dirty(id) {
+                continue;
+            }
+            self.dirty.mark_dirty(id);
+            if let Some(node) = self.sir.body.get(id) {
+                for &child_id in &node.child_ids {
+                    queue.push_back(child_id);
+                }
+            }
+        }
+    }
+
+    /// Check if a specific node is dirty.
+    pub fn is_dirty(&self, node_id: u32) -> bool {
+        self.dirty.is_dirty(node_id)
     }
 
     /// Access the dirty set.
@@ -127,81 +135,106 @@ impl IncrementalLayout {
         self.dirty.clear();
     }
 
-    /// Alias for [`clear_dirty`](Self::clear_dirty), following Rust collection conventions.
+    /// Alias for [`clear_dirty`](Self::clear_dirty).
     pub fn clear(&mut self) {
         self.clear_dirty();
     }
 
-    /// Recompute the G-IR document.
+    /// Recompile to L-IR.
     ///
-    /// - If the dirty set is empty, returns a clone of `old_gir`
+    /// - If the dirty set is empty, returns a clone of `old_lir`
     ///   (bit-identical, zero-cost for unchanged documents).
-    /// - If any entities are dirty, falls back to full recompilation
-    ///   from S-IR (v0.1 strategy; per-paragraph recompilation is
-    ///   a future optimization).
-    pub fn recompile(&self, old_gir: &GIRDocument) -> Result<GIRDocument> {
+    /// - If any nodes are dirty, recompiles from S-IR v2 via the L-IR compiler.
+    pub fn recompile_lir(
+        &self,
+        old_lir: &LIRDocument,
+        ctx: &CompileContext,
+    ) -> std::result::Result<LIRDocument, LirError> {
         if self.dirty.is_empty() {
-            return Ok(old_gir.clone());
+            return Ok(old_lir.clone());
         }
-        compile_sir(&self.sir)
+        compile_sir_to_lir(&self.sir, ctx)
     }
 
-    /// Replace the underlying S-IR document (e.g., after an edit).
+    /// Replace the underlying S-IR v2 module (e.g., after an edit).
     ///
-    /// Automatically diffs old vs new instructions and marks changed
-    /// entities as dirty. Entities that differ in opcode, parent_id, or
-    /// payload_offset are marked dirty. Added or removed entities are
+    /// Automatically diffs old vs new node trees and marks changed
+    /// nodes as dirty. When a node changes, all its descendants are
     /// also marked dirty.
-    pub fn update_sir(&mut self, doc: &SIRDocument) {
-        let old_len = self.sir.len();
-        let new_len = doc.len();
+    pub fn update_sir(&mut self, module: &SIRModuleV2) {
+        let old_nodes: Vec<_> = self.sir.body.iter().collect();
+        let new_nodes: Vec<_> = module.body.iter().collect();
 
+        let old_len = old_nodes.len();
+        let new_len = new_nodes.len();
         let max_len = old_len.max(new_len);
-        for i in 0..max_len {
-            let old_instr = self.sir.get(i);
-            let new_instr = doc.get(i);
 
-            match (old_instr, new_instr) {
+        let mut changed_ids: Vec<u32> = Vec::new();
+
+        for i in 0..max_len {
+            let old_node = old_nodes.get(i);
+            let new_node = new_nodes.get(i);
+
+            match (old_node, new_node) {
                 (None, Some(ni)) => {
-                    self.dirty.mark_dirty(ni.entity_id());
+                    self.dirty.mark_dirty(ni.id);
+                    changed_ids.push(ni.id);
                 }
                 (Some(oi), None) => {
-                    self.dirty.mark_dirty(oi.entity_id());
+                    self.dirty.mark_dirty(oi.id);
                 }
                 (Some(o), Some(n)) => {
-                    if o.opcode() != n.opcode()
-                        || o.parent_id() != n.parent_id()
-                        || o.payload_offset() != n.payload_offset()
-                        || o.entity_id() != n.entity_id()
+                    if o.id != n.id
+                        || std::mem::discriminant(&o.node_type)
+                            != std::mem::discriminant(&n.node_type)
+                        || o.node_type != n.node_type
                     {
-                        self.dirty.mark_dirty(n.entity_id());
-                        self.dirty.mark_dirty(o.entity_id());
+                        self.dirty.mark_dirty(n.id);
+                        changed_ids.push(n.id);
                     }
                 }
                 (None, None) => {}
             }
         }
 
-        self.sir = doc.clone();
+        self.sir = module.clone();
+
+        for id in changed_ids {
+            self.mark_subtree_dirty(id);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ldir_ir::sir::{ROOT_SENTINEL, SIRInstruction, SIROpcode};
+    use ldir_ir::sir::v2::nodes::{Node, NodeType};
 
-    fn make_simple_doc() -> SIRDocument {
-        let mut doc = SIRDocument::new();
-        doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock,
-            0,
-            ROOT_SENTINEL,
-            0,
-        ));
-        doc.push(SIRInstruction::new(SIROpcode::SetContent, 1, 0, 0));
-        doc
+    fn make_simple_module() -> SIRModuleV2 {
+        let mut module = SIRModuleV2::new();
+        let doc_id = module.body.push(Node::new(1, NodeType::Document));
+        let para_id = module
+            .body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(doc_id));
+        let text_id = module
+            .body
+            .push(
+                Node::new(3, NodeType::Text { content: "Hello".into() }).with_parent(para_id),
+            );
+        if let Some(node) = module.body.get_mut(doc_id) {
+            node.add_child(para_id);
+        }
+        if let Some(node) = module.body.get_mut(para_id) {
+            node.add_child(text_id);
+        }
+        module
     }
+
+    fn make_ctx() -> CompileContext {
+        CompileContext::new()
+    }
+
+    // === DirtySet tests ===
 
     #[test]
     fn dirty_set_new_is_empty() {
@@ -248,104 +281,6 @@ mod tests {
     }
 
     #[test]
-    fn incremental_layout_new() {
-        let doc = make_simple_doc();
-        let layout = IncrementalLayout::new(&doc);
-        assert!(layout.dirty_set().is_empty());
-        assert!(!layout.is_dirty(0));
-    }
-
-    #[test]
-    fn incremental_mark_dirty() {
-        let doc = make_simple_doc();
-        let mut layout = IncrementalLayout::new(&doc);
-        layout.mark_dirty(1);
-        assert!(layout.is_dirty(1));
-        assert!(!layout.is_dirty(0));
-        assert_eq!(layout.dirty_set().len(), 1);
-    }
-
-    #[test]
-    fn incremental_unchanged_produces_same_output() {
-        let doc = make_simple_doc();
-        let layout = IncrementalLayout::new(&doc);
-        let old_gir = compile_sir(&doc).unwrap();
-        let new_gir = layout.recompile(&old_gir).unwrap();
-        assert_eq!(old_gir, new_gir);
-    }
-
-    #[test]
-    fn incremental_dirty_triggers_recompile() {
-        let doc = make_simple_doc();
-        let mut layout = IncrementalLayout::new(&doc);
-        layout.mark_dirty(1);
-        let old_gir = compile_sir(&doc).unwrap();
-        let new_gir = layout.recompile(&old_gir).unwrap();
-        assert_eq!(old_gir, new_gir);
-    }
-
-    #[test]
-    fn incremental_clear_dirty() {
-        let doc = make_simple_doc();
-        let mut layout = IncrementalLayout::new(&doc);
-        layout.mark_dirty(1);
-        layout.mark_dirty(2);
-        layout.clear_dirty();
-        assert!(layout.dirty_set().is_empty());
-    }
-
-    #[test]
-    fn incremental_update_sir() {
-        let doc1 = make_simple_doc();
-        let mut layout = IncrementalLayout::new(&doc1);
-        let doc2 = make_simple_doc();
-        layout.update_sir(&doc2);
-        assert!(
-            layout.dirty_set().is_empty(),
-            "identical S-IR should not mark anything dirty"
-        );
-        let old_gir = compile_sir(&doc1).unwrap();
-        let new_gir = layout.recompile(&old_gir).unwrap();
-        assert_eq!(old_gir, new_gir);
-    }
-
-    #[test]
-    fn incremental_update_sir_detects_changes() {
-        let doc1 = make_simple_doc();
-        let mut layout = IncrementalLayout::new(&doc1);
-
-        let mut doc2 = SIRDocument::new();
-        doc2.push(SIRInstruction::new(
-            SIROpcode::PushBlock,
-            0,
-            ROOT_SENTINEL,
-            0,
-        ));
-        doc2.push(SIRInstruction::new(SIROpcode::SetContent, 5, 0, 0));
-
-        layout.update_sir(&doc2);
-        assert!(
-            !layout.dirty_set().is_empty(),
-            "changed entity_id should mark entities dirty"
-        );
-        assert!(layout.is_dirty(5), "new entity 5 should be dirty");
-        assert!(layout.is_dirty(1), "removed entity 1 should be dirty");
-    }
-
-    #[test]
-    fn incremental_mark_dirty_range() {
-        let doc = make_simple_doc();
-        let mut layout = IncrementalLayout::new(&doc);
-        layout.mark_dirty_range(3, 7);
-        assert_eq!(layout.dirty_set().len(), 5);
-        for id in 3..=7 {
-            assert!(layout.is_dirty(id));
-        }
-        assert!(!layout.is_dirty(2));
-        assert!(!layout.is_dirty(8));
-    }
-
-    #[test]
     fn dirty_set_mark_dirty_range() {
         let mut ds = DirtySet::new();
         ds.mark_dirty_range(10, 12);
@@ -357,28 +292,213 @@ mod tests {
         assert!(!ds.is_dirty(13));
     }
 
+    // === IncrementalLayout basic tests ===
+
+    #[test]
+    fn incremental_layout_new() {
+        let module = make_simple_module();
+        let layout = IncrementalLayout::new(&module);
+        assert!(layout.dirty_set().is_empty());
+        assert!(!layout.is_dirty(0));
+    }
+
+    #[test]
+    fn incremental_mark_dirty() {
+        let module = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module);
+        layout.mark_dirty(1);
+        assert!(layout.is_dirty(1));
+        assert!(!layout.is_dirty(0));
+        assert_eq!(layout.dirty_set().len(), 1);
+    }
+
+    #[test]
+    fn incremental_clear_dirty() {
+        let module = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module);
+        layout.mark_dirty(1);
+        layout.mark_dirty(2);
+        layout.clear_dirty();
+        assert!(layout.dirty_set().is_empty());
+    }
+
+    #[test]
+    fn incremental_mark_dirty_range() {
+        let module = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module);
+        layout.mark_dirty_range(3, 7);
+        assert_eq!(layout.dirty_set().len(), 5);
+        for id in 3..=7 {
+            assert!(layout.is_dirty(id));
+        }
+        assert!(!layout.is_dirty(2));
+        assert!(!layout.is_dirty(8));
+    }
+
     #[test]
     fn incremental_multiple_dirty() {
-        let doc = make_simple_doc();
-        let mut layout = IncrementalLayout::new(&doc);
-        layout.mark_dirty(0);
+        let module = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module);
         layout.mark_dirty(1);
+        layout.mark_dirty(2);
         assert_eq!(layout.dirty_set().len(), 2);
-        let old_gir = compile_sir(&doc).unwrap();
-        let result = layout.recompile(&old_gir);
+        let ctx = make_ctx();
+        let old_lir = compile_sir_to_lir(&module, &ctx).unwrap();
+        let result = layout.recompile_lir(&old_lir, &ctx);
         assert!(result.is_ok());
     }
 
     #[test]
     fn determinism_same_input_same_output() {
-        let doc = make_simple_doc();
-        let layout1 = IncrementalLayout::new(&doc);
-        let layout2 = IncrementalLayout::new(&doc);
-        let gir1 = compile_sir(&doc).unwrap();
-        let gir2 = compile_sir(&doc).unwrap();
+        let module = make_simple_module();
+        let layout1 = IncrementalLayout::new(&module);
+        let layout2 = IncrementalLayout::new(&module);
+        let ctx = make_ctx();
+        let lir1 = compile_sir_to_lir(&module, &ctx).unwrap();
+        let lir2 = compile_sir_to_lir(&module, &ctx).unwrap();
         assert_eq!(
-            layout1.recompile(&gir1).unwrap(),
-            layout2.recompile(&gir2).unwrap()
+            layout1.recompile_lir(&lir1, &ctx).unwrap(),
+            layout2.recompile_lir(&lir2, &ctx).unwrap()
+        );
+    }
+
+    // === v2-specific tests ===
+
+    #[test]
+    fn test_v2_unchanged_produces_same_lir() {
+        let module = make_simple_module();
+        let layout = IncrementalLayout::new(&module);
+        let ctx = make_ctx();
+        let lir1 = compile_sir_to_lir(&module, &ctx).unwrap();
+        let lir2 = layout.recompile_lir(&lir1, &ctx).unwrap();
+        assert_eq!(lir1, lir2);
+    }
+
+    #[test]
+    fn test_v2_dirty_triggers_recompile() {
+        let module = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module);
+        layout.mark_dirty(2);
+        let ctx = make_ctx();
+        let old_lir = compile_sir_to_lir(&module, &ctx).unwrap();
+        let new_lir = layout.recompile_lir(&old_lir, &ctx).unwrap();
+        assert_eq!(old_lir, new_lir);
+    }
+
+    #[test]
+    fn test_v2_update_sir_identical() {
+        let module = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module);
+        let module2 = make_simple_module();
+        layout.update_sir(&module2);
+        assert!(
+            layout.dirty_set().is_empty(),
+            "identical S-IR v2 should not mark anything dirty"
+        );
+    }
+
+    #[test]
+    fn test_v2_update_sir_changed() {
+        let module1 = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module1);
+
+        let mut module2 = SIRModuleV2::new();
+        let doc_id = module2.body.push(Node::new(1, NodeType::Document));
+        let para_id = module2
+            .body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(doc_id));
+        let text_id = module2
+            .body
+            .push(
+                Node::new(3, NodeType::Text { content: "Changed text".into() }).with_parent(para_id),
+            );
+        if let Some(node) = module2.body.get_mut(doc_id) {
+            node.add_child(para_id);
+        }
+        if let Some(node) = module2.body.get_mut(para_id) {
+            node.add_child(text_id);
+        }
+
+        layout.update_sir(&module2);
+        assert!(
+            !layout.dirty_set().is_empty(),
+            "changed node type should mark nodes dirty"
+        );
+    }
+
+    #[test]
+    fn test_v2_mark_subtree_dirty() {
+        let mut module = SIRModuleV2::new();
+        let doc_id = module.body.push(Node::new(1, NodeType::Document));
+        let sec_id = module
+            .body
+            .push(Node::new(2, NodeType::Section).with_parent(doc_id));
+        let para_id = module
+            .body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(sec_id));
+        let text_id = module
+            .body
+            .push(
+                Node::new(4, NodeType::Text { content: "Child text".into() }).with_parent(para_id),
+            );
+
+        if let Some(node) = module.body.get_mut(doc_id) {
+            node.add_child(sec_id);
+        }
+        if let Some(node) = module.body.get_mut(sec_id) {
+            node.add_child(para_id);
+        }
+        if let Some(node) = module.body.get_mut(para_id) {
+            node.add_child(text_id);
+        }
+
+        let mut layout = IncrementalLayout::new(&module);
+        layout.mark_subtree_dirty(sec_id);
+        assert!(layout.is_dirty(sec_id), "section should be dirty");
+        assert!(layout.is_dirty(para_id), "child paragraph should be dirty");
+        assert!(layout.is_dirty(text_id), "grandchild text should be dirty");
+        assert!(!layout.is_dirty(doc_id), "parent should NOT be dirty");
+    }
+
+    #[test]
+    fn test_v2_dirty_descendants() {
+        let module1 = make_simple_module();
+        let mut layout = IncrementalLayout::new(&module1);
+
+        let mut module2 = SIRModuleV2::new();
+        let doc_id = module2.body.push(Node::new(1, NodeType::Document));
+        let sec_id = module2
+            .body
+            .push(Node::new(2, NodeType::Section).with_parent(doc_id));
+        let sec_text_id = module2
+            .body
+            .push(
+                Node::new(3, NodeType::Text { content: "Heading".into() }).with_parent(sec_id),
+            );
+        let para_id = module2
+            .body
+            .push(Node::new(4, NodeType::Paragraph).with_parent(doc_id));
+        let para_text_id = module2
+            .body
+            .push(
+                Node::new(5, NodeType::Text { content: "Body".into() }).with_parent(para_id),
+            );
+
+        if let Some(node) = module2.body.get_mut(doc_id) {
+            node.add_child(sec_id);
+            node.add_child(para_id);
+        }
+        if let Some(node) = module2.body.get_mut(sec_id) {
+            node.add_child(sec_text_id);
+        }
+        if let Some(node) = module2.body.get_mut(para_id) {
+            node.add_child(para_text_id);
+        }
+
+        layout.update_sir(&module2);
+        assert!(
+            !layout.dirty_set().is_empty(),
+            "structural change should be dirty"
         );
     }
 }

@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
 use crate::diagnostics;
+use crate::preview::PreviewManager;
 use crate::symbols;
 
 #[derive(Debug)]
@@ -18,14 +20,17 @@ struct DocumentState {
 pub struct Backend {
     client: Client,
     documents: RwLock<HashMap<String, DocumentState>>,
+    preview: PreviewManager,
 }
 
 impl Backend {
     /// Create a new backend with the given LSP client.
     pub fn new(client: Client) -> Self {
+        let output_path = PathBuf::from("/tmp/ldir-preview");
         Self {
-            client,
+            client: client.clone(),
             documents: RwLock::new(HashMap::new()),
+            preview: PreviewManager::new(client, output_path),
         }
     }
 }
@@ -53,6 +58,7 @@ impl LanguageServer for Backend {
     }
 
     async fn shutdown(&self) -> Result<()> {
+        self.preview.shutdown();
         Ok(())
     }
 
@@ -75,17 +81,24 @@ impl LanguageServer for Backend {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri;
         let uri_str = uri.to_string();
-        let diag = {
+        let text = {
             let mut docs = self.documents.write().await;
             if let Some(state) = docs.get_mut(&uri_str) {
                 for change in params.content_changes {
                     state.text = change.text;
                 }
-                diagnostics::compute_diagnostics(&state.text, &state.uri)
+                Some(state.text.clone())
             } else {
-                return;
+                None
             }
         };
+
+        let Some(text) = text else {
+            return;
+        };
+
+        let diag = diagnostics::compute_diagnostics(&text, &uri);
+        self.preview.trigger(&text, &uri_str).await;
         self.client.publish_diagnostics(uri, diag, None).await;
     }
 
