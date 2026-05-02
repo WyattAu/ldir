@@ -10,6 +10,8 @@
 //! - CON-ECS-010: Bump allocator for dense array growth
 //! - REQ-4.1.3: 64-byte cache-line alignment for attribute arrays
 
+#![allow(dead_code)]
+
 /// A simple bump allocator that stores values contiguously.
 ///
 /// Allocation appends to an internal `Vec<T>`, returning the index.

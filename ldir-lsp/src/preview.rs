@@ -1,28 +1,37 @@
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+//! Preview compilation manager for the LSP server.
+
+#![allow(dead_code)]
+
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, Notify};
 use tokio::time::{self};
 
-use tower_lsp::lsp_types;
 use tower_lsp::Client;
+use tower_lsp::lsp_types;
 
 use crate::detect_extension;
 
 const DEFAULT_DEBOUNCE_MS: u64 = 150;
 
+/// Parameters for the preview status notification.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewStatusParams {
+    /// Document URI.
     pub uri: String,
+    /// Status message (e.g., "compiling", "ready", "error: ...").
     pub status: String,
+    /// Path to the generated PDF, if available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pdf_path: Option<String>,
 }
 
+/// LSP notification for preview status updates.
 #[derive(Debug)]
 pub struct PreviewStatus;
 
@@ -31,6 +40,7 @@ impl lsp_types::notification::Notification for PreviewStatus {
     const METHOD: &'static str = "ldir/previewStatus";
 }
 
+/// A pending compilation request waiting to be debounced.
 #[derive(Debug)]
 struct PendingCompile {
     text: String,
@@ -38,6 +48,7 @@ struct PendingCompile {
     uri: String,
 }
 
+/// Manages debounced preview compilation for the LSP server.
 #[derive(Debug)]
 pub struct PreviewManager {
     output_path: Arc<PathBuf>,
@@ -50,6 +61,7 @@ pub struct PreviewManager {
 }
 
 impl PreviewManager {
+    /// Create a new preview manager that compiles to `output_path`.
     pub fn new(client: Client, output_path: PathBuf) -> Self {
         let notify = Arc::new(Notify::new());
         let running = Arc::new(AtomicBool::new(true));
@@ -87,22 +99,27 @@ impl PreviewManager {
         }
     }
 
+    /// Enable or disable preview compilation.
     pub fn set_enabled(&self, enabled: bool) {
         self.enabled.store(enabled, Ordering::Relaxed);
     }
 
+    /// Check if preview compilation is enabled.
     pub fn is_enabled(&self) -> bool {
         self.enabled.load(Ordering::Relaxed)
     }
 
+    /// Returns the debounce duration.
     pub fn debounce(&self) -> Duration {
         self.debounce
     }
 
+    /// Returns the output directory path.
     pub fn output_path(&self) -> &PathBuf {
         &self.output_path
     }
 
+    /// Trigger a debounced recompilation of the given document.
     pub async fn trigger(&self, text: &str, uri: &str) {
         if !self.enabled.load(Ordering::Relaxed) {
             return;
@@ -124,6 +141,7 @@ impl PreviewManager {
         self.notify.notify_one();
     }
 
+    /// Shut down the background compilation task.
     pub fn shutdown(&self) {
         self.running.store(false, Ordering::Relaxed);
         self.notify.notify_one();
@@ -134,7 +152,7 @@ impl PreviewManager {
         running: Arc<AtomicBool>,
         pending: Arc<Mutex<Option<PendingCompile>>>,
         output_path: Arc<PathBuf>,
-        client: Client,
+        #[allow(dead_code)] client: Client,
         debounce: Duration,
     ) {
         loop {
@@ -224,7 +242,7 @@ fn compile_to_pdf(
     text: &str,
     extension: &str,
     uri: &str,
-    output_dir: &PathBuf,
+    output_dir: &Path,
 ) -> Result<PathBuf, String> {
     let module = match extension {
         "md" => {
@@ -247,17 +265,15 @@ fn compile_to_pdf(
 
     let pdf_path = derive_pdf_path(uri, output_dir)?;
     if let Some(parent) = pdf_path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("failed to create directory: {e}"))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("failed to create directory: {e}"))?;
     }
 
-    std::fs::write(&pdf_path, &pdf_bytes)
-        .map_err(|e| format!("failed to write PDF: {e}"))?;
+    std::fs::write(&pdf_path, &pdf_bytes).map_err(|e| format!("failed to write PDF: {e}"))?;
 
     Ok(pdf_path)
 }
 
-fn derive_pdf_path(uri: &str, output_dir: &PathBuf) -> Result<PathBuf, String> {
+fn derive_pdf_path(uri: &str, output_dir: &Path) -> Result<PathBuf, String> {
     let url = url::Url::parse(uri).map_err(|e| format!("invalid URI: {e}"))?;
     let path = url
         .to_file_path()
@@ -307,10 +323,7 @@ mod tests {
         assert_eq!(pdf.to_string_lossy(), "/tmp/ldir-preview/doc.pdf");
 
         let pdf = derive_pdf_path("file:///home/user/report.tex", &output_dir).unwrap();
-        assert_eq!(
-            pdf.to_string_lossy(),
-            "/tmp/ldir-preview/report.pdf"
-        );
+        assert_eq!(pdf.to_string_lossy(), "/tmp/ldir-preview/report.pdf");
     }
 
     #[test]

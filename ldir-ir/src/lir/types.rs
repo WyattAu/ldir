@@ -7,8 +7,7 @@
 use crate::fp266::Fp266;
 use crate::lir::position::Rect;
 use crate::lir::style::{
-    FlowDirection, LIRStyleTable, ListType, MathType, Padding, Placement,
-    TextAlign,
+    FlowDirection, LIRStyleTable, ListType, MathType, Padding, Placement, TextAlign,
 };
 
 use std::fmt;
@@ -325,12 +324,7 @@ impl LIRNode {
 
 impl fmt::Display for LIRNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "LIRNode::{}(id={})",
-            self.type_name(),
-            self.id()
-        )
+        write!(f, "LIRNode::{}(id={})", self.type_name(), self.id())
     }
 }
 
@@ -415,12 +409,7 @@ impl LIRPage {
     pub fn new(page_number: u32, meta: &LIRDocumentMeta) -> Self {
         Self {
             id: 0,
-            geometry: LIRGeometry::new(
-                Fp266::ZERO,
-                Fp266::ZERO,
-                meta.page_width,
-                meta.page_height,
-            ),
+            geometry: LIRGeometry::new(Fp266::ZERO, Fp266::ZERO, meta.page_width, meta.page_height),
             source_node_id: None,
             style_id: None,
             page_width: meta.page_width,
@@ -1395,11 +1384,7 @@ mod tests {
 
     #[test]
     fn test_space_with_glue() {
-        let s = LIRSpace::with_glue(
-            Fp266::from_int(5),
-            Fp266::from_int(2),
-            Fp266::from_int(1),
-        );
+        let s = LIRSpace::with_glue(Fp266::from_int(5), Fp266::from_int(2), Fp266::from_int(1));
         assert_eq!(s.natural_width, Fp266::from_int(5));
         assert_eq!(s.stretch, Fp266::from_int(2));
         assert_eq!(s.shrink, Fp266::from_int(1));

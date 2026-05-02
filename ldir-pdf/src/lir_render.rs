@@ -208,8 +208,8 @@ fn render_node(node: &LIRNode, page: &mut GIRPage) {
 mod tests {
     use super::*;
     use ldir_ir::lir::{
-        FlowDirection, LIRFlow, LIRGeometry, LIRGlyph, LIRLine, LIRPage, LIRParagraph,
-        LIRTable, LIRTableCell, LIRTableRow,
+        FlowDirection, LIRFlow, LIRGeometry, LIRGlyph, LIRLine, LIRPage, LIRParagraph, LIRTable,
+        LIRTableCell, LIRTableRow,
     };
 
     fn make_page_with_children(children: Vec<LIRNode>) -> LIRPage {
@@ -412,15 +412,9 @@ mod tests {
     #[test]
     fn test_multiple_pages() {
         let mut lir_doc = LIRDocument::default();
-        lir_doc
-            .pages
-            .push(make_page_with_children(vec![]));
-        lir_doc
-            .pages
-            .push(make_page_with_children(vec![]));
-        lir_doc
-            .pages
-            .push(make_page_with_children(vec![]));
+        lir_doc.pages.push(make_page_with_children(vec![]));
+        lir_doc.pages.push(make_page_with_children(vec![]));
+        lir_doc.pages.push(make_page_with_children(vec![]));
 
         let gir_doc = render_lir_to_gir(&lir_doc);
         assert_eq!(gir_doc.page_count(), 3);

@@ -374,7 +374,10 @@ mod tests {
 
     #[test]
     fn test_extract_braced_quoted_with_spaces() {
-        assert_eq!(extract_braced_quoted(r#"  "Hello"  "#), Some("Hello".into()));
+        assert_eq!(
+            extract_braced_quoted(r#"  "Hello"  "#),
+            Some("Hello".into())
+        );
     }
 
     #[test]
@@ -392,7 +395,10 @@ mod tests {
 
     #[test]
     fn test_extract_braced_field_not_found() {
-        assert_eq!(extract_braced_field(r#"url="https://example.com""#, "src="), None);
+        assert_eq!(
+            extract_braced_field(r#"url="https://example.com""#, "src="),
+            None
+        );
     }
 
     // === Integration tests: parse_ldir_text ===
@@ -519,7 +525,11 @@ mod tests {
 "#;
         let module = parse_ldir_text(text).unwrap();
         // Should parse the vast majority of node types; at least 30 out of 32
-        assert!(module.body.len() >= 30, "expected >= 30 nodes, got {}", module.body.len());
+        assert!(
+            module.body.len() >= 30,
+            "expected >= 30 nodes, got {}",
+            module.body.len()
+        );
     }
 
     // === Round-trip test: assemble → disassemble → reassemble ===

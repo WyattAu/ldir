@@ -100,13 +100,21 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                         table_current_cell = None;
                     }
                     pulldown_cmark::Tag::TableHead => {
-                        table_current_row = Some(TableRowData { is_header: true, cells: Vec::new() });
+                        table_current_row = Some(TableRowData {
+                            is_header: true,
+                            cells: Vec::new(),
+                        });
                     }
                     pulldown_cmark::Tag::TableRow => {
-                        table_current_row = Some(TableRowData { is_header: false, cells: Vec::new() });
+                        table_current_row = Some(TableRowData {
+                            is_header: false,
+                            cells: Vec::new(),
+                        });
                     }
                     pulldown_cmark::Tag::TableCell => {
-                        table_current_cell = Some(TableCellData { content: String::new() });
+                        table_current_cell = Some(TableCellData {
+                            content: String::new(),
+                        });
                     }
                     pulldown_cmark::Tag::Heading { level, .. } => {
                         current = Some(InlineBuffer::new_heading(level as u32));
@@ -173,29 +181,26 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                         });
                     }
                     if !rows.is_empty() {
-                        blocks.push(Block::StructuredTable {
-                            num_cols,
-                            rows,
-                        });
+                        blocks.push(Block::StructuredTable { num_cols, rows });
                     }
                     table_rows.clear();
                     table_col_alignments.clear();
                 }
                 pulldown_cmark::TagEnd::TableHead | pulldown_cmark::TagEnd::TableRow => {
-                    if let Some(cell) = table_current_cell.take() {
-                        if let Some(ref mut row) = table_current_row {
-                            row.cells.push(cell);
-                        }
+                    if let Some(cell) = table_current_cell.take()
+                        && let Some(ref mut row) = table_current_row
+                    {
+                        row.cells.push(cell);
                     }
                     if let Some(row) = table_current_row.take() {
                         table_rows.push(row);
                     }
                 }
                 pulldown_cmark::TagEnd::TableCell => {
-                    if let Some(cell) = table_current_cell.take() {
-                        if let Some(ref mut row) = table_current_row {
-                            row.cells.push(cell);
-                        }
+                    if let Some(cell) = table_current_cell.take()
+                        && let Some(ref mut row) = table_current_row
+                    {
+                        row.cells.push(cell);
                     }
                 }
                 pulldown_cmark::TagEnd::FootnoteDefinition => {
@@ -308,10 +313,8 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                     buf.push_text(&format!("\\fnmark{{{}}}", num));
                 }
             }
-            pulldown_cmark::Event::TaskListMarker(checked) => {
-                if in_list_item {
-                    task_list_marker = Some(checked);
-                }
+            pulldown_cmark::Event::TaskListMarker(checked) if in_list_item => {
+                task_list_marker = Some(checked);
             }
             _ => {}
         }
@@ -325,7 +328,9 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
     // Emit footnote definitions as a FootnoteBlock at the end
     if !footnote_defs.is_empty() {
         footnote_defs.sort_by_key(|(num, _)| *num);
-        blocks.push(Block::FootnoteBlock { entries: footnote_defs });
+        blocks.push(Block::FootnoteBlock {
+            entries: footnote_defs,
+        });
     }
 
     // Emit blocks as S-IR instructions
@@ -536,10 +541,7 @@ impl<'a> ParseContext<'a> {
 
             for cell_content in &row.cells {
                 let cell_id = self.next_entity_id();
-                let cell_payload = self
-                    .doc
-                    .payload_mut()
-                    .append(&[BlockType::TableCell as u8]);
+                let cell_payload = self.doc.payload_mut().append(&[BlockType::TableCell as u8]);
                 self.doc.push(SIRInstruction::new(
                     SIROpcode::PushBlock,
                     cell_id,
@@ -573,10 +575,7 @@ impl<'a> ParseContext<'a> {
 
         for (_num, text) in entries {
             let fn_id = self.next_entity_id();
-            let payload_offset = self
-                .doc
-                .payload_mut()
-                .append(&[BlockType::Footnote as u8]);
+            let payload_offset = self.doc.payload_mut().append(&[BlockType::Footnote as u8]);
             self.doc.push(SIRInstruction::new(
                 SIROpcode::PushBlock,
                 fn_id,
@@ -1072,7 +1071,10 @@ code block
         }
         assert!(found_table, "should emit PushBlock(Table) for GFM tables");
         assert!(found_row, "should emit PushBlock(TableRow) for table rows");
-        assert!(found_cell, "should emit PushBlock(TableCell) for table cells");
+        assert!(
+            found_cell,
+            "should emit PushBlock(TableCell) for table cells"
+        );
     }
 
     #[test]
@@ -1166,7 +1168,10 @@ code block
         }
         assert!(checked_found, "should have checked item");
         assert!(unchecked_found, "should have unchecked item");
-        assert!(regular_found, "should have regular list item without marker");
+        assert!(
+            regular_found,
+            "should have regular list item without marker"
+        );
     }
 
     #[test]

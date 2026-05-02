@@ -10,6 +10,8 @@
 //! - THM-ECS-DETERMINISM: Entity iteration order is deterministic
 //! - AX-ECS-005: Deterministic iteration order
 
+#![allow(dead_code)]
+
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
@@ -107,6 +109,7 @@ impl World {
     /// Inserts a component for the given entity.
     ///
     /// Panics if the component type has not been registered (PRE-ECS-001).
+    #[allow(clippy::expect_used)]
     pub fn insert_component<T: 'static>(&mut self, entity: Entity, component: T) {
         self.store_mut::<T>()
             .expect("component type not registered; call register::<T>() first")

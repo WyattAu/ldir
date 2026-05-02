@@ -10,6 +10,8 @@
 //! - `offset_of_entity` / `source_location`: O(n) scan; hot only during
 //!   diagnostics, can be upgraded to a `HashMap` later.
 
+#![allow(clippy::expect_used)]
+
 use ldir_ir::sir::{EntityId, INSTRUCTION_WIRE_SIZE, SIRDocument};
 
 /// Source location tied to an entity.
@@ -156,8 +158,12 @@ impl SourceMap {
         let wire = INSTRUCTION_WIRE_SIZE as u32;
         for (i, instr) in doc.iter().enumerate() {
             let offset = base_offset
-                .checked_add((i as u32).checked_mul(wire).unwrap())
-                .unwrap();
+                .checked_add(
+                    (i as u32)
+                        .checked_mul(wire)
+                        .expect("instruction index overflow"),
+                )
+                .expect("source map offset overflow");
             map.insert(instr.entity_id(), offset, 0, 0);
         }
         map

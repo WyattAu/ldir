@@ -5,23 +5,25 @@
 //! a positioned [`LIRDocument`](ldir_ir::lir::LIRDocument) tree with resolved
 //! geometry, line-broken paragraphs, and page breaks.
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
+use ldir_ir::fp266::Fp266 as LirFp;
 use ldir_ir::lir::style::{
     FlowDirection, LIRStyleTable, LIRTextStyle, ListType, MathType, Padding,
 };
 use ldir_ir::lir::types::*;
-use ldir_ir::fp266::Fp266 as LirFp;
-use ldir_ir::sir::v2::nodes::NodeType;
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::NodeType;
 
 use crate::compiler::context::CompileContext;
 use crate::compiler::context::{
     FONT_ID_BOLD, FONT_ID_BOLD_ITALIC, FONT_ID_ITALIC, FONT_ID_MONO, FONT_ID_REGULAR,
 };
 use crate::fp266::Fp266;
-use crate::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
 use crate::layout::linebreak::cjk::{insert_cjk_breaks, is_cjk_text};
+use crate::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
 
 // ---------------------------------------------------------------------------
 // Error
@@ -170,13 +172,11 @@ impl<'a> LirCompiler<'a> {
     }
 
     fn ensure_space(&mut self, height: Fp266) -> bool {
-        if self.cursor_y + height > self.max_y() {
-            if !self.current_page_children.is_empty() {
-                self.finish_page();
-                self.cursor_x = self.ctx.margin_left;
-                self.cursor_y = self.ctx.margin_top;
-                return true;
-            }
+        if self.cursor_y + height > self.max_y() && !self.current_page_children.is_empty() {
+            self.finish_page();
+            self.cursor_x = self.ctx.margin_left;
+            self.cursor_y = self.ctx.margin_top;
+            return true;
         }
         false
     }
@@ -191,10 +191,7 @@ impl<'a> LirCompiler<'a> {
     }
 
     fn section_number_string(&self) -> String {
-        let parts: Vec<String> = self.section_number
-            .iter()
-            .map(|n| n.to_string())
-            .collect();
+        let parts: Vec<String> = self.section_number.iter().map(|n| n.to_string()).collect();
         parts.join(".")
     }
 
@@ -219,7 +216,13 @@ impl<'a> LirCompiler<'a> {
         }
     }
 
-    fn build_heading(&mut self, level: u8, number: String, label: String, source_id: Option<u32>) -> LirResult<Vec<LIRNode>> {
+    fn build_heading(
+        &mut self,
+        level: u8,
+        number: String,
+        label: String,
+        source_id: Option<u32>,
+    ) -> LirResult<Vec<LIRNode>> {
         let font_size_pt = self.font_size_for_heading(level);
         let lh = self.line_height(font_size_pt);
 
@@ -249,7 +252,11 @@ impl<'a> LirCompiler<'a> {
             heading.children = p.children;
             heading.geometry = p.geometry;
             let height = fp_lir_to_core(heading.geometry.height);
-            let spacing = if level <= 1 { Fp266::from_int(12) } else { Fp266::from_int(8) };
+            let spacing = if level <= 1 {
+                Fp266::from_int(12)
+            } else {
+                Fp266::from_int(8)
+            };
             self.cursor_y += height + spacing;
             self.add_block(LIRNode::Heading(heading), height + spacing);
         }
@@ -473,7 +480,12 @@ impl<'a> LirCompiler<'a> {
                 self.ensure_space(lh);
 
                 if let Some(p) = self.build_paragraph(
-                    &text, source_id, Some(0), 12, self.content_width(), self.cursor_x,
+                    &text,
+                    source_id,
+                    Some(0),
+                    12,
+                    self.content_width(),
+                    self.cursor_x,
                 ) {
                     let height = fp_lir_to_core(p.geometry.height);
                     self.cursor_y += height + Fp266::from_int(6);
@@ -491,7 +503,12 @@ impl<'a> LirCompiler<'a> {
                 self.ensure_space(lh);
 
                 if let Some(p) = self.build_paragraph(
-                    text, source_id, Some(0), 12, self.content_width(), self.cursor_x,
+                    text,
+                    source_id,
+                    Some(0),
+                    12,
+                    self.content_width(),
+                    self.cursor_x,
                 ) {
                     let height = fp_lir_to_core(p.geometry.height);
                     self.cursor_y += height + Fp266::from_int(6);
@@ -500,14 +517,22 @@ impl<'a> LirCompiler<'a> {
                 Ok(Vec::new())
             }
 
-            NodeType::Bold | NodeType::Italic | NodeType::Mono
-            | NodeType::Underline | NodeType::Strikethrough | NodeType::SmallCaps
-            | NodeType::Link { .. } | NodeType::Group | NodeType::Styled { .. } => {
-                self.compile_children(node_id)
-            }
+            NodeType::Bold
+            | NodeType::Italic
+            | NodeType::Mono
+            | NodeType::Underline
+            | NodeType::Strikethrough
+            | NodeType::SmallCaps
+            | NodeType::Link { .. }
+            | NodeType::Group
+            | NodeType::Styled { .. } => self.compile_children(node_id),
 
             NodeType::List { ordered, start, .. } => {
-                let lir_list_type = if ordered { ListType::Ordered } else { ListType::Unordered };
+                let lir_list_type = if ordered {
+                    ListType::Ordered
+                } else {
+                    ListType::Unordered
+                };
 
                 let mut list = LIRList::new(lir_list_type);
                 list.id = self.alloc_id();
@@ -540,8 +565,12 @@ impl<'a> LirCompiler<'a> {
                         if !text.trim().is_empty() {
                             self.ensure_space(lh);
                             if let Some(p) = self.build_paragraph(
-                                &text, Some(*child_id), Some(0), 12,
-                                self.content_width() - Fp266::from_int(36), self.cursor_x,
+                                &text,
+                                Some(*child_id),
+                                Some(0),
+                                12,
+                                self.content_width() - Fp266::from_int(36),
+                                self.cursor_x,
                             ) {
                                 let height = fp_lir_to_core(p.geometry.height);
                                 self.cursor_y += height + Fp266::from_int(4);
@@ -629,7 +658,8 @@ impl<'a> LirCompiler<'a> {
 
                     let mut lx = self.cursor_x;
                     for g in &shaped.glyphs {
-                        let mut glyph = LIRGlyph::new(g.glyph_id, FONT_ID_MONO, fp_core_to_lir(g.advance));
+                        let mut glyph =
+                            LIRGlyph::new(g.glyph_id, FONT_ID_MONO, fp_core_to_lir(g.advance));
                         glyph.id = self.alloc_id();
                         let baseline = fs.mul(Fp266::from_frac(8, 10));
                         glyph.geometry = LIRGeometry::with_baseline(
@@ -673,7 +703,11 @@ impl<'a> LirCompiler<'a> {
 
             NodeType::MathBlock { numbered, .. } => {
                 self.eq_counter += 1;
-                let eq_num = if numbered { Some(self.eq_counter) } else { None };
+                let eq_num = if numbered {
+                    Some(self.eq_counter)
+                } else {
+                    None
+                };
 
                 let text = self.collect_text(node_id);
                 let lh = self.line_height(12);
@@ -762,14 +796,17 @@ impl<'a> LirCompiler<'a> {
                                 cell.rowspan = *rowspan as u16;
                                 cell.padding = Padding::uniform(fp_core_to_lir(Fp266::from_int(4)));
 
-                                if !cell_text.trim().is_empty() {
-                                    if let Some(p) = self.build_paragraph(
-                                        &cell_text, Some(*cell_id), Some(0), 11,
+                                if !cell_text.trim().is_empty()
+                                    && let Some(p) = self.build_paragraph(
+                                        &cell_text,
+                                        Some(*cell_id),
+                                        Some(0),
+                                        11,
                                         cell_w - Fp266::from_int(8),
                                         self.cursor_x + Fp266::from_int(4),
-                                    ) {
-                                        cell.children.push(LIRNode::Paragraph(p));
-                                    }
+                                    )
+                                {
+                                    cell.children.push(LIRNode::Paragraph(p));
                                 }
 
                                 row.children.push(LIRNode::TableCell(cell));
@@ -816,7 +853,7 @@ impl<'a> LirCompiler<'a> {
                     let child_info = NodeInfo::from_tree(&self.module.body, *child_id)?;
                     match child_info.node_type {
                         NodeType::Image { .. } => {
-                            fig.image_index = Some(self.figure_counter as u32 - 1);
+                            fig.image_index = Some(self.figure_counter - 1);
                         }
                         NodeType::Caption => {
                             let caption_text = self.collect_text(*child_id);
@@ -824,13 +861,17 @@ impl<'a> LirCompiler<'a> {
                             caption.id = self.alloc_id();
                             caption.source_node_id = Some(*child_id);
 
-                            if !caption_text.trim().is_empty() {
-                                if let Some(p) = self.build_paragraph(
-                                    &caption_text, Some(*child_id), Some(0), 10,
-                                    self.content_width(), self.cursor_x,
-                                ) {
-                                    caption.children = p.children;
-                                }
+                            if !caption_text.trim().is_empty()
+                                && let Some(p) = self.build_paragraph(
+                                    &caption_text,
+                                    Some(*child_id),
+                                    Some(0),
+                                    10,
+                                    self.content_width(),
+                                    self.cursor_x,
+                                )
+                            {
+                                caption.children = p.children;
                             }
                             fig.caption = Some(Box::new(caption));
                         }
@@ -859,15 +900,19 @@ impl<'a> LirCompiler<'a> {
                 caption.id = self.alloc_id();
                 caption.source_node_id = source_id;
 
-                if !caption_text.trim().is_empty() {
-                    if let Some(p) = self.build_paragraph(
-                        &caption_text, source_id, Some(0), 10,
-                        self.content_width(), self.cursor_x,
-                    ) {
-                        caption.children = p.children;
-                        let height = fp_lir_to_core(p.geometry.height);
-                        self.cursor_y += height;
-                    }
+                if !caption_text.trim().is_empty()
+                    && let Some(p) = self.build_paragraph(
+                        &caption_text,
+                        source_id,
+                        Some(0),
+                        10,
+                        self.content_width(),
+                        self.cursor_x,
+                    )
+                {
+                    caption.children = p.children;
+                    let height = fp_lir_to_core(p.geometry.height);
+                    self.cursor_y += height;
                 }
 
                 Ok(vec![LIRNode::Caption(caption)])
@@ -906,8 +951,12 @@ impl<'a> LirCompiler<'a> {
                     block.footnote_ids.push(*fn_id);
                     let fn_text = format!("{} {}", fn_id, content);
                     if let Some(p) = self.build_paragraph(
-                        &fn_text, source_id, Some(0), 9,
-                        self.content_width(), self.cursor_x,
+                        &fn_text,
+                        source_id,
+                        Some(0),
+                        9,
+                        self.content_width(),
+                        self.cursor_x,
                     ) {
                         let height = fp_lir_to_core(p.geometry.height);
                         self.cursor_y += height;
@@ -943,7 +992,10 @@ impl<'a> LirCompiler<'a> {
                 );
 
                 self.cursor_y += toc_height + Fp266::from_int(12);
-                self.add_block(LIRNode::TableOfContents(toc), toc_height + Fp266::from_int(12));
+                self.add_block(
+                    LIRNode::TableOfContents(toc),
+                    toc_height + Fp266::from_int(12),
+                );
                 Ok(Vec::new())
             }
 
@@ -1019,8 +1071,12 @@ impl<'a> LirCompiler<'a> {
                 self.ensure_space(lh);
 
                 if let Some(p) = self.build_paragraph(
-                    &text, source_id, Some(0), 12,
-                    self.content_width(), self.cursor_x,
+                    &text,
+                    source_id,
+                    Some(0),
+                    12,
+                    self.content_width(),
+                    self.cursor_x,
                 ) {
                     let height = fp_lir_to_core(p.geometry.height);
                     self.cursor_y += height;
@@ -1044,19 +1100,21 @@ impl<'a> LirCompiler<'a> {
         let style_table = std::mem::take(&mut self.style_table);
         let pages = std::mem::take(&mut self.pages);
 
-        let mut doc = LIRDocument::default();
-        doc.id = 1;
-        doc.metadata = LIRDocumentMeta {
-            page_width: fp_core_to_lir(self.ctx.page_width),
-            page_height: fp_core_to_lir(self.ctx.page_height),
-            margin_top: fp_core_to_lir(self.ctx.margin_top),
-            margin_bottom: fp_core_to_lir(self.ctx.margin_bottom),
-            margin_left: fp_core_to_lir(self.ctx.margin_left),
-            margin_right: fp_core_to_lir(self.ctx.margin_right),
-            language: self.module.metadata.language.clone(),
+        let mut doc = LIRDocument {
+            id: 1,
+            metadata: LIRDocumentMeta {
+                page_width: fp_core_to_lir(self.ctx.page_width),
+                page_height: fp_core_to_lir(self.ctx.page_height),
+                margin_top: fp_core_to_lir(self.ctx.margin_top),
+                margin_bottom: fp_core_to_lir(self.ctx.margin_bottom),
+                margin_left: fp_core_to_lir(self.ctx.margin_left),
+                margin_right: fp_core_to_lir(self.ctx.margin_right),
+                language: self.module.metadata.language.clone(),
+            },
+            pages,
+            style_table,
+            ..Default::default()
         };
-        doc.pages = pages;
-        doc.style_table = style_table;
 
         let mut toc = LIRTableOfContents::new(4);
         toc.id = self.alloc_id();
@@ -1102,10 +1160,7 @@ impl<'a> LirCompiler<'a> {
 /// - Line-broken paragraphs using Knuth-Plass
 /// - Section numbering for headings
 /// - Collected footnotes and table of contents
-pub fn compile_sir_to_lir(
-    module: &SIRModuleV2,
-    ctx: &CompileContext,
-) -> LirResult<LIRDocument> {
+pub fn compile_sir_to_lir(module: &SIRModuleV2, ctx: &CompileContext) -> LirResult<LIRDocument> {
     let mut compiler = LirCompiler::new(module, ctx);
 
     for &root_id in module.body.roots() {
@@ -1122,8 +1177,8 @@ pub fn compile_sir_to_lir(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ldir_ir::sir::v2::nodes::Node;
     use ldir_ir::sir::v2::nodes::ListType as SIRListType;
+    use ldir_ir::sir::v2::nodes::Node;
 
     fn make_module() -> SIRModuleV2 {
         SIRModuleV2::new()
@@ -1151,15 +1206,24 @@ mod tests {
     fn test_single_paragraph() {
         let mut module = make_module();
         let para_id = module.body.push(Node::new(1, NodeType::Paragraph));
-        let text_id = module
-            .body
-            .push(Node::new(2, NodeType::Text { content: "Hello world".into() }).with_parent(1));
+        let text_id = module.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Hello world".into(),
+                },
+            )
+            .with_parent(1),
+        );
         add_child(&mut module.body, para_id, text_id);
 
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
         assert_eq!(doc.pages.len(), 1);
-        let found = doc.pages[0].children.iter().any(|n| matches!(n, LIRNode::Paragraph(_)));
+        let found = doc.pages[0]
+            .children
+            .iter()
+            .any(|n| matches!(n, LIRNode::Paragraph(_)));
         assert!(found, "expected a paragraph node");
     }
 
@@ -1167,18 +1231,32 @@ mod tests {
     fn test_heading_and_paragraph() {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
-        let sec_id = module
-            .body
-            .push(Node::new(2, NodeType::Section).with_parent(1).with_label("intro"));
-        let sec_text_id = module
-            .body
-            .push(Node::new(3, NodeType::Text { content: "Introduction".into() }).with_parent(2));
+        let sec_id = module.body.push(
+            Node::new(2, NodeType::Section)
+                .with_parent(1)
+                .with_label("intro"),
+        );
+        let sec_text_id = module.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Introduction".into(),
+                },
+            )
+            .with_parent(2),
+        );
         let para_id = module
             .body
             .push(Node::new(4, NodeType::Paragraph).with_parent(1));
-        let para_text_id = module
-            .body
-            .push(Node::new(5, NodeType::Text { content: "Some body text here.".into() }).with_parent(4));
+        let para_text_id = module.body.push(
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "Some body text here.".into(),
+                },
+            )
+            .with_parent(4),
+        );
 
         add_child(&mut module.body, doc_id, sec_id);
         add_child(&mut module.body, doc_id, para_id);
@@ -1189,10 +1267,25 @@ mod tests {
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
         assert_eq!(doc.pages.len(), 1);
 
-        let has_heading = doc.pages[0].children.iter().any(|n| matches!(n, LIRNode::Heading(_)));
-        assert!(has_heading, "expected a heading node, got: {:?}", doc.pages[0].children.iter().map(|n| n.type_name()).collect::<Vec<_>>());
+        let has_heading = doc.pages[0]
+            .children
+            .iter()
+            .any(|n| matches!(n, LIRNode::Heading(_)));
+        assert!(
+            has_heading,
+            "expected a heading node, got: {:?}",
+            doc.pages[0]
+                .children
+                .iter()
+                .map(|n| n.type_name())
+                .collect::<Vec<_>>()
+        );
 
-        if let Some(LIRNode::Heading(h)) = doc.pages[0].children.iter().find(|n| matches!(n, LIRNode::Heading(_))) {
+        if let Some(LIRNode::Heading(h)) = doc.pages[0]
+            .children
+            .iter()
+            .find(|n| matches!(n, LIRNode::Heading(_)))
+        {
             assert_eq!(h.level, 2);
             assert_eq!(h.label, "Introduction");
         }
@@ -1205,11 +1298,17 @@ mod tests {
 
         let mut next_id = 2u32;
         for i in 0..100 {
-            let para_id = module.body.push(Node::new(next_id, NodeType::Paragraph).with_parent(1));
+            let para_id = module
+                .body
+                .push(Node::new(next_id, NodeType::Paragraph).with_parent(1));
             let text_id = module.body.push(
-                Node::new(next_id + 1, NodeType::Text {
-                    content: format!("Paragraph {} with enough text to fill a line.", i),
-                }).with_parent(next_id),
+                Node::new(
+                    next_id + 1,
+                    NodeType::Text {
+                        content: format!("Paragraph {} with enough text to fill a line.", i),
+                    },
+                )
+                .with_parent(next_id),
             );
             add_child(&mut module.body, doc_id, para_id);
             add_child(&mut module.body, para_id, text_id);
@@ -1218,18 +1317,44 @@ mod tests {
 
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
-        assert!(doc.pages.len() > 1, "expected multiple pages, got {}", doc.pages.len());
+        assert!(
+            doc.pages.len() > 1,
+            "expected multiple pages, got {}",
+            doc.pages.len()
+        );
     }
 
     #[test]
     fn test_explicit_page_break() {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
-        let para1_id = module.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
-        let text1_id = module.body.push(Node::new(3, NodeType::Text { content: "Page 1 content".into() }).with_parent(2));
-        let pb_id = module.body.push(Node::new(4, NodeType::PageBreak).with_parent(1));
-        let para2_id = module.body.push(Node::new(5, NodeType::Paragraph).with_parent(1));
-        let text2_id = module.body.push(Node::new(6, NodeType::Text { content: "Page 2 content".into() }).with_parent(5));
+        let para1_id = module
+            .body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        let text1_id = module.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Page 1 content".into(),
+                },
+            )
+            .with_parent(2),
+        );
+        let pb_id = module
+            .body
+            .push(Node::new(4, NodeType::PageBreak).with_parent(1));
+        let para2_id = module
+            .body
+            .push(Node::new(5, NodeType::Paragraph).with_parent(1));
+        let text2_id = module.body.push(
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "Page 2 content".into(),
+                },
+            )
+            .with_parent(5),
+        );
 
         add_child(&mut module.body, doc_id, para1_id);
         add_child(&mut module.body, doc_id, pb_id);
@@ -1247,16 +1372,40 @@ mod tests {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
         let list_id = module.body.push(
-            Node::new(2, NodeType::List {
-                list_type: SIRListType::Unordered,
-                ordered: false,
-                start: None,
-            }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::List {
+                    list_type: SIRListType::Unordered,
+                    ordered: false,
+                    start: None,
+                },
+            )
+            .with_parent(1),
         );
-        let item1_id = module.body.push(Node::new(3, NodeType::ListItem).with_parent(2));
-        let text1_id = module.body.push(Node::new(4, NodeType::Text { content: "First item".into() }).with_parent(3));
-        let item2_id = module.body.push(Node::new(5, NodeType::ListItem).with_parent(2));
-        let text2_id = module.body.push(Node::new(6, NodeType::Text { content: "Second item".into() }).with_parent(5));
+        let item1_id = module
+            .body
+            .push(Node::new(3, NodeType::ListItem).with_parent(2));
+        let text1_id = module.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "First item".into(),
+                },
+            )
+            .with_parent(3),
+        );
+        let item2_id = module
+            .body
+            .push(Node::new(5, NodeType::ListItem).with_parent(2));
+        let text2_id = module.body.push(
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "Second item".into(),
+                },
+            )
+            .with_parent(5),
+        );
 
         add_child(&mut module.body, doc_id, list_id);
         add_child(&mut module.body, list_id, item1_id);
@@ -1268,7 +1417,11 @@ mod tests {
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
         assert_eq!(doc.pages.len(), 1);
 
-        if let Some(LIRNode::List(l)) = doc.pages[0].children.iter().find(|n| matches!(n, LIRNode::List(_))) {
+        if let Some(LIRNode::List(l)) = doc.pages[0]
+            .children
+            .iter()
+            .find(|n| matches!(n, LIRNode::List(_)))
+        {
             assert_eq!(l.list_type, ListType::Unordered);
             assert_eq!(l.children.len(), 2);
         }
@@ -1279,19 +1432,65 @@ mod tests {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
         let table_id = module.body.push(
-            Node::new(2, NodeType::Table {
-                col_specs: vec![
-                    ldir_ir::sir::v2::nodes::ColSpec { align: ldir_ir::sir::v2::nodes::ColumnAlign::Left, width: None },
-                    ldir_ir::sir::v2::nodes::ColSpec { align: ldir_ir::sir::v2::nodes::ColumnAlign::Left, width: None },
-                ],
-                num_cols: 2,
-            }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::Table {
+                    col_specs: vec![
+                        ldir_ir::sir::v2::nodes::ColSpec {
+                            align: ldir_ir::sir::v2::nodes::ColumnAlign::Left,
+                            width: None,
+                        },
+                        ldir_ir::sir::v2::nodes::ColSpec {
+                            align: ldir_ir::sir::v2::nodes::ColumnAlign::Left,
+                            width: None,
+                        },
+                    ],
+                    num_cols: 2,
+                },
+            )
+            .with_parent(1),
         );
-        let row_id = module.body.push(Node::new(3, NodeType::TableRow { is_header: true }).with_parent(2));
-        let cell1_id = module.body.push(Node::new(4, NodeType::TableCell { colspan: 1, rowspan: 1 }).with_parent(3));
-        let cell1_text = module.body.push(Node::new(5, NodeType::Text { content: "Header 1".into() }).with_parent(4));
-        let cell2_id = module.body.push(Node::new(6, NodeType::TableCell { colspan: 1, rowspan: 1 }).with_parent(3));
-        let cell2_text = module.body.push(Node::new(7, NodeType::Text { content: "Header 2".into() }).with_parent(6));
+        let row_id = module
+            .body
+            .push(Node::new(3, NodeType::TableRow { is_header: true }).with_parent(2));
+        let cell1_id = module.body.push(
+            Node::new(
+                4,
+                NodeType::TableCell {
+                    colspan: 1,
+                    rowspan: 1,
+                },
+            )
+            .with_parent(3),
+        );
+        let cell1_text = module.body.push(
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "Header 1".into(),
+                },
+            )
+            .with_parent(4),
+        );
+        let cell2_id = module.body.push(
+            Node::new(
+                6,
+                NodeType::TableCell {
+                    colspan: 1,
+                    rowspan: 1,
+                },
+            )
+            .with_parent(3),
+        );
+        let cell2_text = module.body.push(
+            Node::new(
+                7,
+                NodeType::Text {
+                    content: "Header 2".into(),
+                },
+            )
+            .with_parent(6),
+        );
 
         add_child(&mut module.body, doc_id, table_id);
         add_child(&mut module.body, table_id, row_id);
@@ -1303,7 +1502,11 @@ mod tests {
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
 
-        if let Some(LIRNode::Table(t)) = doc.pages[0].children.iter().find(|n| matches!(n, LIRNode::Table(_))) {
+        if let Some(LIRNode::Table(t)) = doc.pages[0]
+            .children
+            .iter()
+            .find(|n| matches!(n, LIRNode::Table(_)))
+        {
             assert_eq!(t.num_cols, 2);
             assert_eq!(t.children.len(), 1);
             assert!(t.border);
@@ -1314,12 +1517,30 @@ mod tests {
     fn test_footnote() {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
-        let para_id = module.body.push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        let para_id = module
+            .body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
         let fn_id = module.body.push(
-            Node::new(3, NodeType::Footnote { content: "A footnote".into() }).with_parent(2),
+            Node::new(
+                3,
+                NodeType::Footnote {
+                    content: "A footnote".into(),
+                },
+            )
+            .with_parent(2),
         );
-        let text_id = module.body.push(Node::new(4, NodeType::Text { content: "Text with".into() }).with_parent(2));
-        let fn_block_id = module.body.push(Node::new(5, NodeType::FootnoteBlock).with_parent(1));
+        let text_id = module.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Text with".into(),
+                },
+            )
+            .with_parent(2),
+        );
+        let fn_block_id = module
+            .body
+            .push(Node::new(5, NodeType::FootnoteBlock).with_parent(1));
 
         add_child(&mut module.body, doc_id, para_id);
         add_child(&mut module.body, doc_id, fn_block_id);
@@ -1329,7 +1550,10 @@ mod tests {
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
 
-        let has_fn_block = doc.pages[0].children.iter().any(|n| matches!(n, LIRNode::FootnoteBlock(_)));
+        let has_fn_block = doc.pages[0]
+            .children
+            .iter()
+            .any(|n| matches!(n, LIRNode::FootnoteBlock(_)));
         assert!(has_fn_block, "expected a footnote block");
     }
 
@@ -1337,13 +1561,18 @@ mod tests {
     fn test_toc() {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
-        let toc_id = module.body.push(Node::new(2, NodeType::TableOfContents { max_depth: 3 }).with_parent(1));
+        let toc_id = module
+            .body
+            .push(Node::new(2, NodeType::TableOfContents { max_depth: 3 }).with_parent(1));
         add_child(&mut module.body, doc_id, toc_id);
 
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
 
-        let has_toc = doc.pages[0].children.iter().any(|n| matches!(n, LIRNode::TableOfContents(_)));
+        let has_toc = doc.pages[0]
+            .children
+            .iter()
+            .any(|n| matches!(n, LIRNode::TableOfContents(_)));
         assert!(has_toc, "expected a TOC node");
     }
 
@@ -1351,13 +1580,18 @@ mod tests {
     fn test_thematic_break() {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
-        let hr_id = module.body.push(Node::new(2, NodeType::ThematicBreak).with_parent(1));
+        let hr_id = module
+            .body
+            .push(Node::new(2, NodeType::ThematicBreak).with_parent(1));
         add_child(&mut module.body, doc_id, hr_id);
 
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
 
-        let has_hr = doc.pages[0].children.iter().any(|n| matches!(n, LIRNode::ThematicBreak(_)));
+        let has_hr = doc.pages[0]
+            .children
+            .iter()
+            .any(|n| matches!(n, LIRNode::ThematicBreak(_)));
         assert!(has_hr, "expected a thematic break");
     }
 
@@ -1366,16 +1600,34 @@ mod tests {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
         let cb_id = module.body.push(
-            Node::new(2, NodeType::CodeBlock { language: Some("rust".into()) }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::CodeBlock {
+                    language: Some("rust".into()),
+                },
+            )
+            .with_parent(1),
         );
-        let line1 = module.body.push(Node::new(3, NodeType::Text { content: "fn main() {}".into() }).with_parent(2));
+        let line1 = module.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "fn main() {}".into(),
+                },
+            )
+            .with_parent(2),
+        );
         add_child(&mut module.body, doc_id, cb_id);
         add_child(&mut module.body, cb_id, line1);
 
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
 
-        if let Some(LIRNode::CodeBlock(cb)) = doc.pages[0].children.iter().find(|n| matches!(n, LIRNode::CodeBlock(_))) {
+        if let Some(LIRNode::CodeBlock(cb)) = doc.pages[0]
+            .children
+            .iter()
+            .find(|n| matches!(n, LIRNode::CodeBlock(_)))
+        {
             assert_eq!(cb.language, "rust");
             assert!(!cb.children.is_empty());
         }
@@ -1411,7 +1663,15 @@ mod tests {
     fn test_style_table_populated() {
         let mut module = make_module();
         let para_id = module.body.push(Node::new(1, NodeType::Paragraph));
-        let text_id = module.body.push(Node::new(2, NodeType::Text { content: "Test".into() }).with_parent(1));
+        let text_id = module.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Test".into(),
+                },
+            )
+            .with_parent(1),
+        );
         add_child(&mut module.body, para_id, text_id);
 
         let ctx = make_ctx();
@@ -1423,9 +1683,21 @@ mod tests {
     fn test_block_quote() {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
-        let bq_id = module.body.push(Node::new(2, NodeType::BlockQuote).with_parent(1));
-        let para_id = module.body.push(Node::new(3, NodeType::Paragraph).with_parent(2));
-        let text_id = module.body.push(Node::new(4, NodeType::Text { content: "A quote".into() }).with_parent(3));
+        let bq_id = module
+            .body
+            .push(Node::new(2, NodeType::BlockQuote).with_parent(1));
+        let para_id = module
+            .body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(2));
+        let text_id = module.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "A quote".into(),
+                },
+            )
+            .with_parent(3),
+        );
 
         add_child(&mut module.body, doc_id, bq_id);
         add_child(&mut module.body, bq_id, para_id);
@@ -1434,7 +1706,10 @@ mod tests {
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
 
-        let has_bq = doc.pages[0].children.iter().any(|n| matches!(n, LIRNode::BlockQuote(_)));
+        let has_bq = doc.pages[0]
+            .children
+            .iter()
+            .any(|n| matches!(n, LIRNode::BlockQuote(_)));
         assert!(has_bq, "expected a block quote");
     }
 
@@ -1443,19 +1718,35 @@ mod tests {
         let mut module = make_module();
         let doc_id = module.body.push(Node::new(1, NodeType::Document));
         let math_id = module.body.push(
-            Node::new(2, NodeType::MathBlock {
-                math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
-                numbered: true,
-            }).with_parent(1),
+            Node::new(
+                2,
+                NodeType::MathBlock {
+                    math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
+                    numbered: true,
+                },
+            )
+            .with_parent(1),
         );
-        let math_text = module.body.push(Node::new(3, NodeType::Text { content: "E = mc^2".into() }).with_parent(2));
+        let math_text = module.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "E = mc^2".into(),
+                },
+            )
+            .with_parent(2),
+        );
         add_child(&mut module.body, doc_id, math_id);
         add_child(&mut module.body, math_id, math_text);
 
         let ctx = make_ctx();
         let doc = compile_sir_to_lir(&module, &ctx).unwrap();
 
-        if let Some(LIRNode::MathBlock(mb)) = doc.pages[0].children.iter().find(|n| matches!(n, LIRNode::MathBlock(_))) {
+        if let Some(LIRNode::MathBlock(mb)) = doc.pages[0]
+            .children
+            .iter()
+            .find(|n| matches!(n, LIRNode::MathBlock(_)))
+        {
             assert_eq!(mb.math_type, MathType::Display);
             assert_eq!(mb.number, Some(1));
         }

@@ -25,10 +25,10 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
 
     let mut link_url_for_block: HashMap<u32, String> = HashMap::new();
     for instr in doc.iter() {
-        if instr.opcode() == SIROpcode::LinkData {
-            if let Some(url) = doc.payload_text(instr) {
-                link_url_for_block.insert(instr.parent_id(), url.to_string());
-            }
+        if instr.opcode() == SIROpcode::LinkData
+            && let Some(url) = doc.payload_text(instr)
+        {
+            link_url_for_block.insert(instr.parent_id(), url.to_string());
         }
     }
 
@@ -119,11 +119,11 @@ fn read_block_type(doc: &SIRDocument, payload_offset: u32) -> BlockType {
 
 fn read_heading_level(doc: &SIRDocument, payload_offset: u32) -> u32 {
     let payload = doc.payload().get(payload_offset, 5);
-    if let Some(bytes) = payload {
-        if bytes.len() >= 5 {
-            let level = u32::from_le_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]);
-            return level.clamp(1, 6);
-        }
+    if let Some(bytes) = payload
+        && bytes.len() >= 5
+    {
+        let level = u32::from_le_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]);
+        return level.clamp(1, 6);
     }
     1
 }

@@ -838,7 +838,11 @@ impl<'a> TeXParser<'a> {
                         self.consume_end_env("tabular");
                         break;
                     }
-                    if name == "hline" || name == "toprule" || name == "midrule" || name == "bottomrule" {
+                    if name == "hline"
+                        || name == "toprule"
+                        || name == "midrule"
+                        || name == "bottomrule"
+                    {
                         if !current_cell.trim().is_empty() {
                             current_row.push(current_cell.trim().to_string());
                         }

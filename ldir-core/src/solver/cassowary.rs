@@ -1,10 +1,14 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::fmt;
 
 use crate::solver::matrix::DenseMatrix;
 
+#[allow(dead_code)]
 type SoftConstraint = (Vec<(usize, f64)>, f64, f64, bool);
 
+#[allow(dead_code)]
 /// Solver variable identified by index.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Variable(pub u32);
@@ -12,6 +16,8 @@ pub struct Variable(pub u32);
 /// Constraint strength (higher priority wins).
 ///
 /// Declaration order matches priority: REQUIRED is highest.
+#[allow(clippy::upper_case_acronyms)]
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub enum Strength {
     /// Mild preference (weight 1).
@@ -25,6 +31,7 @@ pub enum Strength {
 }
 
 impl Strength {
+    #[allow(dead_code)]
     fn weight(&self) -> f64 {
         match self {
             Strength::REQUIRED => f64::INFINITY,
@@ -35,6 +42,7 @@ impl Strength {
     }
 }
 
+#[allow(dead_code)]
 /// Linear expression: `sum(terms) + constant`.
 #[derive(Clone, Debug, Default)]
 pub struct Expression {
@@ -83,6 +91,8 @@ impl Expression {
 }
 
 /// Constraint relation operator.
+#[allow(clippy::upper_case_acronyms)]
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Relation {
     /// Equality: expr == 0.
@@ -93,6 +103,7 @@ pub enum Relation {
     GEQ,
 }
 
+#[allow(dead_code)]
 /// Linear constraint: `expr OP 0` at given strength.
 #[derive(Clone, Debug)]
 pub struct Constraint {
@@ -104,6 +115,7 @@ pub struct Constraint {
     pub operator: Relation,
 }
 
+#[allow(dead_code)]
 /// Solver error variants.
 #[derive(Debug)]
 pub enum SolverError {
@@ -127,6 +139,7 @@ impl fmt::Display for SolverError {
 
 impl std::error::Error for SolverError {}
 
+#[allow(dead_code)]
 /// Cassowary-inspired constraint solver.
 ///
 /// Uses Gaussian elimination for required equalities and iterative

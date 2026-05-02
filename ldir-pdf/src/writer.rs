@@ -3,6 +3,8 @@
 //! Generates a valid PDF 1.4+ document with embedded TrueType fonts
 //! using Type0 (composite) + CIDFontType2 + ToUnicode CMap structure.
 
+#![allow(dead_code)]
+
 use pdf_writer::types::{AnnotationType, CidFontType, FontFlags, SystemInfo, UnicodeCmap};
 use pdf_writer::{Content, Filter, Name, Pdf, Rect, Ref, Str, TextStr};
 
@@ -432,8 +434,7 @@ impl PdfDocumentBuilder {
         let content_data: Vec<Vec<u8>> = self
             .pages
             .iter_mut()
-            .enumerate()
-            .map(|(_page_idx, p)| {
+            .map(|p| {
                 let mut content = std::mem::replace(&mut p.content, Content::new());
 
                 // Inject image Do operations for images on this page

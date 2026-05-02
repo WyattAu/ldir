@@ -1,5 +1,6 @@
 #![deny(unsafe_code)]
 #![warn(clippy::unwrap_used, clippy::expect_used)]
+#![allow(dead_code)]
 
 use std::collections::HashMap;
 
@@ -25,10 +26,17 @@ use crate::layout::linebreak::cjk::{insert_cjk_breaks, is_cjk_text};
 use crate::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
 
 fn to_superscript(n: usize) -> String {
-    const SUPERSCRIPTS: [char; 10] = ['\u{2070}', '\u{00B9}', '\u{00B2}', '\u{00B3}', '\u{2074}', '\u{2075}', '\u{2076}', '\u{2077}', '\u{2078}', '\u{2079}'];
-    n.to_string().chars().map(|d| SUPERSCRIPTS[(d as usize) - ('0' as usize)]).collect()
+    const SUPERSCRIPTS: [char; 10] = [
+        '\u{2070}', '\u{00B9}', '\u{00B2}', '\u{00B3}', '\u{2074}', '\u{2075}', '\u{2076}',
+        '\u{2077}', '\u{2078}', '\u{2079}',
+    ];
+    n.to_string()
+        .chars()
+        .map(|d| SUPERSCRIPTS[(d as usize) - ('0' as usize)])
+        .collect()
 }
 
+/// Compile a v2 S-IR module into a G-IR document.
 pub fn compile_v2_document(module: &SIRModuleV2, ctx: &mut CompileContext) -> Result<GIRDocument> {
     apply_page_geometry(ctx, &module.metadata);
     resolve_v2_fonts(ctx, &module.resources);
@@ -68,6 +76,7 @@ pub fn compile_v2_document(module: &SIRModuleV2, ctx: &mut CompileContext) -> Re
     Ok(gir_doc)
 }
 
+/// Compile a v2 S-IR module with bibliography into a G-IR document.
 pub fn compile_v2_document_with_bib(
     module: &SIRModuleV2,
     ctx: &mut CompileContext,
@@ -195,6 +204,7 @@ fn resolve_v2_fonts(ctx: &mut CompileContext, resources: &ResourceDecls) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compile_v2_node(
     node_id: u32,
     module: &SIRModuleV2,
@@ -388,7 +398,7 @@ fn compile_v2_node(
             ctx.pop_style();
         }
         NodeType::Styled { style_name } => {
-            let needs_italic = module.styles.find(style_name).map_or(false, |style_decl| {
+            let needs_italic = module.styles.find(style_name).is_some_and(|style_decl| {
                 style_decl.properties.font_style.as_deref() == Some("italic")
                     || style_decl.properties.font_style.as_deref() == Some("oblique")
             });
@@ -549,7 +559,10 @@ fn compile_v2_node(
         NodeType::List { .. } => {
             compile_v2_list_fallback(node_id, module, page, ctx, gir_doc)?;
         }
-        NodeType::Table { col_specs, num_cols } => {
+        NodeType::Table {
+            col_specs,
+            num_cols,
+        } => {
             compile_v2_table_improved(node_id, module, page, ctx, gir_doc, col_specs, *num_cols)?;
         }
         NodeType::Figure { .. } => {
@@ -572,31 +585,30 @@ fn compile_v2_node(
                 destination_page: None,
             });
         }
-        NodeType::FootnoteBlock => {
-            if !footnotes.is_empty() {
-                ctx.advance_y(Fp266::from_int(12));
-                if ctx.exceeds_page() {
-                    if !page.is_empty() {
-                        gir_doc.push_page(std::mem::replace(page, ctx.new_page()));
-                    }
-                    ctx.y = ctx.margin_top;
+        NodeType::FootnoteBlock if !footnotes.is_empty() => {
+            ctx.advance_y(Fp266::from_int(12));
+            if ctx.exceeds_page() {
+                if !page.is_empty() {
+                    gir_doc.push_page(std::mem::replace(page, ctx.new_page()));
                 }
-                let rule_width = ctx.content_width.div(Fp266::from_int(4));
-                let rule_x = ctx.margin_left + (ctx.content_width - rule_width).div(Fp266::from_int(2));
-                emit_helpers::emit_draw_rule(page, rule_x, ctx.y, rule_width, Fp266::from_int(1));
-                ctx.advance_y(Fp266::from_int(6));
-                let saved_font_size = ctx.font_size;
-                ctx.font_size = Fp266::from_int(8);
-                for (num, content) in footnotes.iter() {
-                    let marker = to_superscript(*num);
-                    let entry = format!("{} {}", marker, content);
-                    emit_v2_paragraph_text(&entry, page, ctx, gir_doc);
-                    ctx.advance_y(Fp266::from_int(2));
-                }
-                ctx.font_size = saved_font_size;
-                footnotes.clear();
+                ctx.y = ctx.margin_top;
             }
+            let rule_width = ctx.content_width.div(Fp266::from_int(4));
+            let rule_x = ctx.margin_left + (ctx.content_width - rule_width).div(Fp266::from_int(2));
+            emit_helpers::emit_draw_rule(page, rule_x, ctx.y, rule_width, Fp266::from_int(1));
+            ctx.advance_y(Fp266::from_int(6));
+            let saved_font_size = ctx.font_size;
+            ctx.font_size = Fp266::from_int(8);
+            for (num, content) in footnotes.iter() {
+                let marker = to_superscript(*num);
+                let entry = format!("{} {}", marker, content);
+                emit_v2_paragraph_text(&entry, page, ctx, gir_doc);
+                ctx.advance_y(Fp266::from_int(2));
+            }
+            ctx.font_size = saved_font_size;
+            footnotes.clear();
         }
+        NodeType::FootnoteBlock => {}
         NodeType::TableOfContents { max_depth } => {
             ctx.advance_y(Fp266::from_int(12));
             emit_helpers::emit_move_xy(page, ctx.x, ctx.y);
@@ -718,6 +730,7 @@ fn compile_v2_node(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compile_v2_node_with_bib(
     node_id: u32,
     module: &SIRModuleV2,
@@ -964,7 +977,7 @@ fn compile_v2_node_with_bib(
             ctx.pop_style();
         }
         NodeType::Styled { style_name } => {
-            let needs_italic = module.styles.find(style_name).map_or(false, |style_decl| {
+            let needs_italic = module.styles.find(style_name).is_some_and(|style_decl| {
                 style_decl.properties.font_style.as_deref() == Some("italic")
                     || style_decl.properties.font_style.as_deref() == Some("oblique")
             });
@@ -1128,7 +1141,10 @@ fn compile_v2_node_with_bib(
         NodeType::List { .. } => {
             compile_v2_list_fallback(node_id, module, page, ctx, gir_doc)?;
         }
-        NodeType::Table { col_specs, num_cols } => {
+        NodeType::Table {
+            col_specs,
+            num_cols,
+        } => {
             compile_v2_table_improved(node_id, module, page, ctx, gir_doc, col_specs, *num_cols)?;
         }
         NodeType::Figure { .. } => {
@@ -1151,31 +1167,30 @@ fn compile_v2_node_with_bib(
                 destination_page: None,
             });
         }
-        NodeType::FootnoteBlock => {
-            if !footnotes.is_empty() {
-                ctx.advance_y(Fp266::from_int(12));
-                if ctx.exceeds_page() {
-                    if !page.is_empty() {
-                        gir_doc.push_page(std::mem::replace(page, ctx.new_page()));
-                    }
-                    ctx.y = ctx.margin_top;
+        NodeType::FootnoteBlock if !footnotes.is_empty() => {
+            ctx.advance_y(Fp266::from_int(12));
+            if ctx.exceeds_page() {
+                if !page.is_empty() {
+                    gir_doc.push_page(std::mem::replace(page, ctx.new_page()));
                 }
-                let rule_width = ctx.content_width.div(Fp266::from_int(4));
-                let rule_x = ctx.margin_left + (ctx.content_width - rule_width).div(Fp266::from_int(2));
-                emit_helpers::emit_draw_rule(page, rule_x, ctx.y, rule_width, Fp266::from_int(1));
-                ctx.advance_y(Fp266::from_int(6));
-                let saved_font_size = ctx.font_size;
-                ctx.font_size = Fp266::from_int(8);
-                for (num, content) in footnotes.iter() {
-                    let marker = to_superscript(*num);
-                    let entry = format!("{} {}", marker, content);
-                    emit_v2_paragraph_text(&entry, page, ctx, gir_doc);
-                    ctx.advance_y(Fp266::from_int(2));
-                }
-                ctx.font_size = saved_font_size;
-                footnotes.clear();
+                ctx.y = ctx.margin_top;
             }
+            let rule_width = ctx.content_width.div(Fp266::from_int(4));
+            let rule_x = ctx.margin_left + (ctx.content_width - rule_width).div(Fp266::from_int(2));
+            emit_helpers::emit_draw_rule(page, rule_x, ctx.y, rule_width, Fp266::from_int(1));
+            ctx.advance_y(Fp266::from_int(6));
+            let saved_font_size = ctx.font_size;
+            ctx.font_size = Fp266::from_int(8);
+            for (num, content) in footnotes.iter() {
+                let marker = to_superscript(*num);
+                let entry = format!("{} {}", marker, content);
+                emit_v2_paragraph_text(&entry, page, ctx, gir_doc);
+                ctx.advance_y(Fp266::from_int(2));
+            }
+            ctx.font_size = saved_font_size;
+            footnotes.clear();
         }
+        NodeType::FootnoteBlock => {}
         NodeType::TableOfContents { max_depth } => {
             ctx.advance_y(Fp266::from_int(12));
             emit_helpers::emit_move_xy(page, ctx.x, ctx.y);
@@ -1336,6 +1351,7 @@ fn compile_children(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compile_children_with_refs(
     node_id: u32,
     module: &SIRModuleV2,
@@ -1373,6 +1389,7 @@ fn compile_children_with_refs(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compile_children_with_bib(
     node_id: u32,
     module: &SIRModuleV2,
@@ -1566,7 +1583,13 @@ fn emit_v2_heading_with_number(
 
     let empty_labels = HashMap::new();
     let empty_refs = HashMap::new();
-    let mut runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, &empty_labels, &empty_refs);
+    let mut runs = collect_styled_runs(
+        node_id,
+        module,
+        StyleModifier::EMPTY,
+        &empty_labels,
+        &empty_refs,
+    );
     if !number.is_empty() {
         runs.insert(0, (format!("{} ", number), StyleModifier::EMPTY));
     }
@@ -1638,7 +1661,13 @@ fn emit_v2_heading(
 
     let empty_labels = HashMap::new();
     let empty_refs = HashMap::new();
-    let runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, &empty_labels, &empty_refs);
+    let runs = collect_styled_runs(
+        node_id,
+        module,
+        StyleModifier::EMPTY,
+        &empty_labels,
+        &empty_refs,
+    );
     if !runs.iter().all(|(t, _)| t.trim().is_empty()) {
         emit_v2_styled_paragraph(&runs, page, ctx, gir_doc)?;
     }
@@ -1763,12 +1792,11 @@ fn collect_styled_runs(
                     runs.push((std::mem::take(&mut current_text), current_style));
                 }
                 let mut child_style = current_style;
-                if let Some(style_decl) = module.styles.find(style_name) {
-                    if style_decl.properties.font_style.as_deref() == Some("italic")
-                        || style_decl.properties.font_style.as_deref() == Some("oblique")
-                    {
-                        child_style = StyleModifier(child_style.0 | StyleModifier::ITALIC);
-                    }
+                if let Some(style_decl) = module.styles.find(style_name)
+                    && (style_decl.properties.font_style.as_deref() == Some("italic")
+                        || style_decl.properties.font_style.as_deref() == Some("oblique"))
+                {
+                    child_style = StyleModifier(child_style.0 | StyleModifier::ITALIC);
                 }
                 let styled_runs =
                     collect_styled_runs(child_id, module, child_style, labels, refs_map);
@@ -2013,6 +2041,7 @@ fn emit_v2_paragraph(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn emit_v2_paragraph_with_bib(
     node_id: u32,
     module: &SIRModuleV2,
@@ -2434,9 +2463,9 @@ fn compile_v2_table_improved(
 
     let mut col_positions: Vec<Fp266> = Vec::with_capacity(effective_num_cols);
     let mut cx_fp = table_start_x;
-    for i in 0..effective_num_cols {
+    for (i, &col_w_pt) in col_widths_pt.iter().enumerate().take(effective_num_cols) {
         col_positions.push(cx_fp);
-        let col_w_fp = Fp266::from_int((col_widths_pt[i] * 64.0) as i32);
+        let col_w_fp = Fp266::from_int((col_w_pt * 64.0) as i32);
         cx_fp += col_w_fp;
         if i < effective_num_cols - 1 {
             cx_fp += Fp266::from_frac(1, 2);
@@ -2504,8 +2533,8 @@ fn compile_v2_table_improved(
 
         if row_idx > 0 {
             let rule_y = ctx.y - ctx.line_height();
-            for i in 1..effective_num_cols {
-                let rx = col_positions[i] - Fp266::from_frac(1, 2);
+            for rx in col_positions.iter().take(effective_num_cols).skip(1) {
+                let rx = *rx - Fp266::from_frac(1, 2);
                 emit_helpers::emit_draw_rule(
                     page,
                     rx,
@@ -2520,8 +2549,8 @@ fn compile_v2_table_improved(
         maybe_new_page(page, ctx, gir_doc);
     }
 
-    for i in 1..effective_num_cols {
-        let rx = col_positions[i] - Fp266::from_frac(1, 2);
+    for rx in col_positions.iter().take(effective_num_cols).skip(1) {
+        let rx = *rx - Fp266::from_frac(1, 2);
         emit_helpers::emit_draw_rule(
             page,
             rx,
@@ -2576,30 +2605,27 @@ fn emit_v2_figure(
         if matches!(child.node_type, NodeType::Caption) {
             continue;
         }
-        match &child.node_type {
-            NodeType::Image { source, .. } => {
-                let base_dir = module
-                    .header
-                    .source_path
-                    .as_ref()
-                    .and_then(|p| std::path::Path::new(p).parent());
-                if let Some((img, w_fp, h_fp)) =
-                    load_and_scale_image(source, ctx.content_width, base_dir)
-                {
-                    let image_index = gir_doc.push_image(img);
-                    emit_helpers::emit_move_xy(page, ctx.x, ctx.y);
-                    page.push(GIRCommand::new_draw_rule(
-                        -1,
-                        image_index as i32,
-                        w_fp,
-                        h_fp,
-                    ));
-                    ctx.advance_y(Fp266::from_raw(h_fp as i64));
-                    ctx.reset_x();
-                    maybe_new_page(page, ctx, gir_doc);
-                }
+        if let NodeType::Image { source, .. } = &child.node_type {
+            let base_dir = module
+                .header
+                .source_path
+                .as_ref()
+                .and_then(|p| std::path::Path::new(p).parent());
+            if let Some((img, w_fp, h_fp)) =
+                load_and_scale_image(source, ctx.content_width, base_dir)
+            {
+                let image_index = gir_doc.push_image(img);
+                emit_helpers::emit_move_xy(page, ctx.x, ctx.y);
+                page.push(GIRCommand::new_draw_rule(
+                    -1,
+                    image_index as i32,
+                    w_fp,
+                    h_fp,
+                ));
+                ctx.advance_y(Fp266::from_raw(h_fp as i64));
+                ctx.reset_x();
+                maybe_new_page(page, ctx, gir_doc);
             }
-            _ => {}
         }
     }
 

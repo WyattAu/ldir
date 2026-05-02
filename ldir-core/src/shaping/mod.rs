@@ -7,6 +7,8 @@
 //! All coordinates use [`Fp266`] (26.6 fixed-point)
 //! per REQ-3.2.5 and THM-KP-DETERMINISM.
 
+#![allow(dead_code)]
+
 pub mod cache;
 pub mod fast_path;
 #[cfg(not(target_arch = "wasm32"))]
@@ -18,6 +20,7 @@ use crate::shaping::cache::ThreadSafeShapeCache;
 /// OpenType feature to enable/disable during shaping.
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(unused_imports)]
+#[allow(dead_code)]
 pub use harfbuzz::{CALT, Feature, KERN, LIGA, LNUM, ONUM, TNUM};
 
 /// OpenType feature stub for WASM targets.
@@ -164,9 +167,7 @@ pub fn shape_text_with_features(
     } else {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            return harfbuzz::shape_harfbuzz(
-                font_data, text, font_size, None, None, None, features,
-            );
+            harfbuzz::shape_harfbuzz(font_data, text, font_size, None, None, None, features)
         }
         #[cfg(target_arch = "wasm32")]
         {

@@ -1,5 +1,7 @@
 //! OpenType/TrueType table definitions — extracted from real font data.
 
+#![allow(dead_code)]
+
 #[allow(unused_imports)]
 use ttf_parser::Rect as TtfRect;
 

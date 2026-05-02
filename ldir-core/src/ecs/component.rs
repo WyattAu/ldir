@@ -13,6 +13,8 @@
 //! - REQ-4.1.2: Structure of Arrays layout for all node attributes
 //! - REQ-4.1.4: No raw pointers or Box/Rc/Arc; all relations via 32-bit indices
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 

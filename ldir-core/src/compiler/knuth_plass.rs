@@ -264,11 +264,11 @@ pub fn knuth_plass_break(boxes: &[KPBox], line_width: i32) -> Vec<usize> {
     let mut best_idx = 1;
     let mut found = false;
     for i in 1..active_nodes.len() {
-        if active_nodes[i].position == last_pos {
-            if !found || active_nodes[i].demerits < active_nodes[best_idx].demerits {
-                best_idx = i;
-                found = true;
-            }
+        if active_nodes[i].position == last_pos
+            && (!found || active_nodes[i].demerits < active_nodes[best_idx].demerits)
+        {
+            best_idx = i;
+            found = true;
         }
     }
 

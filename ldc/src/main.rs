@@ -242,8 +242,8 @@ fn write_output(module: &SIRModuleV2, output_path: &Path, format: &str) -> Resul
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         "txt" => {
-            let mut m = module.clone();
-            let text = ldir_txt::TextRenderer::new().render(&mut m);
+            let m = module.clone();
+            let text = ldir_txt::TextRenderer::new().render(&m);
             eprintln!("[ldir] generated text ({} bytes)", text.len());
             std::fs::write(output_path, &text)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
@@ -395,13 +395,15 @@ fn resolve_font(cli: &Cli, font_db: &FontDatabase) -> Option<(Arc<Vec<u8>>, Stri
         return Some((Arc::new(data), path_str));
     }
 
+    if let Some(ref family) = cli.font
+        && let Some(id) = font_db.query(family)
+        && let Some(data) = font_db.face_data(id)
+    {
+        eprintln!("[ldir] using font family: {} (from system fonts)", family);
+        return Some((data, format!("system:{}", family)));
+    }
+
     if let Some(ref family) = cli.font {
-        if let Some(id) = font_db.query(family) {
-            if let Some(data) = font_db.face_data(id) {
-                eprintln!("[ldir] using font family: {} (from system fonts)", family);
-                return Some((data, format!("system:{}", family)));
-            }
-        }
         eprintln!(
             "[ldir] warning: font family '{}' not found in system fonts",
             family
@@ -426,11 +428,11 @@ fn resolve_font(cli: &Cli, font_db: &FontDatabase) -> Option<(Arc<Vec<u8>>, Stri
         }
     }
 
-    if let Some(id) = font_db.query("DejaVu Sans") {
-        if let Some(data) = font_db.face_data(id) {
-            eprintln!("[ldir] using font family: DejaVu Sans (auto-detected)");
-            return Some((data, "system:DejaVu Sans".to_string()));
-        }
+    if let Some(id) = font_db.query("DejaVu Sans")
+        && let Some(data) = font_db.face_data(id)
+    {
+        eprintln!("[ldir] using font family: DejaVu Sans (auto-detected)");
+        return Some((data, "system:DejaVu Sans".to_string()));
     }
 
     None
@@ -479,11 +481,11 @@ fn load_font_variants_from_db(
     } else {
         font_db.query_monospace()
     };
-    if let Some(id) = mono_id {
-        if let Some(data) = font_db.face_data(id) {
-            eprintln!("[ldir] loaded monospace font variant from database");
-            variants.push((4, data));
-        }
+    if let Some(id) = mono_id
+        && let Some(data) = font_db.face_data(id)
+    {
+        eprintln!("[ldir] loaded monospace font variant from database");
+        variants.push((4, data));
     }
 
     variants
@@ -495,10 +497,10 @@ fn try_query_style(
     styles: &[(fontdb::Weight, fontdb::Style)],
 ) -> Option<(fontdb::ID, Arc<Vec<u8>>)> {
     for &(weight, style) in styles {
-        if let Some(id) = font_db.query_family_style(family, weight, style) {
-            if let Some(data) = font_db.face_data(id) {
-                return Some((id, data));
-            }
+        if let Some(id) = font_db.query_family_style(family, weight, style)
+            && let Some(data) = font_db.face_data(id)
+        {
+            return Some((id, data));
         }
     }
     None
@@ -538,14 +540,16 @@ fn emit_pdf(
     variant_fonts: &[(u32, Arc<Vec<u8>>)],
     output: &Path,
 ) -> Result<()> {
-    let mut options = ldir_pdf::converter::PdfOptions::default();
-    options.title = cli.title.clone();
-    options.author = cli.author.clone();
-    options.subject = cli.subject.clone();
-    options.header_left = cli.header_left.clone();
-    options.header_right = cli.header_right.clone();
-    options.footer_left = cli.footer_left.clone();
-    options.footer_right = cli.footer_right.clone();
+    let options = ldir_pdf::converter::PdfOptions {
+        title: cli.title.clone(),
+        author: cli.author.clone(),
+        subject: cli.subject.clone(),
+        header_left: cli.header_left.clone(),
+        header_right: cli.header_right.clone(),
+        footer_left: cli.footer_left.clone(),
+        footer_right: cli.footer_right.clone(),
+        ..Default::default()
+    };
 
     let total_fonts = 1 + variant_fonts.len();
 
@@ -606,10 +610,7 @@ fn main() -> Result<()> {
     let first_input = &cli.inputs[0];
 
     let effective_format = if let Some(ref output) = cli.output {
-        let out_ext = output
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
+        let out_ext = output.extension().and_then(|e| e.to_str()).unwrap_or("");
         detect_format_from_extension(out_ext)
     } else {
         &cli.format
@@ -658,16 +659,16 @@ fn main() -> Result<()> {
     let mut variant_fonts: Vec<(u32, Arc<Vec<u8>>)> =
         load_font_variants_from_db(&cli, &font_db, primary_family);
 
-    if let Some(ref path_str) = font_path_str {
-        if !path_str.starts_with("system:") {
-            for (id, data) in load_font_variants(path_str) {
-                eprintln!(
-                    "[ldir] loaded font variant (id={}): {} bytes",
-                    id,
-                    data.len()
-                );
-                variant_fonts.push((id, Arc::new(data)));
-            }
+    if let Some(ref path_str) = font_path_str
+        && !path_str.starts_with("system:")
+    {
+        for (id, data) in load_font_variants(path_str) {
+            eprintln!(
+                "[ldir] loaded font variant (id={}): {} bytes",
+                id,
+                data.len()
+            );
+            variant_fonts.push((id, Arc::new(data)));
         }
     }
 

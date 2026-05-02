@@ -15,15 +15,21 @@
 //! - **POST-COMP-003**: Stack balanced per page
 //! - **INV-COMP-001**: Bit-identical output (deterministic)
 
+#[allow(missing_docs)]
 pub mod bibtex;
 pub mod context;
 pub mod emit_helpers;
+#[allow(missing_docs)]
 pub mod justify;
+#[allow(missing_docs)]
 pub mod knuth_plass;
 pub mod math;
+#[allow(missing_docs)]
 pub mod templates;
 pub mod tree;
+#[allow(missing_docs)]
 pub mod v1_to_v2;
+#[allow(missing_docs)]
 pub mod v2_compile;
 
 use std::collections::HashMap;
@@ -146,17 +152,16 @@ pub fn resolve_font_data(
     family: &str,
     fallback_path: Option<&Path>,
 ) -> Option<Arc<Vec<u8>>> {
-    if let Some(id) = font_db.query(family) {
-        if let Some(data) = font_db.face_data(id) {
-            return Some(data);
-        }
+    if let Some(id) = font_db.query(family)
+        && let Some(data) = font_db.face_data(id)
+    {
+        return Some(data);
     }
-    if let Some(path) = fallback_path {
-        if let Ok(data) = std::fs::read(path) {
-            if ttf_parser::Face::parse(&data, 0).is_ok() {
-                return Some(Arc::new(data));
-            }
-        }
+    if let Some(path) = fallback_path
+        && let Ok(data) = std::fs::read(path)
+        && ttf_parser::Face::parse(&data, 0).is_ok()
+    {
+        return Some(Arc::new(data));
     }
     None
 }
@@ -188,40 +193,31 @@ pub fn compile_sir_with_font_db(
     if augmented_variants
         .iter()
         .all(|(id, _)| *id != context::FONT_ID_BOLD)
-    {
-        if let Some(id) =
+        && let Some(id) =
             font_db.query_family_style(font_family, fontdb::Weight::BOLD, fontdb::Style::Normal)
-        {
-            if let Some(data) = font_db.face_data(id) {
-                augmented_variants.push((context::FONT_ID_BOLD, data));
-            }
-        }
+        && let Some(data) = font_db.face_data(id)
+    {
+        augmented_variants.push((context::FONT_ID_BOLD, data));
     }
 
     if augmented_variants
         .iter()
         .all(|(id, _)| *id != context::FONT_ID_ITALIC)
-    {
-        if let Some(id) =
+        && let Some(id) =
             font_db.query_family_style(font_family, fontdb::Weight::NORMAL, fontdb::Style::Italic)
-        {
-            if let Some(data) = font_db.face_data(id) {
-                augmented_variants.push((context::FONT_ID_ITALIC, data));
-            }
-        }
+        && let Some(data) = font_db.face_data(id)
+    {
+        augmented_variants.push((context::FONT_ID_ITALIC, data));
     }
 
     if augmented_variants
         .iter()
         .all(|(id, _)| *id != context::FONT_ID_BOLD_ITALIC)
-    {
-        if let Some(id) =
+        && let Some(id) =
             font_db.query_family_style(font_family, fontdb::Weight::BOLD, fontdb::Style::Italic)
-        {
-            if let Some(data) = font_db.face_data(id) {
-                augmented_variants.push((context::FONT_ID_BOLD_ITALIC, data));
-            }
-        }
+        && let Some(data) = font_db.face_data(id)
+    {
+        augmented_variants.push((context::FONT_ID_BOLD_ITALIC, data));
     }
 
     if augmented_variants
@@ -229,15 +225,15 @@ pub fn compile_sir_with_font_db(
         .all(|(id, _)| *id != context::FONT_ID_MONO)
     {
         if !font_mono_family.is_empty() {
-            if let Some(id) = font_db.query(font_mono_family) {
-                if let Some(data) = font_db.face_data(id) {
-                    augmented_variants.push((context::FONT_ID_MONO, data));
-                }
-            }
-        } else if let Some(id) = font_db.query_monospace() {
-            if let Some(data) = font_db.face_data(id) {
+            if let Some(id) = font_db.query(font_mono_family)
+                && let Some(data) = font_db.face_data(id)
+            {
                 augmented_variants.push((context::FONT_ID_MONO, data));
             }
+        } else if let Some(id) = font_db.query_monospace()
+            && let Some(data) = font_db.face_data(id)
+        {
+            augmented_variants.push((context::FONT_ID_MONO, data));
         }
     }
 
@@ -499,7 +495,7 @@ fn generate_toc(
     emit_set_font(page, ctx.font_id as i32);
     emit_move_xy(page, ctx.x, ctx.y);
     for ch in toc_title.chars() {
-        page.push(GIRCommand::new_put_glyph(ch as i32, (10 * 64) as i32));
+        page.push(GIRCommand::new_put_glyph(ch as i32, 10 * 64));
     }
     ctx.font_size = saved_font_size;
     ctx.advance_y(ctx.line_height() * 2);
@@ -521,7 +517,7 @@ fn generate_toc(
         let entry_start_x = entry_x.to_f64();
 
         for ch in title.chars() {
-            page.push(GIRCommand::new_put_glyph(ch as i32, (7 * 64) as i32));
+            page.push(GIRCommand::new_put_glyph(ch as i32, 7 * 64));
         }
 
         // Emit page number right-aligned
@@ -541,23 +537,23 @@ fn generate_toc(
             (ctx.page_width - ctx.margin_right).to_f64() / 64.0 - (page_num_str.len() as f64 * 5.0);
         emit_move_xy(page, Fp266::from_f64(num_x * 64.0), ctx.y);
         for ch in page_num_str.chars() {
-            page.push(GIRCommand::new_put_glyph(ch as i32, (5 * 64) as i32));
+            page.push(GIRCommand::new_put_glyph(ch as i32, 5 * 64));
         }
 
         // Add clickable link for this TOC entry
-        if let Some(pages) = heading_pages {
-            if let Some(&(pass1_page_idx, _)) = pages.get(entry_idx) {
-                let dest_page = pass1_page_idx + gir_doc.page_count();
-                let line_h = ctx.line_height().to_f64();
-                page.links.push(GIRLink {
-                    x: entry_start_x,
-                    y: entry_start_y,
-                    width: (ctx.page_width - ctx.margin_right).to_f64() / 64.0 - entry_start_x,
-                    height: line_h,
-                    url: String::new(),
-                    destination_page: Some(dest_page),
-                });
-            }
+        if let Some(pages) = heading_pages
+            && let Some(&(pass1_page_idx, _)) = pages.get(entry_idx)
+        {
+            let dest_page = pass1_page_idx + gir_doc.page_count();
+            let line_h = ctx.line_height().to_f64();
+            page.links.push(GIRLink {
+                x: entry_start_x,
+                y: entry_start_y,
+                width: (ctx.page_width - ctx.margin_right).to_f64() / 64.0 - entry_start_x,
+                height: line_h,
+                url: String::new(),
+                destination_page: Some(dest_page),
+            });
         }
 
         ctx.advance_y(ctx.line_height());
@@ -588,25 +584,25 @@ fn collect_headings(
 
     if opcode == SIROpcode::PushBlock {
         let payload = doc.payload().get(instr.payload_offset(), 1);
-        if let Some(bytes) = payload {
-            if let Some(BlockType::Heading) = BlockType::from_u8(bytes[0]) {
-                let level_payload = doc.payload().get(instr.payload_offset() + 1, 4);
-                let level = level_payload
-                    .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-                    .unwrap_or(1);
+        if let Some(bytes) = payload
+            && let Some(BlockType::Heading) = BlockType::from_u8(bytes[0])
+        {
+            let level_payload = doc.payload().get(instr.payload_offset() + 1, 4);
+            let level = level_payload
+                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                .unwrap_or(1);
 
-                // Find SetContent child for heading text
-                for &child_idx in &node.children {
-                    let child_node = tree.node(child_idx);
-                    if child_node.instruction.opcode() == SIROpcode::SetContent {
-                        if let Some(text) = doc.payload_text(child_node.instruction) {
-                            let title = text.trim_end_matches('\0').trim().to_string();
-                            if !title.is_empty() {
-                                entries.push((level, title));
-                            }
-                            return;
-                        }
+            // Find SetContent child for heading text
+            for &child_idx in &node.children {
+                let child_node = tree.node(child_idx);
+                if child_node.instruction.opcode() == SIROpcode::SetContent
+                    && let Some(text) = doc.payload_text(child_node.instruction)
+                {
+                    let title = text.trim_end_matches('\0').trim().to_string();
+                    if !title.is_empty() {
+                        entries.push((level, title));
                     }
+                    return;
                 }
             }
         }
@@ -653,12 +649,12 @@ fn record_heading_pages(
                         last_y = y as f64 / 64.0;
                     }
                 }
-                ldir_ir::gir::GIROpcode::PutGlyph => {
-                    if in_heading && heading_idx < heading_entries.len() {
-                        results.push((page_idx, last_y));
-                        heading_idx += 1;
-                        in_heading = false;
-                    }
+                ldir_ir::gir::GIROpcode::PutGlyph
+                    if in_heading && heading_idx < heading_entries.len() =>
+                {
+                    results.push((page_idx, last_y));
+                    heading_idx += 1;
+                    in_heading = false;
                 }
                 _ => {}
             }
@@ -709,7 +705,7 @@ fn emit_footnotes(
         emit_move_xy(page, ctx.x, fn_y);
 
         let mark_char = superscript_digit(*num);
-        page.push(GIRCommand::new_put_glyph(mark_char as i32, (5 * 64) as i32));
+        page.push(GIRCommand::new_put_glyph(mark_char as i32, 5 * 64));
         ctx.advance_x(Fp266::from_int(5));
 
         let display_text = format!(" {}", text);
@@ -917,12 +913,12 @@ fn collect_labels_recursive(
 
             for &child_idx in &node.children {
                 let child_node = tree.node(child_idx);
-                if child_node.instruction.opcode() == SIROpcode::SetContent {
-                    if let Some(text) = doc.payload_text(child_node.instruction) {
-                        let trimmed = text.trim_end_matches('\0').trim();
-                        if let Some(label_key) = extract_label_key(trimmed) {
-                            labels.insert(label_key, number.clone());
-                        }
+                if child_node.instruction.opcode() == SIROpcode::SetContent
+                    && let Some(text) = doc.payload_text(child_node.instruction)
+                {
+                    let trimmed = text.trim_end_matches('\0').trim();
+                    if let Some(label_key) = extract_label_key(trimmed) {
+                        labels.insert(label_key, number.clone());
                     }
                 }
             }
@@ -941,12 +937,12 @@ fn collect_labels_recursive(
 
                 for &child_idx in &node.children {
                     let child_node = tree.node(child_idx);
-                    if child_node.instruction.opcode() == SIROpcode::SetContent {
-                        if let Some(text) = doc.payload_text(child_node.instruction) {
-                            let trimmed = text.trim_end_matches('\0').trim();
-                            if let Some(label_key) = extract_label_key(trimmed) {
-                                labels.insert(label_key, number.clone());
-                            }
+                    if child_node.instruction.opcode() == SIROpcode::SetContent
+                        && let Some(text) = doc.payload_text(child_node.instruction)
+                    {
+                        let trimmed = text.trim_end_matches('\0').trim();
+                        if let Some(label_key) = extract_label_key(trimmed) {
+                            labels.insert(label_key, number.clone());
                         }
                     }
                 }
@@ -981,6 +977,7 @@ fn extract_label_key(text: &str) -> Option<String> {
     None
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compile_node(
     tree: &InstructionTree,
     node_idx: usize,
@@ -1032,31 +1029,29 @@ fn compile_node(
                 ));
             }
 
-            if block_type == Some(BlockType::Image) {
-                if let Some(image_path) = collect_image_path(tree, &node.children, doc) {
-                    if let Some((img, w_fp, h_fp)) =
-                        load_and_scale_image(&image_path, ctx.content_width, base_dir)
-                    {
-                        let image_index = gir_doc.push_image(img);
-                        emit_move_xy(page, ctx.x, ctx.y);
-                        page.push(GIRCommand::new_draw_rule(
-                            -1,
-                            image_index as i32,
-                            w_fp,
-                            h_fp,
-                        ));
-                        ctx.advance_y(Fp266::from_raw(h_fp as i64));
-                        ctx.reset_x();
-                        if ctx.exceeds_page() {
-                            if !page.is_empty() {
-                                if fn_state.has_pending() {
-                                    emit_footnotes(fn_state, page, ctx, gir_doc);
-                                }
-                                gir_doc.push_page(std::mem::replace(page, ctx.new_page()));
-                            }
-                            ctx.y = ctx.margin_top;
+            if block_type == Some(BlockType::Image)
+                && let Some(image_path) = collect_image_path(tree, &node.children, doc)
+                && let Some((img, w_fp, h_fp)) =
+                    load_and_scale_image(&image_path, ctx.content_width, base_dir)
+            {
+                let image_index = gir_doc.push_image(img);
+                emit_move_xy(page, ctx.x, ctx.y);
+                page.push(GIRCommand::new_draw_rule(
+                    -1,
+                    image_index as i32,
+                    w_fp,
+                    h_fp,
+                ));
+                ctx.advance_y(Fp266::from_raw(h_fp as i64));
+                ctx.reset_x();
+                if ctx.exceeds_page() {
+                    if !page.is_empty() {
+                        if fn_state.has_pending() {
+                            emit_footnotes(fn_state, page, ctx, gir_doc);
                         }
+                        gir_doc.push_page(std::mem::replace(page, ctx.new_page()));
                     }
+                    ctx.y = ctx.margin_top;
                 }
             }
 
@@ -1114,7 +1109,7 @@ fn compile_node(
                             ctx.y,
                         );
                         for ch in eq_num.chars() {
-                            page.push(GIRCommand::new_put_glyph(ch as i32, (7 * 64) as i32));
+                            page.push(GIRCommand::new_put_glyph(ch as i32, 7 * 64));
                         }
                     }
 
@@ -1155,14 +1150,14 @@ fn compile_node(
             ctx.link_start_positions.clear();
             for &child_idx in &node.children {
                 let child_node = tree.node(child_idx);
-                if child_node.instruction.opcode() == SIROpcode::LinkData {
-                    if let Some(url) = doc.payload_text(child_node.instruction) {
-                        let url = url.trim_end_matches('\0').to_string();
-                        if !url.is_empty() {
-                            ctx.pending_link_urls.push(url);
-                            ctx.link_start_positions
-                                .push((ctx.x.to_f64(), ctx.y.to_f64()));
-                        }
+                if child_node.instruction.opcode() == SIROpcode::LinkData
+                    && let Some(url) = doc.payload_text(child_node.instruction)
+                {
+                    let url = url.trim_end_matches('\0').to_string();
+                    if !url.is_empty() {
+                        ctx.pending_link_urls.push(url);
+                        ctx.link_start_positions
+                            .push((ctx.x.to_f64(), ctx.y.to_f64()));
                     }
                 }
             }
@@ -1264,7 +1259,7 @@ fn compile_node(
                         let mark_char = superscript_digit(num);
                         emit_set_font(page, ctx.font_id as i32);
                         emit_move_xy(page, ctx.x, ctx.y);
-                        page.push(GIRCommand::new_put_glyph(mark_char as i32, (5 * 64) as i32));
+                        page.push(GIRCommand::new_put_glyph(mark_char as i32, 5 * 64));
                         ctx.advance_x(Fp266::from_int(5));
 
                         let fn_text = doc
@@ -1385,20 +1380,20 @@ fn collect_image_path(
 ) -> Option<String> {
     for &child_idx in children {
         let child_node = tree.node(child_idx);
-        if child_node.instruction.opcode() == SIROpcode::SetContent {
-            if let Some(text) = doc.payload_text(child_node.instruction) {
-                // Payload region may lack NUL separators between adjacent content.
-                // Extract the image path: take characters until we hit whitespace
-                // followed by non-path characters, or any non-path character.
-                let raw = text.trim_end_matches('\0');
-                // Find end of path: first whitespace or control character after the path
-                let path_end = raw
-                    .find(|c: char| c.is_whitespace() || c.is_control())
-                    .unwrap_or(raw.len());
-                let path = raw[..path_end].trim().to_string();
-                if !path.is_empty() {
-                    return Some(path);
-                }
+        if child_node.instruction.opcode() == SIROpcode::SetContent
+            && let Some(text) = doc.payload_text(child_node.instruction)
+        {
+            // Payload region may lack NUL separators between adjacent content.
+            // Extract the image path: take characters until we hit whitespace
+            // followed by non-path characters, or any non-path character.
+            let raw = text.trim_end_matches('\0');
+            // Find end of path: first whitespace or control character after the path
+            let path_end = raw
+                .find(|c: char| c.is_whitespace() || c.is_control())
+                .unwrap_or(raw.len());
+            let path = raw[..path_end].trim().to_string();
+            if !path.is_empty() {
+                return Some(path);
             }
         }
     }
@@ -1495,12 +1490,12 @@ fn collect_block_text(tree: &InstructionTree, children: &[usize], doc: &SIRDocum
     let mut text = String::new();
     for &child_idx in children {
         let child_node = tree.node(child_idx);
-        if child_node.instruction.opcode() == SIROpcode::SetContent {
-            if let Some(t) = doc.payload_text(child_node.instruction) {
-                let s = t.trim_end_matches('\0').trim().to_string();
-                if !s.is_empty() {
-                    text.push_str(&s);
-                }
+        if child_node.instruction.opcode() == SIROpcode::SetContent
+            && let Some(t) = doc.payload_text(child_node.instruction)
+        {
+            let s = t.trim_end_matches('\0').trim().to_string();
+            if !s.is_empty() {
+                text.push_str(&s);
             }
         }
     }
@@ -1511,15 +1506,15 @@ fn collect_table_text(tree: &InstructionTree, children: &[usize], doc: &SIRDocum
     let mut text = String::new();
     for &child_idx in children {
         let child_node = tree.node(child_idx);
-        if child_node.instruction.opcode() == SIROpcode::SetContent {
-            if let Some(t) = doc.payload_text(child_node.instruction) {
-                let s = t.trim_end_matches('\0').trim().to_string();
-                if !s.is_empty() {
-                    if !text.is_empty() {
-                        text.push('\n');
-                    }
-                    text.push_str(&s);
+        if child_node.instruction.opcode() == SIROpcode::SetContent
+            && let Some(t) = doc.payload_text(child_node.instruction)
+        {
+            let s = t.trim_end_matches('\0').trim().to_string();
+            if !s.is_empty() {
+                if !text.is_empty() {
+                    text.push('\n');
                 }
+                text.push_str(&s);
             }
         }
     }
@@ -1603,7 +1598,7 @@ fn emit_table(
             if !trimmed_cell.is_empty() {
                 emit_set_font(page, ctx.font_id as i32);
                 for ch in trimmed_cell.chars() {
-                    page.push(GIRCommand::new_put_glyph(ch as i32, (7 * 64) as i32));
+                    page.push(GIRCommand::new_put_glyph(ch as i32, 7 * 64));
                 }
             }
 

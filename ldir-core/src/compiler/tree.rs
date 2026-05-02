@@ -3,6 +3,8 @@
 //! Converts the flat `SIRDocument` instruction list into an adjacency list
 //! representation suitable for DFS traversal during compilation.
 
+#![allow(clippy::unwrap_used)]
+
 use std::collections::{HashMap, HashSet};
 
 use ldir_ir::sir::{EntityId, SIRDocument, SIRInstruction};

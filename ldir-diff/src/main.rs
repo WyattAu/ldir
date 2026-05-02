@@ -668,11 +668,13 @@ mod tests {
         let old = make_module("@section [id=1] { }\n");
         let new_text = "@section [id=1] { }\n";
         let mut new = make_module(new_text);
-        new.resources.counters.push(ldir_ir::sir::v2::resources::CounterDecl {
-            name: "figure".into(),
-            format: ldir_ir::sir::v2::resources::CounterFormat::Arabic,
-            reset_scope: ldir_ir::sir::v2::resources::CounterReset::PerSection,
-        });
+        new.resources
+            .counters
+            .push(ldir_ir::sir::v2::resources::CounterDecl {
+                name: "figure".into(),
+                format: ldir_ir::sir::v2::resources::CounterFormat::Arabic,
+                reset_scope: ldir_ir::sir::v2::resources::CounterReset::PerSection,
+            });
         let diff = compute_diff(&old, &new);
         assert!(diff.counters_added.contains(&"figure".to_string()));
     }

@@ -4,6 +4,7 @@
 //! All unsafe code is confined to this module.
 
 #![allow(unsafe_code)]
+#![allow(dead_code)]
 
 use harfbuzz_sys as hb;
 

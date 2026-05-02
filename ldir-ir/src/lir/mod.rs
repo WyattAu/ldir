@@ -21,13 +21,11 @@ pub mod types;
 
 pub use position::{Point, Rect, Size};
 pub use style::{
-    FlowDirection, LIRStyleTable, LIRTextStyle, ListType, MathType, Padding, Placement,
-    TextAlign,
+    FlowDirection, LIRStyleTable, LIRTextStyle, ListType, MathType, Padding, Placement, TextAlign,
 };
 pub use types::{
-    LIRBlockQuote, LIRCaption, LIRCodeBlock, LIRDocument, LIRDocumentMeta,
-    LIRFigure, LIRFlow, LIRFootnote, LIRFootnoteBlock, LIRGeometry, LIRGlyph, LIRHeading,
-    LIRLine, LIRList, LIRListItem, LIRMathBlock, LIRNode, LIRPage, LIRPageBreak,
-    LIRParagraph, LIRSpace, LIRTable, LIRTableCell, LIRTableRow, LIRTableOfContents,
-    LIRThematicBreak, TOCEntry,
+    LIRBlockQuote, LIRCaption, LIRCodeBlock, LIRDocument, LIRDocumentMeta, LIRFigure, LIRFlow,
+    LIRFootnote, LIRFootnoteBlock, LIRGeometry, LIRGlyph, LIRHeading, LIRLine, LIRList,
+    LIRListItem, LIRMathBlock, LIRNode, LIRPage, LIRPageBreak, LIRParagraph, LIRSpace, LIRTable,
+    LIRTableCell, LIRTableOfContents, LIRTableRow, LIRThematicBreak, TOCEntry,
 };

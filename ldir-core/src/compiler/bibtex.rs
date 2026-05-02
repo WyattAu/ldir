@@ -291,7 +291,7 @@ pub fn format_citation_ieee(entry: &BibEntry) -> String {
                 format!("{}, \"{},\" {}.", author, title, year)
             }
         }
-        "misc" | _ => {
+        _ => {
             format!("{}, \"{},\" {}.", author, title, year)
         }
     }
@@ -351,7 +351,7 @@ pub fn format_citation_apa(entry: &BibEntry) -> String {
                 format!("{} ({}). {}.", author, year, title)
             }
         }
-        "misc" | _ => {
+        _ => {
             format!("{} ({}). {}.", author, year, title)
         }
     }

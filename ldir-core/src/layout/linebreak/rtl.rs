@@ -1,5 +1,6 @@
 //! RTL (right-to-left) text detection.
 
+#![allow(dead_code)]
 #![deny(unsafe_code)]
 #![warn(clippy::unwrap_used, clippy::expect_used)]
 

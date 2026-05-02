@@ -12,6 +12,7 @@ use crate::symbols;
 #[derive(Debug)]
 struct DocumentState {
     text: String,
+    #[allow(dead_code)]
     uri: Url,
 }
 

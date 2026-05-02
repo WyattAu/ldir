@@ -77,7 +77,7 @@ pub fn split_into_words(glyphs: &[ShapedGlyph], text_bytes: &[u8]) -> Vec<WordGr
                 current_width = Fp266::ZERO;
             }
         } else {
-            current_width = current_width + glyph.advance;
+            current_width += glyph.advance;
             current_glyphs.push(glyph.clone());
         }
     }
@@ -126,7 +126,7 @@ pub fn justify_line(
     let mut space_count = 0usize;
     let mut total_width = Fp266::ZERO;
     for g in line_glyphs {
-        total_width = total_width + g.advance;
+        total_width += g.advance;
         let ci = g.cluster_id as usize;
         if ci < text_bytes.len() && text_bytes[ci] == b' ' {
             space_count += 1;
@@ -214,7 +214,7 @@ pub fn try_hyphenate_word(
         if cum_width + glyph.advance > available {
             break;
         }
-        cum_width = cum_width + glyph.advance;
+        cum_width += glyph.advance;
         // Need ≥ 2 glyphs before and ≥ 2 after
         if i + 1 >= 2 && word.glyphs.len().saturating_sub(i + 1) >= 2 {
             best_idx = Some(i + 1);

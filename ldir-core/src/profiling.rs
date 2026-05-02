@@ -9,6 +9,8 @@
 //! - REQ-8.2: Exportable traces in Chrome Trace Format
 //! - REQ-11.4.2: Chrome Trace Format and Tracy export
 
+#![allow(dead_code)]
+
 use std::time::{Duration, Instant};
 
 /// A recorded profiling span with start/end timestamps.

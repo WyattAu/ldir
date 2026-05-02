@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use std::collections::HashMap;
 
 use ldir_ir::sir::v2::module::SIRModuleV2;
@@ -164,11 +166,7 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                 let (modifiers, is_push) = StyleModifier::from_packed(packed);
 
                 if is_push {
-                    if modifiers.contains(StyleModifier::BOLD)
-                        && modifiers.contains(StyleModifier::ITALIC)
-                    {
-                        style_stack.push(NodeType::Bold);
-                    } else if modifiers.contains(StyleModifier::BOLD) {
+                    if modifiers.contains(StyleModifier::BOLD) {
                         style_stack.push(NodeType::Bold);
                     } else if modifiers.contains(StyleModifier::ITALIC) {
                         style_stack.push(NodeType::Italic);
@@ -222,10 +220,10 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
     let parent_ids: Vec<(u32, Option<u32>)> =
         module.body.iter().map(|n| (n.id, n.parent_id)).collect();
     for (child_id, parent_opt) in parent_ids {
-        if let Some(pid) = parent_opt {
-            if let Some(parent) = module.body.get_mut(pid) {
-                parent.add_child(child_id);
-            }
+        if let Some(pid) = parent_opt
+            && let Some(parent) = module.body.get_mut(pid)
+        {
+            parent.add_child(child_id);
         }
     }
 

@@ -3,6 +3,9 @@
 //! Thread-safe via internal `Mutex`. Lock-free variant is deferred to Phase D.
 //! Uses `Arc<str>` keys and `Arc<ShapedRun>` values for O(1) clone on cache hit.
 
+#![allow(dead_code)]
+#![allow(clippy::expect_used)]
+
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -166,33 +169,45 @@ impl ThreadSafeShapeCache {
     where
         F: FnOnce(&str, u32, Fp266) -> ShapedRun,
     {
-        let mut cache = self.inner.lock().unwrap();
+        let mut cache = self.inner.lock().expect("shape cache lock poisoned");
         cache.get_or_shape(text, font_id, font_size, shaper)
     }
 
     /// Number of entries currently in the cache.
     pub fn len(&self) -> usize {
-        self.inner.lock().unwrap().len()
+        self.inner.lock().expect("shape cache lock poisoned").len()
     }
 
     /// Check if the cache is empty.
     pub fn is_empty(&self) -> bool {
-        self.inner.lock().unwrap().is_empty()
+        self.inner
+            .lock()
+            .expect("shape cache lock poisoned")
+            .is_empty()
     }
 
     /// Get (hits, misses) statistics.
     pub fn stats(&self) -> (u64, u64) {
-        self.inner.lock().unwrap().stats()
+        self.inner
+            .lock()
+            .expect("shape cache lock poisoned")
+            .stats()
     }
 
     /// Reset hit/miss counters.
     pub fn reset_stats(&self) {
-        self.inner.lock().unwrap().reset_stats()
+        self.inner
+            .lock()
+            .expect("shape cache lock poisoned")
+            .reset_stats()
     }
 
     /// Cache hit rate as a value between 0.0 and 1.0.
     pub fn hit_rate(&self) -> f64 {
-        self.inner.lock().unwrap().hit_rate()
+        self.inner
+            .lock()
+            .expect("shape cache lock poisoned")
+            .hit_rate()
     }
 }
 

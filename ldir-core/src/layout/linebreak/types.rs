@@ -1,5 +1,7 @@
 //! Line-breaking types for Knuth-Plass algorithm.
 
+#![allow(dead_code)]
+
 use crate::fp266::Fp266;
 
 /// A single item to be placed by the line-breaking algorithm.

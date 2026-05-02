@@ -117,6 +117,11 @@ impl FontDatabase {
         self.face_count()
     }
 
+    /// Returns true if the database contains no font faces.
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
     /// Queries the database for a monospace font, with common fallbacks.
     pub fn query_monospace(&self) -> Option<ID> {
         self.query("DejaVu Sans Mono")
@@ -150,10 +155,10 @@ impl FontDatabase {
             "Arial Unicode MS",
             "Noto Sans CJK SC",
         ] {
-            if let Some(id) = self.query(fallback) {
-                if !chain.contains(&id) {
-                    chain.push(id);
-                }
+            if let Some(id) = self.query(fallback)
+                && !chain.contains(&id)
+            {
+                chain.push(id);
             }
         }
         chain

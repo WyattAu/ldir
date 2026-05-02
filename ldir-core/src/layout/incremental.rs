@@ -13,13 +13,15 @@
 //! - INV-COMP-001: Bit-identical output (determinism)
 //! - YP-INCREMENTAL-001: Incremental layout specification
 
+#![allow(dead_code)]
+
 use std::collections::{HashSet, VecDeque};
 
 use ldir_ir::lir::LIRDocument;
 use ldir_ir::sir::v2::SIRModuleV2;
 
 use crate::compiler::context::CompileContext;
-use crate::layout::lir_compile::{compile_sir_to_lir, LirError};
+use crate::layout::lir_compile::{LirError, compile_sir_to_lir};
 
 /// Set of node IDs that have been modified since the last layout.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -216,11 +218,15 @@ mod tests {
         let para_id = module
             .body
             .push(Node::new(2, NodeType::Paragraph).with_parent(doc_id));
-        let text_id = module
-            .body
-            .push(
-                Node::new(3, NodeType::Text { content: "Hello".into() }).with_parent(para_id),
-            );
+        let text_id = module.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Hello".into(),
+                },
+            )
+            .with_parent(para_id),
+        );
         if let Some(node) = module.body.get_mut(doc_id) {
             node.add_child(para_id);
         }
@@ -407,11 +413,15 @@ mod tests {
         let para_id = module2
             .body
             .push(Node::new(2, NodeType::Paragraph).with_parent(doc_id));
-        let text_id = module2
-            .body
-            .push(
-                Node::new(3, NodeType::Text { content: "Changed text".into() }).with_parent(para_id),
-            );
+        let text_id = module2.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Changed text".into(),
+                },
+            )
+            .with_parent(para_id),
+        );
         if let Some(node) = module2.body.get_mut(doc_id) {
             node.add_child(para_id);
         }
@@ -436,11 +446,15 @@ mod tests {
         let para_id = module
             .body
             .push(Node::new(3, NodeType::Paragraph).with_parent(sec_id));
-        let text_id = module
-            .body
-            .push(
-                Node::new(4, NodeType::Text { content: "Child text".into() }).with_parent(para_id),
-            );
+        let text_id = module.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Child text".into(),
+                },
+            )
+            .with_parent(para_id),
+        );
 
         if let Some(node) = module.body.get_mut(doc_id) {
             node.add_child(sec_id);
@@ -470,19 +484,27 @@ mod tests {
         let sec_id = module2
             .body
             .push(Node::new(2, NodeType::Section).with_parent(doc_id));
-        let sec_text_id = module2
-            .body
-            .push(
-                Node::new(3, NodeType::Text { content: "Heading".into() }).with_parent(sec_id),
-            );
+        let sec_text_id = module2.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "Heading".into(),
+                },
+            )
+            .with_parent(sec_id),
+        );
         let para_id = module2
             .body
             .push(Node::new(4, NodeType::Paragraph).with_parent(doc_id));
-        let para_text_id = module2
-            .body
-            .push(
-                Node::new(5, NodeType::Text { content: "Body".into() }).with_parent(para_id),
-            );
+        let para_text_id = module2.body.push(
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "Body".into(),
+                },
+            )
+            .with_parent(para_id),
+        );
 
         if let Some(node) = module2.body.get_mut(doc_id) {
             node.add_child(sec_id);

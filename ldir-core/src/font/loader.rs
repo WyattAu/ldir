@@ -59,6 +59,7 @@ impl LoadedFont {
     }
 
     /// Returns the parsed `ttf_parser::Face` for this font.
+    #[allow(clippy::expect_used)]
     pub fn face(&self) -> ttf_parser::Face<'_> {
         self.handle
             .parse_face(self.face_index)

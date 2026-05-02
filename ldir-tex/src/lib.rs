@@ -459,9 +459,7 @@ mod tests {
 
     #[test]
     fn test_table_with_hline_header() {
-        let doc = parse_tex(
-            r"\begin{tabular}{lcr}\hline A & B \\ C & D\end{tabular}",
-        );
+        let doc = parse_tex(r"\begin{tabular}{lcr}\hline A & B \\ C & D\end{tabular}");
         assert!(find_block_type(&doc, BlockType::TableRow));
         assert!(find_block_type(&doc, BlockType::TableCell));
     }

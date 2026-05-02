@@ -9,6 +9,8 @@
 //! - REQ-8.1: `tracing` ecosystem integration
 //! - REQ-11.4.1: Nanosecond-resolution tracing of major layout functions
 
+#![allow(dead_code)]
+
 #[allow(unused_imports)]
 pub use tracing::{
     Level, debug, debug_span, error, error_span, info, info_span, instrument, span, trace,

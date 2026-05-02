@@ -11,6 +11,6 @@
 //! - THM-KP-TERMINATION: Algorithm terminates in O(n²)
 
 pub mod incremental;
-pub mod lir_compile;
 pub mod linebreak;
+pub mod lir_compile;
 pub mod pagination;

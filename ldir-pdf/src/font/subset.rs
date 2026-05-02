@@ -6,6 +6,8 @@
 //! Glyph IDs are NOT remapped — they retain their original values so
 //! that `CIDToGIDMap: Identity` works correctly in the PDF.
 
+#![allow(dead_code)]
+
 use std::collections::HashSet;
 
 use ttf_parser::Tag;

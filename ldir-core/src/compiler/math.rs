@@ -8,6 +8,9 @@
 //! binary operators, delimiters, `\begin{cases}`, matrix environments,
 //! and stretchy delimiters (`\left`/`\right`).
 
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+
 use std::sync::Arc;
 
 use crate::fp266::Fp266;
@@ -91,10 +94,15 @@ impl MathBox {
     }
 }
 
+/// A glyph with absolute position and advance width.
 pub struct PositionedGlyph {
+    /// Glyph identifier.
     pub glyph_id: i32,
+    /// X position in document coordinates.
     pub x: Fp266,
+    /// Y position in document coordinates.
     pub y: Fp266,
+    /// Advance width.
     pub advance: Fp266,
 }
 
@@ -179,7 +187,7 @@ fn tokenize_math(content: &str) -> Vec<MathToken> {
                         let inner_tokens = tokenize_math(&inner);
                         if inner_tokens.len() == 1 {
                             tokens.push(MathToken::Radical(Box::new(
-                                inner_tokens.into_iter().next().unwrap(),
+                                inner_tokens.into_iter().next().expect("len == 1"),
                             )));
                         } else {
                             tokens.push(MathToken::Radical(Box::new(MathToken::Text(inner))));

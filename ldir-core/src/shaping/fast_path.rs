@@ -75,7 +75,12 @@ pub fn shape_ascii(text: &str, font_size: Fp266, _font_id: u32) -> ShapedRun {
 /// Falls back to monospace advance for glyphs without explicit advance data.
 /// No kerning, ligatures, or complex shaping — suitable for WASM targets
 /// where HarfBuzz is unavailable.
-pub fn shape_unicode_basic(font_data: &[u8], text: &str, font_size: Fp266, _font_id: u32) -> ShapedRun {
+pub fn shape_unicode_basic(
+    font_data: &[u8],
+    text: &str,
+    font_size: Fp266,
+    _font_id: u32,
+) -> ShapedRun {
     if text.is_empty() {
         return ShapedRun::empty();
     }

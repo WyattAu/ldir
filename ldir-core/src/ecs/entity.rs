@@ -12,6 +12,8 @@
 //! - THM-ECS-CAPACITY: Maximum entity count is 2^32 - 1
 //! - ALG-ECS-CREATE: Entity creation algorithm
 
+#![allow(dead_code)]
+
 use std::fmt;
 
 /// Raw entity slot index — a 32-bit value.
