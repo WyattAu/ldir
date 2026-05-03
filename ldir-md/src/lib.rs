@@ -1,9 +1,23 @@
-//! ldir-md — Markdown to S-IR parser.
+//! # ldir-md
 //!
-//! Converts CommonMark Markdown into an S-IR document suitable for
-//! compilation by the LDIR compiler pipeline.
+//! Markdown to S-IR parser for the LDIR document pipeline. Converts
+//! CommonMark Markdown (with GFM extensions) into an S-IR document tree
+//! suitable for compilation by `ldir-core`.
 //!
-//! # Supported Markdown
+//! ## Key Types
+//!
+//! - [`parse_markdown`] — Main entry point: Markdown string to S-IR document
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use ldir_md::parse_markdown;
+//!
+//! let doc = parse_markdown("# Hello\n\nThis has **bold** text.");
+//! println!("Parsed {} S-IR instructions", doc.len());
+//! ```
+//!
+//! ## Supported Markdown
 //!
 //! | Element          | S-IR Mapping                                        |
 //! |------------------|----------------------------------------------------|
@@ -17,8 +31,15 @@
 //! | Bold (**text**)  | `ApplyStyle(BOLD)` + `SetContent`                  |
 //! | Italic (*text*)   | `ApplyStyle(ITALIC)` + `SetContent`                |
 //! | Inline code      | `ApplyStyle(MONO)` + `SetContent`                  |
-//! | Links [t](url)   | `LinkData` + `SetContent`                         |
-//! | Text             | `SetContent` (UTF-8 payload)                       |
+//! | Links \[t\](url)   | `LinkData` + `SetContent`                         |
+//! | GFM Tables       | `PushBlock(Table)` + rows/cells                   |
+//! | Task lists       | `SetContent` with `[x]` / `[ ]` prefix            |
+//! | Footnotes        | `\fnmark{N}` + `FootnoteBlock`                   |
+//! | Images           | `PushBlock(Image)` + path payload                 |
+//!
+//! ## References
+//!
+//! - [Repository](https://github.com/WyattAu/ldir)
 
 use ldir_ir::sir::{
     BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode, StyleModifier,
@@ -26,7 +47,6 @@ use ldir_ir::sir::{
 
 use std::collections::HashMap;
 
-/// Check if a pulldown-cmark Tag is block-level (vs inline).
 fn is_block_tag(tag: &pulldown_cmark::Tag) -> bool {
     matches!(
         tag,
@@ -46,6 +66,8 @@ fn is_block_tag(tag: &pulldown_cmark::Tag) -> bool {
 /// The resulting document has a single root `PushBlock(Document)` with
 /// nested blocks for each Markdown element. Inline styles (bold, italic,
 /// inline code) are emitted as `ApplyStyle` instructions.
+///
+/// GFM extensions enabled: tables, footnotes, task lists.
 pub fn parse_markdown(markdown: &str) -> SIRDocument {
     let mut doc = SIRDocument::new();
     let mut ctx = ParseContext::new(&mut doc);
@@ -400,7 +422,6 @@ impl<'a> ParseContext<'a> {
                 }
                 Block::BlockQuote { content } => {
                     let bid = self.emit_block(BlockType::BlockQuote, root_id, None, &content);
-                    // Indent blockquote content by 2em (48pt in 24pt/1em)
                     self.emit_indent(bid, 48 * 64);
                 }
                 Block::ThematicBreak => {
@@ -663,9 +684,7 @@ struct InlineStyle {
 struct InlineBuffer {
     content: String,
     block_kind: BlockKind,
-    /// Pending inline styles to emit after the block content.
     inline_styles: Vec<InlineStyle>,
-    /// Active link URLs collected during this block.
     link_urls: Vec<String>,
 }
 
@@ -739,10 +758,6 @@ impl InlineBuffer {
     }
 
     fn push_inline_code(&mut self, text: &str) {
-        // Mark inline code boundaries with style events
-        // We track position in the content and emit style instructions
-        // that reference offsets within the text.
-        // For now, emit mono style enter/exit around the code text.
         self.inline_styles.push(InlineStyle {
             modifier: StyleModifier::MONO_STYLE,
             is_enter: true,
@@ -780,9 +795,7 @@ impl InlineBuffer {
         self.link_urls.push(url.to_string());
     }
 
-    fn push_link_end(&mut self) {
-        // Link URLs are collected; the last one is the active link for this segment.
-    }
+    fn push_link_end(&mut self) {}
 
     fn finish(self) -> Block {
         self.finish_impl(None)
@@ -794,7 +807,6 @@ impl InlineBuffer {
 
     fn finish_impl(self, task_marker: Option<bool>) -> Block {
         let content = self.content.trim().to_string();
-        // Use the last collected link URL for this block
         let link_url = self.link_urls.last().cloned().filter(|u| !u.is_empty());
 
         match self.block_kind {

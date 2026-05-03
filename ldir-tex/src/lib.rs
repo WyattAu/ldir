@@ -1,13 +1,54 @@
-//! ldir-tex — TeX/LaTeX to S-IR parser.
+//! # ldir-tex
 //!
-//! Converts a practical subset of LaTeX into an S-IR document suitable for
-//! compilation by the LDIR compiler pipeline.
+//! TeX/LaTeX to S-IR parser for the LDIR document pipeline. Converts a
+//! practical subset of LaTeX into an S-IR document tree suitable for
+//! compilation by `ldir-core`.
+//!
+//! ## Key Types
+//!
+//! - [`parse_tex`] — Main entry point: LaTeX string to S-IR document
+//!
+//! ## Quick Start
+//!
+//! ```rust
+//! use ldir_tex::parse_tex;
+//!
+//! let doc = parse_tex(r"\section{Introduction}\textbf{Bold text}.");
+//! println!("Parsed {} S-IR instructions", doc.len());
+//! ```
+//!
+//! ## Supported LaTeX
+//!
+//! | Element | S-IR Mapping |
+//! |---|---|
+//! | `\section`–`\subsubsection` | `PushBlock(Heading)` with level payload |
+//! | `\textbf`, `\textit`, `\texttt` | `ApplyStyle(BOLD/ITALIC/MONO)` |
+//! | `\emph` | `ApplyStyle(ITALIC)` |
+//! | `$...$`, `$$...$$` | Inline math / display math |
+//! | `\begin{equation}` | `PushBlock(Math)` with numbered flag |
+//! | `\begin{itemize}`, `\begin{enumerate}` | `PushBlock(List)` |
+//! | `\begin{verbatim}` | `PushBlock(Code)` |
+//! | `\begin{quote}`, `\begin{abstract}` | `PushBlock(BlockQuote)` |
+//! | `\begin{figure}`, `\includegraphics` | `PushBlock(Figure)` + `PushBlock(Image)` |
+//! | `\begin{table}`, `\begin{tabular}` | `PushBlock(Table)` + rows/cells |
+//! | `\footnote{}` | Footnote mark + stored footnote text |
+//! | `\label`, `\ref`, `\eqref` | Passed through as text |
+//! | Greek letters, operators | Unicode substitution |
+//!
+//! ## References
+//!
+//! - [Repository](https://github.com/WyattAu/ldir)
 
 mod lexer;
 mod parser;
 
 use ldir_ir::sir::SIRDocument;
 
+/// Parse a TeX/LaTeX string into an S-IR document.
+///
+/// Converts a practical subset of LaTeX (sections, styling, math, lists,
+/// figures, tables, footnotes) into S-IR instructions. The preamble
+/// (`\documentclass`, `\usepackage`, etc.) is silently skipped.
 pub fn parse_tex(tex: &str) -> SIRDocument {
     let tokens = lexer::TeXLexer::new(tex).tokenize();
     let mut p = parser::TeXParser::new(&tokens);

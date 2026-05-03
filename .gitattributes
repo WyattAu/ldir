@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.rs text diff=rust
+*.lean text diff=lean
+*.toml text diff=toml
+*.md text diff=markdown
+*.yml text diff=yaml
+*.yaml text diff=yaml
+*.pdf binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+Cargo.lock binary

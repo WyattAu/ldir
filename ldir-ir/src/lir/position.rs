@@ -145,6 +145,7 @@ impl Rect {
     }
 
     /// Check if a point lies within this rectangle (half-open: excludes right/bottom).
+    #[inline]
     pub fn contains_point(&self, point: &Point) -> bool {
         point.x >= self.x
             && point.x < self.x + self.width
@@ -161,6 +162,7 @@ impl Rect {
     }
 
     /// Check if two rectangles overlap (have a non-empty intersection).
+    #[inline]
     pub fn intersects(&self, other: &Rect) -> bool {
         self.x < other.right()
             && self.right() > other.x

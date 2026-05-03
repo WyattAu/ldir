@@ -54,7 +54,7 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
                     child_count: 0,
                 });
 
-                emit_block_open(&mut html, bt, heading_level, doc, instr.payload_offset());
+                emit_block_open(&mut html, bt, heading_level);
             }
             SIROpcode::SetContent => {
                 let parent_id = instr.parent_id();
@@ -68,12 +68,19 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
                 }
 
                 if let Some(text) = doc.payload_text(instr) {
-                    let escaped = escape_html(text);
-
-                    if let Some(url) = link_url_for_block.get(&parent_id) {
-                        html.push_str(&format!("<a href=\"{}\">{}</a>", escape_attr(url), escaped));
+                    if bt == BlockType::Code {
+                        let language = detect_language(text);
+                        let highlighted = highlight_code(text, language);
+                        let with_lines = add_line_numbers(&highlighted);
+                        html.push_str(&with_lines);
                     } else {
-                        html.push_str(&escaped);
+                        let escaped = escape_html(text);
+
+                        if let Some(url) = link_url_for_block.get(&parent_id) {
+                            html.push_str(&format!("<a href=\"{}\">{}</a>", escape_attr(url), escaped));
+                        } else {
+                            html.push_str(&escaped);
+                        }
                     }
                 }
 
@@ -108,6 +115,293 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
     html
 }
 
+fn detect_language(code: &str) -> &str {
+    if code.contains("fn ")
+        || code.contains("pub ")
+        || code.contains("impl ")
+        || code.contains("struct ")
+        || code.contains("enum ")
+        || code.contains("trait ")
+        || code.contains("use ")
+        || code.contains("mod ")
+    {
+        return "rust";
+    }
+    if code.contains("\\begin{")
+        || code.contains("\\section")
+        || code.contains("\\documentclass")
+        || code.contains("\\usepackage")
+    {
+        return "latex";
+    }
+    if code.contains("#let ") || code.contains("#set ") || code.contains("#show ") {
+        return "typst";
+    }
+    "text"
+}
+
+/// Apply syntax highlighting to a code block.
+///
+/// Tokenizes the input and wraps recognized tokens in `<span>` elements
+/// with CSS classes: `.kw` (keyword), `.str` (string), `.cmt` (comment),
+/// `.num` (number).
+///
+/// For unknown languages, returns the HTML-escaped input unchanged.
+fn highlight_code(code: &str, language: &str) -> String {
+    let keywords: &[&str] = match language {
+        "rust" => &[
+            "fn", "let", "mut", "pub", "struct", "impl", "use", "mod", "enum",
+            "match", "if", "else", "for", "while", "loop", "return", "self",
+            "super", "crate", "true", "false", "async", "await", "unsafe",
+            "type", "trait", "where", "const", "static", "extern", "in",
+        ],
+        "latex" | "tex" => &[
+            "\\section", "\\subsection", "\\subsubsection", "\\begin", "\\end",
+            "\\textbf", "\\textit", "\\emph", "\\cite", "\\ref", "\\label",
+            "\\equation", "\\frac", "\\sqrt", "\\int", "\\sum", "\\alpha",
+            "\\beta", "\\gamma", "\\delta", "\\lambda", "\\pi", "\\infty",
+            "\\partial", "\\documentclass", "\\usepackage", "\\hline",
+        ],
+        "typst" => &[
+            "let", "set", "show", "import", "include", "context", "for",
+            "if", "else", "while", "return", "break", "continue", "true",
+            "false", "none", "auto",
+        ],
+        _ => return escape_html(code),
+    };
+
+    let mut result = String::with_capacity(code.len() * 2);
+    let chars: Vec<char> = code.chars().collect();
+    let len = chars.len();
+    let mut i = 0;
+
+    while i < len {
+        // Line comments (//)
+        if i + 1 < len && chars[i] == '/' && chars[i + 1] == '/' {
+            let start = i;
+            while i < len && chars[i] != '\n' {
+                i += 1;
+            }
+            let comment: String = chars[start..i].iter().collect();
+            result.push_str("<span class=\"cmt\">");
+            result.push_str(&escape_html(&comment));
+            result.push_str("</span>");
+            continue;
+        }
+
+        // Block comments (/* ... */)
+        if i + 1 < len && chars[i] == '/' && chars[i + 1] == '*' {
+            let start = i;
+            i += 2;
+            while i + 1 < len && !(chars[i] == '*' && chars[i + 1] == '/') {
+                i += 1;
+            }
+            if i + 1 < len {
+                i += 2;
+            } else {
+                i = len;
+            }
+            let comment: String = chars[start..i].iter().collect();
+            result.push_str("<span class=\"cmt\">");
+            result.push_str(&escape_html(&comment));
+            result.push_str("</span>");
+            continue;
+        }
+
+        // Strings (double quote)
+        if chars[i] == '"' {
+            result.push_str("<span class=\"str\">");
+            result.push('"');
+            i += 1;
+            while i < len && chars[i] != '"' {
+                if chars[i] == '\\' && i + 1 < len {
+                    let esc: String = chars[i..i + 2].iter().collect();
+                    result.push_str(&escape_html(&esc));
+                    i += 2;
+                } else {
+                    result.push_str(&escape_html(&chars[i].to_string()));
+                    i += 1;
+                }
+            }
+            if i < len {
+                result.push('"');
+                i += 1;
+            }
+            result.push_str("</span>");
+            continue;
+        }
+
+        // Char literals (single quote) for Rust
+        if chars[i] == '\'' && language == "rust" && i + 2 < len {
+            let is_char = (chars[i + 1] != '\\' && chars[i + 2] == '\'')
+                || (chars[i + 1] == '\\' && i + 3 < len && chars[i + 3] == '\'');
+            if is_char {
+                result.push_str("<span class=\"str\">");
+                result.push('\'');
+                i += 1;
+                while i < len && chars[i] != '\'' {
+                    if chars[i] == '\\' && i + 1 < len {
+                        result.push(chars[i]);
+                        result.push(chars[i + 1]);
+                        i += 2;
+                    } else {
+                        result.push(chars[i]);
+                        i += 1;
+                    }
+                }
+                if i < len {
+                    result.push('\'');
+                    i += 1;
+                }
+                result.push_str("</span>");
+                continue;
+            }
+        }
+
+        // LaTeX commands (\word)
+        if chars[i] == '\\' && (language == "latex" || language == "tex") {
+            let start = i;
+            i += 1;
+            while i < len && chars[i].is_alphabetic() {
+                i += 1;
+            }
+            let cmd: String = chars[start..i].iter().collect();
+            if keywords.contains(&cmd.as_str()) {
+                result.push_str("<span class=\"kw\">");
+                result.push_str(&escape_html(&cmd));
+                result.push_str("</span>");
+            } else {
+                result.push_str(&escape_html(&cmd));
+            }
+            continue;
+        }
+
+        // Typst hash-prefixed keywords (#let, #set, etc.)
+        if chars[i] == '#'
+            && language == "typst"
+            && i + 1 < len
+            && (chars[i + 1].is_alphabetic() || chars[i + 1] == '_')
+        {
+            let start = i;
+            i += 1;
+            while i < len && (chars[i].is_alphanumeric() || chars[i] == '_') {
+                i += 1;
+            }
+            let word: String = chars[start..i].iter().collect();
+            let kw_part = &word[1..];
+            if keywords.contains(&kw_part) {
+                result.push_str("<span class=\"kw\">");
+                result.push_str(&escape_html(&word));
+                result.push_str("</span>");
+            } else {
+                result.push_str(&escape_html(&word));
+            }
+            continue;
+        }
+
+        // Numbers
+        if chars[i].is_ascii_digit() {
+            let start = i;
+            while i < len && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == '_')
+            {
+                i += 1;
+            }
+            let num: String = chars[start..i].iter().collect();
+            result.push_str("<span class=\"num\">");
+            result.push_str(&escape_html(&num));
+            result.push_str("</span>");
+            continue;
+        }
+
+        // Words (potential keywords)
+        if chars[i].is_alphabetic() || chars[i] == '_' {
+            let start = i;
+            while i < len && (chars[i].is_alphanumeric() || chars[i] == '_') {
+                i += 1;
+            }
+            let word: String = chars[start..i].iter().collect();
+            if keywords.contains(&word.as_str()) {
+                result.push_str("<span class=\"kw\">");
+                result.push_str(&escape_html(&word));
+                result.push_str("</span>");
+            } else {
+                result.push_str(&escape_html(&word));
+            }
+            continue;
+        }
+
+        // Everything else: escape and output
+        result.push_str(&escape_html(&chars[i].to_string()));
+        i += 1;
+    }
+
+    result
+}
+
+/// Add line numbers to highlighted HTML.
+///
+/// Wraps each line in `<span class="ln">` for the number and tracks open
+/// `<span>` tags across line boundaries (for multi-line block comments).
+fn add_line_numbers(highlighted_html: &str) -> String {
+    if highlighted_html.is_empty() {
+        return String::new();
+    }
+
+    let mut result =
+        String::with_capacity(highlighted_html.len() + highlighted_html.len() / 10 * 25);
+    let mut open_tags: Vec<&str> = Vec::new();
+    let mut line_num: usize = 1;
+
+    result.push_str(&format!("<span class=\"ln\">{line_num:>4}</span>"));
+
+    let bytes = highlighted_html.as_bytes();
+    let mut pos = 0;
+
+    while pos < highlighted_html.len() {
+        // Check for <span open tags
+        if bytes[pos] == b'<'
+            && highlighted_html[pos..].starts_with("<span")
+            && let Some(tag_end) = highlighted_html[pos..].find('>')
+        {
+            let tag = &highlighted_html[pos..=pos + tag_end];
+            result.push_str(tag);
+            open_tags.push(tag);
+            pos += tag_end + 1;
+            continue;
+        }
+
+        // Check for </span> close tags
+        if bytes[pos] == b'<' && highlighted_html[pos..].starts_with("</span>") {
+            if !open_tags.is_empty() {
+                open_tags.pop();
+            }
+            result.push_str("</span>");
+            pos += 7;
+            continue;
+        }
+
+        // Newline: close open tags, emit line number, reopen tags
+        if bytes[pos] == b'\n' {
+            for _ in 0..open_tags.len() {
+                result.push_str("</span>");
+            }
+            result.push('\n');
+            line_num += 1;
+            result.push_str(&format!("<span class=\"ln\">{line_num:>4}</span>"));
+            for tag in &open_tags {
+                result.push_str(tag);
+            }
+            pos += 1;
+            continue;
+        }
+
+        result.push(bytes[pos] as char);
+        pos += 1;
+    }
+
+    result
+}
+
 fn read_block_type(doc: &SIRDocument, payload_offset: u32) -> BlockType {
     let payload = doc.payload().get(payload_offset, 1);
     if let Some(&[bt_byte]) = payload {
@@ -128,13 +422,7 @@ fn read_heading_level(doc: &SIRDocument, payload_offset: u32) -> u32 {
     1
 }
 
-fn emit_block_open(
-    html: &mut String,
-    bt: BlockType,
-    heading_level: u32,
-    _doc: &SIRDocument,
-    _payload_offset: u32,
-) {
+fn emit_block_open(html: &mut String, bt: BlockType, heading_level: u32) {
     match bt {
         BlockType::Document => {}
         BlockType::Paragraph => {
@@ -144,7 +432,11 @@ fn emit_block_open(
             html.push_str(&format!("<h{}>", heading_level));
         }
         BlockType::Code => {
-            html.push_str("<pre><code>");
+            html.push_str(
+                "<div class=\"code-container\">\
+                 <button class=\"copy-btn\" onclick=\"copyCode(this)\">Copy</button>\
+                 <pre class=\"code-block\"><code>",
+            );
         }
         BlockType::List => {
             html.push_str("<ul>");
@@ -186,7 +478,7 @@ fn emit_block_close(html: &mut String, bt: BlockType, heading_level: u32) {
             html.push_str(&format!("</h{}>", heading_level));
         }
         BlockType::Code => {
-            html.push_str("</code></pre>");
+            html.push_str("</code></pre></div>");
         }
         BlockType::List => {
             html.push_str("</ul>");
@@ -296,9 +588,29 @@ mod tests {
     #[test]
     fn test_code_block() {
         let html = render_markdown("```rust\nfn main() {}\n```");
-        assert!(html.contains("<pre><code>"), "missing pre/code in: {html}");
-        assert!(html.contains("</code></pre>"), "missing closing in: {html}");
-        assert!(html.contains("fn main"), "missing code text in: {html}");
+        assert!(html.contains("<pre"), "missing pre in: {html}");
+        assert!(html.contains("<code>"), "missing code in: {html}");
+        assert!(html.contains("</code>"), "missing /code in: {html}");
+        assert!(html.contains("</pre>"), "missing /pre in: {html}");
+        assert!(html.contains("fn"), "missing fn in: {html}");
+        assert!(html.contains("main"), "missing main in: {html}");
+    }
+
+    #[test]
+    fn test_code_block_wrapper() {
+        let html = render_markdown("```rust\nfn main() {}\n```");
+        assert!(
+            html.contains("code-container"),
+            "missing code-container in: {html}"
+        );
+        assert!(
+            html.contains("copy-btn"),
+            "missing copy-btn in: {html}"
+        );
+        assert!(
+            html.contains("code-block"),
+            "missing code-block class in: {html}"
+        );
     }
 
     #[test]
@@ -404,5 +716,156 @@ mod tests {
     fn test_image() {
         let html = render_markdown("![alt text](image.png)");
         assert!(html.contains("image.png"), "missing image src in: {html}");
+    }
+
+    #[test]
+    fn highlight_rust_keywords() {
+        let html = highlight_code("fn main() { let x = 1; }", "rust");
+        assert!(
+            html.contains("<span class=\"kw\">fn</span>"),
+            "fn should be highlighted in: {html}"
+        );
+        assert!(
+            html.contains("<span class=\"kw\">let</span>"),
+            "let should be highlighted in: {html}"
+        );
+    }
+
+    #[test]
+    fn highlight_latex_commands() {
+        let html = highlight_code(
+            "\\section{Intro} \\begin{equation} \\frac{1}{2} \\end{equation}",
+            "latex",
+        );
+        assert!(
+            html.contains("<span class=\"kw\">\\section</span>"),
+            "\\section should be highlighted in: {html}"
+        );
+        assert!(
+            html.contains("<span class=\"kw\">\\begin</span>"),
+            "\\begin should be highlighted in: {html}"
+        );
+        assert!(
+            html.contains("<span class=\"kw\">\\end</span>"),
+            "\\end should be highlighted in: {html}"
+        );
+        assert!(
+            html.contains("<span class=\"kw\">\\frac</span>"),
+            "\\frac should be highlighted in: {html}"
+        );
+    }
+
+    #[test]
+    fn highlight_unknown_language() {
+        let code = "just plain text with <html> & stuff";
+        let html = highlight_code(code, "unknown");
+        assert_eq!(html, escape_html(code), "unknown language should passthrough escaped");
+        assert!(html.contains("&lt;html&gt;"));
+        assert!(html.contains("&amp;"));
+    }
+
+    #[test]
+    fn highlight_strings() {
+        let html = highlight_code("let s = \"hello world\";", "rust");
+        assert!(
+            html.contains("<span class=\"str\">\"hello world\"</span>"),
+            "string should be highlighted in: {html}"
+        );
+    }
+
+    #[test]
+    fn highlight_comments() {
+        let html = highlight_code("// this is a comment\nlet x = 1;", "rust");
+        assert!(
+            html.contains("<span class=\"cmt\">// this is a comment</span>"),
+            "line comment should be highlighted in: {html}"
+        );
+    }
+
+    #[test]
+    fn highlight_numbers() {
+        let html = highlight_code("let x = 42;", "rust");
+        assert!(
+            html.contains("<span class=\"num\">42</span>"),
+            "number should be highlighted in: {html}"
+        );
+    }
+
+    #[test]
+    fn line_numbers_added() {
+        let html = render_markdown("```rust\nfn main() {}\nlet x = 1;\n```");
+        assert!(
+            html.contains("<span class=\"ln\">   1</span>"),
+            "line 1 number missing in: {html}"
+        );
+        assert!(
+            html.contains("<span class=\"ln\">   2</span>"),
+            "line 2 number missing in: {html}"
+        );
+    }
+
+    #[test]
+    fn test_dark_mode_css() {
+        let html = include_str!("../playground/index.html");
+        assert!(
+            html.contains("prefers-color-scheme: dark"),
+            "missing dark mode media query in playground HTML"
+        );
+        assert!(
+            html.contains("#1e1e1e"),
+            "missing dark background color in playground HTML"
+        );
+    }
+
+    #[test]
+    fn detect_language_rust() {
+        assert_eq!(detect_language("fn main() {}"), "rust");
+        assert_eq!(detect_language("pub struct Foo;"), "rust");
+        assert_eq!(detect_language("impl Foo {}"), "rust");
+    }
+
+    #[test]
+    fn detect_language_latex() {
+        assert_eq!(detect_language("\\begin{document}"), "latex");
+        assert_eq!(detect_language("\\section{Intro}"), "latex");
+    }
+
+    #[test]
+    fn detect_language_unknown() {
+        assert_eq!(detect_language("just some text"), "text");
+    }
+
+    #[test]
+    fn line_numbers_multiline_span() {
+        let highlighted = "<span class=\"cmt\">/* line1\nline2 */</span>";
+        let result = add_line_numbers(highlighted);
+        assert!(
+            result.contains("<span class=\"ln\">   1</span>"),
+            "line 1 missing in: {result}"
+        );
+        assert!(
+            result.contains("<span class=\"ln\">   2</span>"),
+            "line 2 missing in: {result}"
+        );
+        assert!(result.contains("line1"), "content line1 missing in: {result}");
+        assert!(result.contains("line2"), "content line2 missing in: {result}");
+    }
+
+    #[test]
+    fn add_line_numbers_empty() {
+        assert!(add_line_numbers("").is_empty());
+    }
+
+    #[test]
+    fn highlight_typst_keywords() {
+        let html = highlight_code("#let x = 5", "typst");
+        assert!(
+            html.contains("<span class=\"kw\">#let</span>"),
+            "#let should be highlighted in: {html}"
+        );
+        assert!(
+            html.contains("<span class=\"num\">5</span>"),
+            "number should be highlighted in: {html}"
+        );
     }
 }

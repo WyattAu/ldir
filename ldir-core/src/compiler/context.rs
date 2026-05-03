@@ -12,6 +12,7 @@ use ldir_ir::sir::StyleModifier;
 use crate::compiler::templates::PageTemplate;
 use crate::font::db::FontDatabase;
 use crate::fp266::Fp266;
+use crate::interner::StringInterner;
 use crate::shaping::cache::ThreadSafeShapeCache;
 
 /// Maximum allowed nesting depth for PushStack/PopStack.
@@ -111,6 +112,8 @@ pub struct CompileContext {
     pub bump: Bump,
     /// LRU cache for shaped text runs.
     pub shape_cache: ThreadSafeShapeCache,
+    /// String interner for deduplicating repeated text across compilation.
+    pub interner: StringInterner,
     /// Font database for system font discovery and name-based lookup.
     /// When `Some`, the compiler can resolve font families by name.
     pub font_db: Option<Arc<FontDatabase>>,
@@ -182,6 +185,7 @@ impl CompileContext {
             toc_page_count: 0,
             bump: Bump::new(),
             shape_cache: ThreadSafeShapeCache::new(1024),
+            interner: StringInterner::new(),
             font_db: None,
             font_family: String::new(),
             font_mono_family: String::new(),
@@ -257,6 +261,7 @@ impl CompileContext {
             toc_page_count: 0,
             bump: Bump::new(),
             shape_cache: ThreadSafeShapeCache::new(1024),
+            interner: StringInterner::new(),
             font_db: None,
             font_family: String::new(),
             font_mono_family: String::new(),

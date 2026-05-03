@@ -25,6 +25,7 @@ members = [
     "ldir-opt",
     "ldir-link",
     "ldir-lsp",
+    "tests",
 ]
 
 [workspace.package]
@@ -92,3 +93,6 @@ shipyard = "0.11"
 
 # Concurrency
 crossbeam = "0.8"
+
+# Temp files (integration tests)
+tempfile = "3"

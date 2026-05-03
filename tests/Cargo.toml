@@ -1,0 +1,8 @@
+[package]
+name = "ldir-integration-tests"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dev-dependencies]
+tempfile = { workspace = true }

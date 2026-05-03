@@ -1662,8 +1662,8 @@ fn collect_styled_runs(
         None => return Vec::new(),
     };
 
-    let mut runs: Vec<(String, StyleModifier)> = Vec::new();
-    let mut current_text = String::new();
+    let mut runs: Vec<(String, StyleModifier)> = Vec::with_capacity(8);
+    let mut current_text = String::with_capacity(256);
     let current_style = style_modifier;
 
     for &child_id in &node.child_ids {
@@ -1830,9 +1830,10 @@ fn emit_v2_styled_paragraph(
 
     ctx.bump.reset();
 
-    let mut all_text = String::new();
-    let mut all_glyphs: Vec<crate::shaping::ShapedGlyph> = Vec::new();
-    let mut all_font_ids: Vec<u32> = Vec::new();
+    let estimated_text_len: usize = runs.iter().map(|(t, _)| t.len()).sum();
+    let mut all_text = String::with_capacity(estimated_text_len);
+    let mut all_glyphs: Vec<crate::shaping::ShapedGlyph> = Vec::with_capacity(estimated_text_len);
+    let mut all_font_ids: Vec<u32> = Vec::with_capacity(estimated_text_len);
 
     for (text, style) in runs {
         if text.is_empty() {
@@ -2069,7 +2070,7 @@ fn collect_link_urls(node_id: u32, module: &SIRModuleV2) -> Vec<String> {
     if module.body.get(node_id).is_none() {
         return Vec::new();
     }
-    let mut urls = Vec::new();
+    let mut urls = Vec::with_capacity(4);
     collect_link_urls_recursive(node_id, module, &mut urls);
     urls
 }

@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-registry: "https://github.com/rust-lang/crates.io-index"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+  
+  - package-registry: "https://github.com/leanprover/elan/index"
+    directory: "ldir-lean"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"

@@ -3,6 +3,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use ldir_core::compiler::context::CompileContext;
 use ldir_core::compiler::v2_compile::compile_v2_document;
 use ldir_core::compile_sir_to_lir;
+use ldir_core::interner::StringInterner;
 use ldir_ir::sir::v2::nodes::{ColumnAlign, ColSpec, ListType, Node, NodeType};
 use ldir_ir::sir::v2::SIRModuleV2;
 
@@ -361,10 +362,72 @@ fn bench_pdf_generation(c: &mut Criterion) {
     });
 }
 
+fn bench_interner(c: &mut Criterion) {
+    let repeated = [
+        "Chapter", "Section", "Figure", "Table", "The quick brown fox jumps over the lazy dog.",
+    ];
+
+    c.bench_function("interner_1000_strings_20pct_dupes", |b| {
+        b.iter(|| {
+            let mut interner = StringInterner::new();
+            for i in 0..1000 {
+                let s = if i % 5 == 0 {
+                    repeated[i as usize % repeated.len()]
+                } else {
+                    black_box(&format!("unique_text_{}", i) as &str)
+                };
+                black_box(interner.intern(s));
+            }
+            black_box(interner.len())
+        });
+    });
+
+    c.bench_function("interner_10000_high_duplication", |b| {
+        b.iter(|| {
+            let mut interner = StringInterner::new();
+            for i in 0..10000 {
+                let s = repeated[i as usize % repeated.len()];
+                black_box(interner.intern(s));
+            }
+            assert_eq!(interner.len(), repeated.len());
+            black_box(interner.bytes_saved())
+        });
+    });
+}
+
+fn bench_string_concat(c: &mut Criterion) {
+    let parts: Vec<String> = (0..100)
+        .map(|i| format!("The quick brown fox jumps over the lazy dog. Sentence {}.", i))
+        .collect();
+
+    c.bench_function("string_concat_with_capacity", |b| {
+        b.iter(|| {
+            let total: usize = parts.iter().map(|s| s.len()).sum();
+            let mut result = String::with_capacity(total);
+            for s in &parts {
+                result.push_str(s);
+            }
+            black_box(result)
+        });
+    });
+
+    c.bench_function("string_concat_without_capacity", |b| {
+        b.iter(|| {
+            let mut result = String::new();
+            for s in &parts {
+                result.push_str(s);
+            }
+            black_box(result)
+        });
+    });
+}
+
 criterion_group!(
     benches,
     bench_v2_compile_sizes,
     bench_lir_pipeline,
     bench_pdf_generation,
+    bench_interner,
+    bench_string_concat,
 );
 criterion_main!(benches);

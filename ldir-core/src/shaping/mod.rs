@@ -11,6 +11,7 @@
 
 pub mod cache;
 pub mod fast_path;
+pub mod indic;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod harfbuzz;
 

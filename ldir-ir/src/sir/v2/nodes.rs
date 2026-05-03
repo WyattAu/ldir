@@ -211,6 +211,7 @@ impl Node {
     }
 
     /// Check if this node is a structural heading.
+    #[inline]
     pub fn is_heading(&self) -> bool {
         matches!(
             self.node_type,

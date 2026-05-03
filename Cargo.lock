@@ -1501,6 +1501,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ldir-integration-tests"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
 name = "ldir-ir"
 version = "0.1.0"
 dependencies = [
