@@ -16,6 +16,9 @@ pub mod diagnostics;
 /// Live PDF preview support with debounced compilation.
 pub mod preview;
 
+/// CRDT-based collaborative editing support.
+pub mod crdt;
+
 /// Document symbol extraction from headings and environments.
 pub mod symbols;
 

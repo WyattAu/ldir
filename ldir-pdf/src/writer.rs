@@ -9,11 +9,13 @@ use pdf_writer::types::{AnnotationType, CidFontType, FontFlags, SystemInfo, Unic
 use pdf_writer::{Content, Filter, Name, Pdf, Rect, Ref, Str, TextStr};
 
 use crate::font::FontFace;
+use crate::structure::StructureNode;
 
 /// An image to be embedded in the PDF.
 pub struct PdfImage {
     pub data: Vec<u8>,
     pub format: PdfImageFormat,
+    pub alt_text: Option<String>,
 }
 
 /// PDF image format.
@@ -86,15 +88,15 @@ pub struct PdfDocumentBuilder {
     author: String,
     subject: String,
     creator: String,
+    language: String,
     pages: Vec<PageState>,
     current_page: usize,
     fonts: Vec<EmbeddedFont>,
-    /// Index into `fonts` for the currently active font.
     current_font: usize,
-    /// Glyph IDs to track for each font (collected during write, merged at build).
     pending_glyphs: Vec<Vec<u32>>,
-    /// Image data table for embedding in PDF.
     images: Vec<PdfImage>,
+    structure_tree: Vec<StructureNode>,
+    tagged: bool,
 }
 
 impl PdfDocumentBuilder {
@@ -105,12 +107,15 @@ impl PdfDocumentBuilder {
             author: String::new(),
             subject: String::new(),
             creator: String::new(),
+            language: "en".to_string(),
             pages: Vec::new(),
             current_page: 0,
             fonts: Vec::new(),
             current_font: 0,
             pending_glyphs: Vec::new(),
             images: Vec::new(),
+            structure_tree: Vec::new(),
+            tagged: false,
         }
     }
 
@@ -132,6 +137,19 @@ impl PdfDocumentBuilder {
     /// Set the document creator (application that generated the PDF).
     pub fn set_creator(&mut self, creator: &str) {
         self.creator = creator.to_string();
+    }
+
+    pub fn set_language(&mut self, lang: &str) {
+        self.language = lang.to_string();
+    }
+
+    pub fn set_structure_tree(&mut self, tree: Vec<StructureNode>) {
+        self.structure_tree = tree;
+        self.tagged = true;
+    }
+
+    pub fn set_tagged(&mut self, tagged: bool) {
+        self.tagged = tagged;
     }
 
     /// Set the image data table for embedding in the PDF.
@@ -317,8 +335,6 @@ impl PdfDocumentBuilder {
         let pages_id = Ref::new(2);
         let mut next_id: i32 = 3;
 
-        pdf.catalog(catalog_id).pages(pages_id);
-
         let page_count = self.pages.len() as i32;
 
         // Allocate page and content stream IDs
@@ -336,6 +352,43 @@ impl PdfDocumentBuilder {
                 id
             })
             .collect();
+
+        // Pre-compute structure tree size and allocate IDs
+        let struct_tree_info = if self.tagged && !self.structure_tree.is_empty() {
+            let all_nodes: Vec<StructureNode> = self
+                .structure_tree
+                .iter()
+                .flat_map(|n| collect_all_nodes(n).into_iter().cloned())
+                .collect();
+
+            if all_nodes.is_empty() {
+                None
+            } else {
+                let node_start = next_id;
+                next_id += all_nodes.len() as i32;
+                let root_id = Ref::new(next_id);
+                next_id += 1;
+                let parent_tree_id = Ref::new(next_id);
+                next_id += 1;
+                Some((all_nodes, node_start, root_id, parent_tree_id))
+            }
+        } else {
+            None
+        };
+
+        // Write catalog (must be written before other objects that need the pdf ref)
+        {
+            let mut catalog = pdf.catalog(catalog_id);
+            catalog.pages(pages_id);
+            if self.tagged {
+                catalog.lang(TextStr(&self.language));
+                catalog.mark_info().marked(true);
+                if let Some((_, _, root_id, parent_tree_id)) = &struct_tree_info {
+                    catalog.pair(Name(b"StructTreeRoot"), *root_id);
+                    catalog.pair(Name(b"ParentTree"), *parent_tree_id);
+                }
+            }
+        }
 
         // Build pages tree
         {
@@ -439,8 +492,17 @@ impl PdfDocumentBuilder {
         let content_data: Vec<Vec<u8>> = self
             .pages
             .iter_mut()
-            .map(|p| {
+            .enumerate()
+            .map(|(page_idx, p)| {
                 let mut content = std::mem::replace(&mut p.content, Content::new());
+
+                if self.tagged {
+                    let mcid = page_idx as i32;
+                    content
+                        .begin_marked_content_with_properties(Name(b"P"))
+                        .properties()
+                        .pair(Name(b"MCID"), mcid);
+                }
 
                 // Inject image Do operations for images on this page
                 for &(x, y, w, h, image_index) in &p.images {
@@ -451,6 +513,10 @@ impl PdfDocumentBuilder {
                         content.x_object(Name(resource_name.as_bytes()));
                         content.restore_state();
                     }
+                }
+
+                if self.tagged {
+                    content.end_marked_content();
                 }
 
                 content.finish()
@@ -537,6 +603,7 @@ impl PdfDocumentBuilder {
         // Write image XObjects
         for (img_idx, img) in self.images.iter().enumerate() {
             let xobj_id = image_xobject_ids[img_idx];
+            let alt_text = img.alt_text.as_deref().unwrap_or("");
             match img.format {
                 PdfImageFormat::Png => {
                     let decoded = match crate::image::decode_png(&img.data) {
@@ -555,7 +622,8 @@ impl PdfDocumentBuilder {
                         .pair(Name(b"Width"), decoded.width as i32)
                         .pair(Name(b"Height"), decoded.height as i32)
                         .pair(Name(b"ColorSpace"), color_space_name)
-                        .pair(Name(b"BitsPerComponent"), decoded.bits_per_component as i32);
+                        .pair(Name(b"BitsPerComponent"), decoded.bits_per_component as i32)
+                        .pair(Name(b"Alt"), TextStr(alt_text));
                 }
                 PdfImageFormat::Jpeg => {
                     let (w, h, components) = jpeg_info(&img.data).unwrap_or((100, 100, 3));
@@ -571,7 +639,8 @@ impl PdfDocumentBuilder {
                         .pair(Name(b"Width"), w as i32)
                         .pair(Name(b"Height"), h as i32)
                         .pair(Name(b"ColorSpace"), color_space_name)
-                        .pair(Name(b"BitsPerComponent"), 8);
+                        .pair(Name(b"BitsPerComponent"), 8)
+                        .pair(Name(b"Alt"), TextStr(alt_text));
                 }
             }
         }
@@ -594,8 +663,104 @@ impl PdfDocumentBuilder {
             }
         }
 
+        // Structure tree (PDF/UA)
+        if let Some((all_nodes, node_start, root_id, parent_tree_id)) = struct_tree_info {
+            write_structure_tree(&mut pdf, &mut next_id, &all_nodes, node_start, root_id, parent_tree_id, &page_ids);
+        }
+
         pdf.finish()
     }
+}
+
+fn write_structure_tree(
+    pdf: &mut Pdf,
+    next_id: &mut i32,
+    all_nodes: &[StructureNode],
+    node_start: i32,
+    root_id: Ref,
+    parent_tree_id: Ref,
+    page_ids: &[Ref],
+) {
+    let node_refs: Vec<Ref> = all_nodes
+        .iter()
+        .enumerate()
+        .map(|(i, _)| Ref::new(node_start + i as i32))
+        .collect();
+
+    for (i, node) in all_nodes.iter().enumerate() {
+        let r = node_refs[i];
+        let mut elem = pdf.struct_element(r);
+
+        if let Some(custom_name) = node.element_type.custom_role_name() {
+            elem.custom_kind(Name(custom_name));
+        } else {
+            elem.kind(node.element_type.to_struct_role());
+        }
+
+        if let Some(ref alt) = node.alt_text {
+            elem.alt(TextStr(alt.as_str()));
+        }
+
+        let page_idx = node.page.saturating_sub(1) as usize;
+        if node.is_leaf() && page_idx < page_ids.len() {
+            elem.page(page_ids[page_idx]);
+        }
+
+        if !node.children.is_empty() {
+            let mut children = elem.children();
+            for child in &node.children {
+                if let Some(idx) = find_node_index(all_nodes, child) {
+                    children.item(node_refs[idx]);
+                }
+            }
+        }
+
+        drop(elem);
+    }
+
+    {
+        let mut root = pdf.indirect(root_id).start::<pdf_writer::writers::StructTreeRoot>();
+        {
+            let mut kids = root.children();
+            for &r in &node_refs {
+                kids.item(r);
+            }
+            drop(kids);
+        }
+        root.pair(Name(b"ParentTreeNextKey"), page_ids.len() as i32);
+        drop(root);
+    }
+
+    {
+        let mut nums_dict = pdf.indirect(parent_tree_id).dict();
+        let mut nums = nums_dict.insert(Name(b"Nums")).array();
+        for (page_idx, _) in page_ids.iter().enumerate() {
+            nums.item(page_idx as i32);
+            nums.item(page_idx as i32);
+        }
+        drop(nums);
+        drop(nums_dict);
+    }
+
+    *next_id = (*next_id).max(node_start + all_nodes.len() as i32 + 2);
+}
+
+fn collect_all_nodes(node: &StructureNode) -> Vec<&StructureNode> {
+    let mut result = vec![node];
+    for child in &node.children {
+        result.extend(collect_all_nodes(child));
+    }
+    result
+}
+
+fn find_node_index(all_nodes: &[StructureNode], target: &StructureNode) -> Option<usize> {
+    all_nodes.iter().position(|n| {
+        n.element_type == target.element_type
+            && n.page == target.page
+            && n.mcid == target.mcid
+            && n.alt_text == target.alt_text
+            && n.children.len() == target.children.len()
+    })
 }
 
 /// PDF object IDs for an embedded font.
@@ -796,6 +961,7 @@ fn escape_pdf_string(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::structure::StructureType;
 
     fn get_font_face() -> Option<FontFace> {
         let paths = [
@@ -939,5 +1105,104 @@ mod tests {
         builder.add_image(72.0, 700.0, 100.0, 50.0, 0);
         let bytes = builder.build();
         assert!(bytes.starts_with(b"%PDF"));
+    }
+
+    #[test]
+    fn test_marked_content_wrapping() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.write_text(72.0, 720.0, "Hello");
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/Lang"));
+        assert!(s.contains("/Marked true"));
+    }
+
+    #[test]
+    fn test_alt_text_on_images() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_images(vec![PdfImage {
+            data: vec![],
+            format: PdfImageFormat::Jpeg,
+            alt_text: Some("A beautiful sunset".to_string()),
+        }]);
+        builder.add_image(72.0, 700.0, 100.0, 50.0, 0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/Alt"));
+        assert!(s.contains("A beautiful sunset"));
+    }
+
+    #[test]
+    fn test_language_tag_in_catalog() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_language("de");
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/Lang (de)"));
+    }
+
+    #[test]
+    fn test_mark_info_marked() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/Marked true"));
+    }
+
+    #[test]
+    fn test_structure_tree_with_nodes() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![StructureNode::with_children(
+            StructureType::Document,
+            vec![StructureNode::new(StructureType::Paragraph, 1, 0)],
+        )]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/StructTreeRoot"));
+        assert!(s.contains("/Type /StructElem"));
+        assert!(s.contains("/ParentTree"));
+    }
+
+    #[test]
+    fn test_nested_structure_pdf() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![StructureNode::with_children(
+            StructureType::Document,
+            vec![StructureNode::with_children(
+                StructureType::Section,
+                vec![
+                    StructureNode::new(StructureType::Paragraph, 1, 0),
+                    StructureNode::new(StructureType::Paragraph, 1, 1),
+                ],
+            )],
+        )]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/StructTreeRoot"));
+        assert!(s.contains("/S /Sect"));
+        assert!(s.contains("/S /P"));
+    }
+
+    #[test]
+    fn test_empty_structure_tree_no_tagged() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(!s.contains("/StructTreeRoot"));
+        assert!(!s.contains("/Marked"));
+        assert!(!s.contains("/Lang"));
     }
 }

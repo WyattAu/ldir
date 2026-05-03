@@ -260,12 +260,13 @@ pub fn gir_to_pdf_with_fonts_and_options(
             .images()
             .iter()
             .map(|img| PdfImage {
-                data: img.data.clone(),
-                format: match img.format {
-                    ImageFormat::Png => PdfImageFormat::Png,
-                    ImageFormat::Jpeg => PdfImageFormat::Jpeg,
-                },
-            })
+                    data: img.data.clone(),
+                    format: match img.format {
+                        ImageFormat::Png => PdfImageFormat::Png,
+                        ImageFormat::Jpeg => PdfImageFormat::Jpeg,
+                    },
+                    alt_text: None,
+                })
             .collect();
         builder.set_images(pdf_images);
     }

@@ -1,7 +1,20 @@
-//! Page template system for headers and footers.
+//! Page and document template system for headers, footers, and document layouts.
+//!
+//! Provides:
+//! - [`PageTemplate`] — per-page header/footer template expansion (legacy, retained)
+//! - [`DocumentTemplate`] — full document template with styles, page layout, and preamble
+//! - TOML-based template serialization and built-in template presets
 
 #![deny(unsafe_code)]
 #![warn(clippy::unwrap_used, clippy::expect_used)]
+
+use std::collections::HashMap;
+
+use serde::Deserialize;
+
+// ---------------------------------------------------------------------------
+// Legacy page template (backward compatibility)
+// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
 pub struct PageTemplate {
@@ -83,6 +96,750 @@ impl PageTemplate {
         )
     }
 }
+
+// ---------------------------------------------------------------------------
+// Document template system
+// ---------------------------------------------------------------------------
+
+/// A reusable document template that defines styles, page layout, and preamble.
+#[derive(Debug, Clone)]
+pub struct DocumentTemplate {
+    pub name: String,
+    pub page_size: PageSize,
+    pub margins: Margins,
+    pub font_family: String,
+    pub font_size: i32,
+    pub line_spacing: f64,
+    pub paragraph_indent: Option<i32>,
+    pub paragraph_spacing: i32,
+    pub heading_styles: HashMap<u8, HeadingStyle>,
+    pub header: Option<HeaderFooterTemplate>,
+    pub footer: Option<HeaderFooterTemplate>,
+    pub first_page: Option<FirstPageTemplate>,
+}
+
+#[derive(Debug, Clone)]
+pub struct HeadingStyle {
+    pub font_size: i32,
+    pub bold: bool,
+    pub italic: bool,
+    pub spacing_before: i32,
+    pub spacing_after: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct Margins {
+    pub top: i32,
+    pub bottom: i32,
+    pub left: i32,
+    pub right: i32,
+}
+
+#[derive(Debug, Clone)]
+pub enum PageSize {
+    A4,
+    Letter,
+    Legal,
+    Custom { width: i32, height: i32 },
+}
+
+#[derive(Debug, Clone)]
+pub struct HeaderFooterTemplate {
+    pub left: String,
+    pub center: String,
+    pub right: String,
+    pub rule: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct FirstPageTemplate {
+    pub different_header: bool,
+    pub different_footer: bool,
+    pub suppress_header: bool,
+    pub suppress_page_number: bool,
+}
+
+impl PageSize {
+    pub fn dimensions(&self) -> (i32, i32) {
+        match self {
+            PageSize::A4 => (595, 842),
+            PageSize::Letter => (612, 792),
+            PageSize::Legal => (612, 1008),
+            PageSize::Custom { width, height } => (*width, *height),
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name.to_lowercase().as_str() {
+            "a4" => Some(PageSize::A4),
+            "letter" => Some(PageSize::Letter),
+            "legal" => Some(PageSize::Legal),
+            _ => None,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Built-in templates
+// ---------------------------------------------------------------------------
+
+impl DocumentTemplate {
+    pub fn academic() -> Self {
+        let mut heading_styles = HashMap::new();
+        heading_styles.insert(
+            1,
+            HeadingStyle {
+                font_size: 24,
+                bold: true,
+                italic: false,
+                spacing_before: 24,
+                spacing_after: 12,
+            },
+        );
+        heading_styles.insert(
+            2,
+            HeadingStyle {
+                font_size: 18,
+                bold: true,
+                italic: false,
+                spacing_before: 18,
+                spacing_after: 8,
+            },
+        );
+        heading_styles.insert(
+            3,
+            HeadingStyle {
+                font_size: 14,
+                bold: true,
+                italic: false,
+                spacing_before: 14,
+                spacing_after: 6,
+            },
+        );
+        heading_styles.insert(
+            4,
+            HeadingStyle {
+                font_size: 12,
+                bold: true,
+                italic: true,
+                spacing_before: 10,
+                spacing_after: 4,
+            },
+        );
+
+        Self {
+            name: "academic".to_string(),
+            page_size: PageSize::A4,
+            margins: Margins {
+                top: 72,
+                bottom: 72,
+                left: 72,
+                right: 72,
+            },
+            font_family: "DejaVu Serif".to_string(),
+            font_size: 11,
+            line_spacing: 1.15,
+            paragraph_indent: Some(20),
+            paragraph_spacing: 6,
+            heading_styles,
+            header: Some(HeaderFooterTemplate {
+                left: String::new(),
+                center: String::new(),
+                right: "%title".to_string(),
+                rule: false,
+            }),
+            footer: Some(HeaderFooterTemplate {
+                left: String::new(),
+                center: "%page of %pages".to_string(),
+                right: String::new(),
+                rule: true,
+            }),
+            first_page: Some(FirstPageTemplate {
+                different_header: true,
+                different_footer: true,
+                suppress_header: true,
+                suppress_page_number: true,
+            }),
+        }
+    }
+
+    pub fn report() -> Self {
+        let mut heading_styles = HashMap::new();
+        heading_styles.insert(
+            1,
+            HeadingStyle {
+                font_size: 26,
+                bold: true,
+                italic: false,
+                spacing_before: 30,
+                spacing_after: 16,
+            },
+        );
+        heading_styles.insert(
+            2,
+            HeadingStyle {
+                font_size: 20,
+                bold: true,
+                italic: false,
+                spacing_before: 20,
+                spacing_after: 10,
+            },
+        );
+        heading_styles.insert(
+            3,
+            HeadingStyle {
+                font_size: 14,
+                bold: false,
+                italic: false,
+                spacing_before: 16,
+                spacing_after: 8,
+            },
+        );
+        heading_styles.insert(
+            4,
+            HeadingStyle {
+                font_size: 12,
+                bold: true,
+                italic: false,
+                spacing_before: 12,
+                spacing_after: 6,
+            },
+        );
+
+        Self {
+            name: "report".to_string(),
+            page_size: PageSize::Letter,
+            margins: Margins {
+                top: 72,
+                bottom: 72,
+                left: 72,
+                right: 72,
+            },
+            font_family: "DejaVu Sans".to_string(),
+            font_size: 12,
+            line_spacing: 1.25,
+            paragraph_indent: None,
+            paragraph_spacing: 8,
+            heading_styles,
+            header: Some(HeaderFooterTemplate {
+                left: "%title".to_string(),
+                center: String::new(),
+                right: "%date".to_string(),
+                rule: true,
+            }),
+            footer: Some(HeaderFooterTemplate {
+                left: String::new(),
+                center: String::new(),
+                right: "Page %page".to_string(),
+                rule: true,
+            }),
+            first_page: Some(FirstPageTemplate {
+                different_header: true,
+                different_footer: false,
+                suppress_header: true,
+                suppress_page_number: false,
+            }),
+        }
+    }
+
+    pub fn book() -> Self {
+        let mut heading_styles = HashMap::new();
+        heading_styles.insert(
+            1,
+            HeadingStyle {
+                font_size: 28,
+                bold: true,
+                italic: false,
+                spacing_before: 0,
+                spacing_after: 20,
+            },
+        );
+        heading_styles.insert(
+            2,
+            HeadingStyle {
+                font_size: 22,
+                bold: true,
+                italic: false,
+                spacing_before: 24,
+                spacing_after: 12,
+            },
+        );
+        heading_styles.insert(
+            3,
+            HeadingStyle {
+                font_size: 16,
+                bold: false,
+                italic: false,
+                spacing_before: 18,
+                spacing_after: 8,
+            },
+        );
+        heading_styles.insert(
+            4,
+            HeadingStyle {
+                font_size: 13,
+                bold: true,
+                italic: false,
+                spacing_before: 14,
+                spacing_after: 6,
+            },
+        );
+
+        Self {
+            name: "book".to_string(),
+            page_size: PageSize::A4,
+            margins: Margins {
+                top: 60,
+                bottom: 60,
+                left: 72,
+                right: 72,
+            },
+            font_family: "DejaVu Serif".to_string(),
+            font_size: 11,
+            line_spacing: 1.4,
+            paragraph_indent: Some(24),
+            paragraph_spacing: 4,
+            heading_styles,
+            header: Some(HeaderFooterTemplate {
+                left: "%chapter".to_string(),
+                center: String::new(),
+                right: "%page".to_string(),
+                rule: true,
+            }),
+            footer: Some(HeaderFooterTemplate {
+                left: String::new(),
+                center: String::new(),
+                right: String::new(),
+                rule: false,
+            }),
+            first_page: Some(FirstPageTemplate {
+                different_header: true,
+                different_footer: false,
+                suppress_header: true,
+                suppress_page_number: true,
+            }),
+        }
+    }
+
+    pub fn letter() -> Self {
+        let mut heading_styles = HashMap::new();
+        heading_styles.insert(
+            1,
+            HeadingStyle {
+                font_size: 16,
+                bold: true,
+                italic: false,
+                spacing_before: 12,
+                spacing_after: 8,
+            },
+        );
+        heading_styles.insert(
+            2,
+            HeadingStyle {
+                font_size: 13,
+                bold: true,
+                italic: false,
+                spacing_before: 10,
+                spacing_after: 6,
+            },
+        );
+        heading_styles.insert(
+            3,
+            HeadingStyle {
+                font_size: 12,
+                bold: false,
+                italic: true,
+                spacing_before: 8,
+                spacing_after: 4,
+            },
+        );
+        heading_styles.insert(
+            4,
+            HeadingStyle {
+                font_size: 11,
+                bold: true,
+                italic: false,
+                spacing_before: 6,
+                spacing_after: 3,
+            },
+        );
+
+        Self {
+            name: "letter".to_string(),
+            page_size: PageSize::Letter,
+            margins: Margins {
+                top: 72,
+                bottom: 72,
+                left: 96,
+                right: 72,
+            },
+            font_family: "DejaVu Sans".to_string(),
+            font_size: 12,
+            line_spacing: 1.15,
+            paragraph_indent: None,
+            paragraph_spacing: 6,
+            heading_styles,
+            header: None,
+            footer: Some(HeaderFooterTemplate {
+                left: String::new(),
+                center: String::new(),
+                right: "Page %page".to_string(),
+                rule: false,
+            }),
+            first_page: Some(FirstPageTemplate {
+                different_header: false,
+                different_footer: true,
+                suppress_header: false,
+                suppress_page_number: true,
+            }),
+        }
+    }
+
+    pub fn minimal() -> Self {
+        let mut heading_styles = HashMap::new();
+        heading_styles.insert(
+            1,
+            HeadingStyle {
+                font_size: 24,
+                bold: true,
+                italic: false,
+                spacing_before: 18,
+                spacing_after: 10,
+            },
+        );
+        heading_styles.insert(
+            2,
+            HeadingStyle {
+                font_size: 18,
+                bold: true,
+                italic: false,
+                spacing_before: 14,
+                spacing_after: 8,
+            },
+        );
+        heading_styles.insert(
+            3,
+            HeadingStyle {
+                font_size: 14,
+                bold: true,
+                italic: false,
+                spacing_before: 10,
+                spacing_after: 6,
+            },
+        );
+        heading_styles.insert(
+            4,
+            HeadingStyle {
+                font_size: 12,
+                bold: true,
+                italic: false,
+                spacing_before: 8,
+                spacing_after: 4,
+            },
+        );
+
+        Self {
+            name: "minimal".to_string(),
+            page_size: PageSize::Letter,
+            margins: Margins {
+                top: 72,
+                bottom: 72,
+                left: 72,
+                right: 72,
+            },
+            font_family: "DejaVu Sans".to_string(),
+            font_size: 12,
+            line_spacing: 1.2,
+            paragraph_indent: None,
+            paragraph_spacing: 8,
+            heading_styles,
+            header: None,
+            footer: Some(HeaderFooterTemplate {
+                left: String::new(),
+                center: String::new(),
+                right: "%page".to_string(),
+                rule: true,
+            }),
+            first_page: None,
+        }
+    }
+
+    pub fn builtin(name: &str) -> Option<Self> {
+        match name {
+            "academic" => Some(Self::academic()),
+            "report" => Some(Self::report()),
+            "book" => Some(Self::book()),
+            "letter" => Some(Self::letter()),
+            "minimal" => Some(Self::minimal()),
+            _ => None,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TOML serialization
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, thiserror::Error)]
+pub enum TemplateError {
+    #[error("TOML parse error: {0}")]
+    TomlParse(#[from] toml::de::Error),
+    #[error("unknown page size: {0}")]
+    UnknownPageSize(String),
+    #[error("invalid heading level: {0}")]
+    InvalidHeadingLevel(u8),
+}
+
+#[derive(Deserialize)]
+struct TomlTemplate {
+    name: Option<String>,
+    page_size: Option<String>,
+    page_width: Option<i32>,
+    page_height: Option<i32>,
+    margins: Option<TomlMargins>,
+    font_family: Option<String>,
+    font_size: Option<i32>,
+    line_spacing: Option<f64>,
+    paragraph_indent: Option<i32>,
+    paragraph_spacing: Option<i32>,
+    heading_styles: Option<HashMap<String, TomlHeadingStyle>>,
+    header: Option<TomlHeaderFooter>,
+    footer: Option<TomlHeaderFooter>,
+    first_page: Option<TomlFirstPage>,
+}
+
+#[derive(Deserialize)]
+struct TomlMargins {
+    top: Option<i32>,
+    bottom: Option<i32>,
+    left: Option<i32>,
+    right: Option<i32>,
+}
+
+#[derive(Deserialize)]
+struct TomlHeadingStyle {
+    font_size: Option<i32>,
+    bold: Option<bool>,
+    italic: Option<bool>,
+    spacing_before: Option<i32>,
+    spacing_after: Option<i32>,
+}
+
+#[derive(Deserialize)]
+struct TomlHeaderFooter {
+    left: Option<String>,
+    center: Option<String>,
+    right: Option<String>,
+    rule: Option<bool>,
+}
+
+#[derive(Deserialize)]
+struct TomlFirstPage {
+    different_header: Option<bool>,
+    different_footer: Option<bool>,
+    suppress_header: Option<bool>,
+    suppress_page_number: Option<bool>,
+}
+
+pub fn parse_template(toml: &str) -> Result<DocumentTemplate, TemplateError> {
+    let raw: TomlTemplate = toml::from_str(toml)?;
+    let defaults = DocumentTemplate::minimal();
+
+    let page_size = if let (Some(w), Some(h)) = (raw.page_width, raw.page_height) {
+        PageSize::Custom { width: w, height: h }
+    } else if let Some(ps) = &raw.page_size {
+        PageSize::from_name(ps)
+            .ok_or_else(|| TemplateError::UnknownPageSize(ps.clone()))?
+    } else {
+        defaults.page_size.clone()
+    };
+
+    let margins = Margins {
+        top: raw
+            .margins
+            .as_ref()
+            .and_then(|m| m.top)
+            .unwrap_or(defaults.margins.top),
+        bottom: raw
+            .margins
+            .as_ref()
+            .and_then(|m| m.bottom)
+            .unwrap_or(defaults.margins.bottom),
+        left: raw
+            .margins
+            .as_ref()
+            .and_then(|m| m.left)
+            .unwrap_or(defaults.margins.left),
+        right: raw
+            .margins
+            .as_ref()
+            .and_then(|m| m.right)
+            .unwrap_or(defaults.margins.right),
+    };
+
+    let mut heading_styles = HashMap::new();
+    if let Some(ref hs) = raw.heading_styles {
+        for (key, val) in hs {
+            let level: u8 = key
+                .parse()
+                .map_err(|_| TemplateError::InvalidHeadingLevel(0))?;
+            if !(1..=6).contains(&level) {
+                return Err(TemplateError::InvalidHeadingLevel(level));
+            }
+            let default_hs = defaults
+                .heading_styles
+                .get(&level)
+                .cloned()
+                .unwrap_or(HeadingStyle {
+                    font_size: 12,
+                    bold: false,
+                    italic: false,
+                    spacing_before: 8,
+                    spacing_after: 4,
+                });
+            heading_styles.insert(
+                level,
+                HeadingStyle {
+                    font_size: val.font_size.unwrap_or(default_hs.font_size),
+                    bold: val.bold.unwrap_or(default_hs.bold),
+                    italic: val.italic.unwrap_or(default_hs.italic),
+                    spacing_before: val
+                        .spacing_before
+                        .unwrap_or(default_hs.spacing_before),
+                    spacing_after: val.spacing_after.unwrap_or(default_hs.spacing_after),
+                },
+            );
+        }
+    } else {
+        heading_styles = defaults.heading_styles;
+    }
+
+    let header = raw.header.map(|h| HeaderFooterTemplate {
+        left: h.left.unwrap_or_default(),
+        center: h.center.unwrap_or_default(),
+        right: h.right.unwrap_or_default(),
+        rule: h.rule.unwrap_or(false),
+    });
+
+    let footer = raw.footer.map(|f| HeaderFooterTemplate {
+        left: f.left.unwrap_or_default(),
+        center: f.center.unwrap_or_default(),
+        right: f.right.unwrap_or_default(),
+        rule: f.rule.unwrap_or(true),
+    });
+
+    let first_page = raw.first_page.map(|fp| FirstPageTemplate {
+        different_header: fp.different_header.unwrap_or(false),
+        different_footer: fp.different_footer.unwrap_or(false),
+        suppress_header: fp.suppress_header.unwrap_or(false),
+        suppress_page_number: fp.suppress_page_number.unwrap_or(false),
+    });
+
+    Ok(DocumentTemplate {
+        name: raw.name.unwrap_or_else(|| defaults.name.clone()),
+        page_size,
+        margins,
+        font_family: raw
+            .font_family
+            .unwrap_or_else(|| defaults.font_family.clone()),
+        font_size: raw.font_size.unwrap_or(defaults.font_size),
+        line_spacing: raw.line_spacing.unwrap_or(defaults.line_spacing),
+        paragraph_indent: raw.paragraph_indent.or(defaults.paragraph_indent),
+        paragraph_spacing: raw
+            .paragraph_spacing
+            .unwrap_or(defaults.paragraph_spacing),
+        heading_styles,
+        header,
+        footer,
+        first_page,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Template -> CompileContext conversion
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Default)]
+pub struct CompileContextPartial {
+    pub page_width_pt: i32,
+    pub page_height_pt: i32,
+    pub margin_top_pt: i32,
+    pub margin_bottom_pt: i32,
+    pub margin_left_pt: i32,
+    pub margin_right_pt: i32,
+    pub font_family: String,
+    pub font_size_pt: i32,
+    pub line_spacing: f64,
+    pub paragraph_indent_pt: Option<i32>,
+    pub paragraph_spacing_pt: i32,
+    pub heading_styles: HashMap<u8, HeadingStyle>,
+    pub page_template: Option<PageTemplate>,
+    pub first_page: Option<FirstPageTemplate>,
+}
+
+pub fn template_to_context(template: &DocumentTemplate) -> CompileContextPartial {
+    let (pw, ph) = template.page_size.dimensions();
+
+    let page_template = if template.header.is_some() || template.footer.is_some() {
+        Some(PageTemplate {
+            header_left: template
+                .header
+                .as_ref()
+                .map(|h| h.left.clone())
+                .unwrap_or_default(),
+            header_center: template
+                .header
+                .as_ref()
+                .map(|h| h.center.clone())
+                .unwrap_or_default(),
+            header_right: template
+                .header
+                .as_ref()
+                .map(|h| h.right.clone())
+                .unwrap_or_default(),
+            footer_left: template
+                .footer
+                .as_ref()
+                .map(|f| f.left.clone())
+                .unwrap_or_default(),
+            footer_center: template
+                .footer
+                .as_ref()
+                .map(|f| f.center.clone())
+                .unwrap_or_default(),
+            footer_right: template
+                .footer
+                .as_ref()
+                .map(|f| f.right.clone())
+                .unwrap_or_else(|| "%page".to_string()),
+            header_rule: template.header.as_ref().map(|h| h.rule).unwrap_or(false),
+            footer_rule: template.footer.as_ref().map(|f| f.rule).unwrap_or(true),
+        })
+    } else {
+        None
+    };
+
+    CompileContextPartial {
+        page_width_pt: pw,
+        page_height_pt: ph,
+        margin_top_pt: template.margins.top,
+        margin_bottom_pt: template.margins.bottom,
+        margin_left_pt: template.margins.left,
+        margin_right_pt: template.margins.right,
+        font_family: template.font_family.clone(),
+        font_size_pt: template.font_size,
+        line_spacing: template.line_spacing,
+        paragraph_indent_pt: template.paragraph_indent,
+        paragraph_spacing_pt: template.paragraph_spacing,
+        heading_styles: template.heading_styles.clone(),
+        page_template,
+        first_page: template.first_page.clone(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
@@ -315,5 +1072,170 @@ mod tests {
         };
         let cloned = tmpl.clone();
         assert_eq!(cloned.footer_right, "test");
+    }
+
+    // -----------------------------------------------------------------------
+    // DocumentTemplate tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn academic_template() {
+        let t = DocumentTemplate::academic();
+        assert_eq!(t.name, "academic");
+        assert_eq!(t.font_family, "DejaVu Serif");
+        assert_eq!(t.font_size, 11);
+        assert_eq!(t.line_spacing, 1.15);
+        assert_eq!(t.paragraph_indent, Some(20));
+        assert_eq!(t.paragraph_spacing, 6);
+        assert_eq!(t.margins.top, 72);
+        assert_eq!(t.margins.bottom, 72);
+        assert_eq!(t.margins.left, 72);
+        assert_eq!(t.margins.right, 72);
+        let h1 = t.heading_styles.get(&1).expect("h1");
+        assert_eq!(h1.font_size, 24);
+        assert!(h1.bold);
+        assert!(!h1.italic);
+    }
+
+    #[test]
+    fn report_template() {
+        let t = DocumentTemplate::report();
+        assert_eq!(t.name, "report");
+        assert_eq!(t.page_size.dimensions(), (612, 792));
+        assert_eq!(t.font_family, "DejaVu Sans");
+        assert_eq!(t.font_size, 12);
+        assert_eq!(t.line_spacing, 1.25);
+        assert_eq!(t.paragraph_indent, None);
+        assert_eq!(t.paragraph_spacing, 8);
+        let h2 = t.heading_styles.get(&2).expect("h2");
+        assert_eq!(h2.font_size, 20);
+        assert!(h2.bold);
+    }
+
+    #[test]
+    fn book_template() {
+        let t = DocumentTemplate::book();
+        assert_eq!(t.name, "book");
+        assert_eq!(t.page_size.dimensions(), (595, 842));
+        assert_eq!(t.font_family, "DejaVu Serif");
+        assert_eq!(t.font_size, 11);
+        assert_eq!(t.line_spacing, 1.4);
+        assert_eq!(t.paragraph_indent, Some(24));
+        assert_eq!(t.paragraph_spacing, 4);
+        let h1 = t.heading_styles.get(&1).expect("h1");
+        assert_eq!(h1.font_size, 28);
+        assert_eq!(h1.spacing_before, 0);
+    }
+
+    #[test]
+    fn letter_template() {
+        let t = DocumentTemplate::letter();
+        assert_eq!(t.name, "letter");
+        assert_eq!(t.page_size.dimensions(), (612, 792));
+        assert_eq!(t.margins.left, 96);
+        assert_eq!(t.margins.right, 72);
+        assert_eq!(t.font_family, "DejaVu Sans");
+        assert_eq!(t.font_size, 12);
+        assert_eq!(t.line_spacing, 1.15);
+        assert!(t.header.is_none());
+    }
+
+    #[test]
+    fn minimal_template() {
+        let t = DocumentTemplate::minimal();
+        assert_eq!(t.name, "minimal");
+        assert_eq!(t.page_size.dimensions(), (612, 792));
+        assert_eq!(t.font_family, "DejaVu Sans");
+        assert_eq!(t.font_size, 12);
+        assert_eq!(t.line_spacing, 1.2);
+        assert_eq!(t.paragraph_indent, None);
+        assert!(t.first_page.is_none());
+    }
+
+    #[test]
+    fn parse_toml_template() {
+        let toml_str = r#"
+name = "my-template"
+page_size = "a4"
+font_family = "DejaVu Serif"
+font_size = 11
+line_spacing = 1.15
+paragraph_indent = 20
+paragraph_spacing = 6
+
+[margins]
+top = 72
+bottom = 72
+left = 72
+right = 72
+
+[heading_styles.1]
+font_size = 24
+bold = true
+spacing_before = 24
+spacing_after = 12
+
+[heading_styles.2]
+font_size = 18
+bold = true
+spacing_before = 18
+spacing_after = 8
+"#;
+        let t = parse_template(toml_str).expect("parse ok");
+        assert_eq!(t.name, "my-template");
+        assert_eq!(t.page_size.dimensions(), (595, 842));
+        assert_eq!(t.font_family, "DejaVu Serif");
+        assert_eq!(t.font_size, 11);
+        assert_eq!(t.paragraph_indent, Some(20));
+        let h1 = t.heading_styles.get(&1).expect("h1");
+        assert_eq!(h1.font_size, 24);
+        assert!(h1.bold);
+    }
+
+    #[test]
+    fn template_to_context_conversion() {
+        let t = DocumentTemplate::academic();
+        let partial = template_to_context(&t);
+        assert_eq!(partial.page_width_pt, 595);
+        assert_eq!(partial.page_height_pt, 842);
+        assert_eq!(partial.margin_top_pt, 72);
+        assert_eq!(partial.margin_left_pt, 72);
+        assert_eq!(partial.font_family, "DejaVu Serif");
+        assert_eq!(partial.font_size_pt, 11);
+        assert_eq!(partial.line_spacing, 1.15);
+        assert!(partial.page_template.is_some());
+    }
+
+    #[test]
+    fn custom_page_size() {
+        let toml_str = r#"
+name = "custom"
+page_width = 400
+page_height = 600
+"#;
+        let t = parse_template(toml_str).expect("parse ok");
+        assert_eq!(t.page_size.dimensions(), (400, 600));
+    }
+
+    #[test]
+    fn heading_styles_all_levels() {
+        let t = DocumentTemplate::minimal();
+        assert!(t.heading_styles.contains_key(&1));
+        assert!(t.heading_styles.contains_key(&2));
+        assert!(t.heading_styles.contains_key(&3));
+        assert!(t.heading_styles.contains_key(&4));
+        let h4 = t.heading_styles.get(&4).expect("h4");
+        assert_eq!(h4.font_size, 12);
+        assert!(h4.bold);
+    }
+
+    #[test]
+    fn first_page_template() {
+        let t = DocumentTemplate::academic();
+        let fp = t.first_page.as_ref().expect("first_page");
+        assert!(fp.suppress_header);
+        assert!(fp.suppress_page_number);
+        assert!(fp.different_header);
+        assert!(fp.different_footer);
     }
 }

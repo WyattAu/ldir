@@ -68,6 +68,7 @@ pub(crate) mod layout;
 
 pub use layout::lir_compile::compile_sir_to_lir;
 pub mod parser;
+pub mod plugin;
 pub(crate) mod profiling;
 pub(crate) mod shaping;
 pub(crate) mod solver;

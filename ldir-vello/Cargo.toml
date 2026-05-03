@@ -11,3 +11,5 @@ ldir-ir = { workspace = true }
 vello = { workspace = true }
 parley = { workspace = true }
 wgpu = { workspace = true }
+
+[dev-dependencies]
