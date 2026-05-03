@@ -14,6 +14,7 @@ use ldir_ir::sir::v2::resources::ResourceDecls;
 use ldir_ir::sir::v2::{DocumentMetadata, SIRModuleV2};
 
 use crate::compiler::bibtex::{BibEntry, format_citation_ieee};
+use crate::compiler::cross_ref;
 use crate::compiler::context::{
     CompileContext, FONT_ID_BOLD, FONT_ID_BOLD_ITALIC, FONT_ID_ITALIC, FONT_ID_MONO,
     FONT_ID_REGULAR,
@@ -41,8 +42,9 @@ pub fn compile_v2_document(module: &SIRModuleV2, ctx: &mut CompileContext) -> Re
     apply_page_geometry(ctx, &module.metadata);
     resolve_v2_fonts(ctx, &module.resources);
 
-    let mut labels = collect_v2_labels(module);
-    let refs_map = collect_v2_refs(module, &labels);
+    let resolved_labels = cross_ref::collect_labels(module);
+    let mut labels = cross_ref::resolve_references(&resolved_labels);
+    let refs_map = labels.clone();
 
     let mut gir_doc = GIRDocument::with_capacity(1);
     let mut page = ctx.new_page();
@@ -85,8 +87,9 @@ pub fn compile_v2_document_with_bib(
     apply_page_geometry(ctx, &module.metadata);
     resolve_v2_fonts(ctx, &module.resources);
 
-    let mut labels = collect_v2_labels(module);
-    let refs_map = collect_v2_refs(module, &labels);
+    let resolved_labels = cross_ref::collect_labels(module);
+    let mut labels = cross_ref::resolve_references(&resolved_labels);
+    let refs_map = labels.clone();
 
     let mut gir_doc = GIRDocument::with_capacity(1);
     let mut page = ctx.new_page();
@@ -1502,46 +1505,11 @@ fn resolve_v2_references(
     labels: &HashMap<String, String>,
     refs_map: &HashMap<String, String>,
 ) -> String {
-    let mut result = text.to_string();
-
-    for (key, number) in labels {
-        if number.is_empty() {
-            continue;
-        }
-        let ref_pattern = format!("\\ref{{{}}}", key);
-        let eqref_pattern = format!("\\eqref{{{}}}", key);
-        let autoref_pattern = format!("\\autoref{{{}}}", key);
-        let typst_pattern = format!("@{}", key);
-
-        if result.contains(&ref_pattern) {
-            result = result.replace(&ref_pattern, number);
-        }
-        if result.contains(&eqref_pattern) {
-            result = result.replace(&eqref_pattern, &format!("({})", number));
-        }
-        if result.contains(&autoref_pattern) {
-            result = result.replace(&autoref_pattern, number);
-        }
-        if result.contains(&typst_pattern) {
-            result = result.replace(&typst_pattern, number);
-        }
+    let mut numbers = HashMap::new();
+    for (k, v) in labels.iter().chain(refs_map.iter()) {
+        numbers.entry(k.clone()).or_insert_with(|| v.clone());
     }
-
-    for (label, number) in refs_map {
-        if number.is_empty() {
-            continue;
-        }
-        let ref_pattern = format!("\\ref{{{}}}", label);
-        let eqref_pattern = format!("\\eqref{{{}}}", label);
-        if result.contains(&ref_pattern) {
-            result = result.replace(&ref_pattern, number);
-        }
-        if result.contains(&eqref_pattern) {
-            result = result.replace(&eqref_pattern, &format!("({})", number));
-        }
-    }
-
-    result
+    cross_ref::resolve_text_references(text, &numbers, &HashMap::new())
 }
 
 fn increment_section_counter(
@@ -3504,7 +3472,7 @@ mod tests {
 
         let text = r"See \ref{missing} for details.";
         let resolved = resolve_v2_references(text, &labels, &refs_map);
-        assert_eq!(resolved, r"See \ref{missing} for details.");
+        assert_eq!(resolved, "See ?? for details.");
     }
 
     #[test]
@@ -3526,7 +3494,7 @@ mod tests {
 
         let text = r"See \autoref{sec:methods}.";
         let resolved = resolve_v2_references(text, &labels, &refs_map);
-        assert_eq!(resolved, "See 2.");
+        assert_eq!(resolved, "See Section 2.");
     }
 
     #[test]

@@ -65,6 +65,8 @@ pub mod error;
 pub mod font;
 pub mod fp266;
 pub(crate) mod layout;
+
+pub use layout::lir_compile::compile_sir_to_lir;
 pub mod parser;
 pub(crate) mod profiling;
 pub(crate) mod shaping;

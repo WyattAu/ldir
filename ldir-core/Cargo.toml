@@ -23,6 +23,7 @@ proptest = { workspace = true }
 quickcheck = { workspace = true }
 criterion = { workspace = true }
 serde_json = "1"
+ldir-pdf = { path = "../ldir-pdf" }
 
 [[bench]]
 name = "bench_fp266"
@@ -42,6 +43,10 @@ harness = false
 
 [[bench]]
 name = "arena_bench"
+harness = false
+
+[[bench]]
+name = "bench_full_pipeline"
 harness = false
 
 [[example]]

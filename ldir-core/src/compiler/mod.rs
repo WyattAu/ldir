@@ -30,6 +30,8 @@ pub mod tree;
 #[allow(missing_docs)]
 pub mod v1_to_v2;
 #[allow(missing_docs)]
+pub mod cross_ref;
+#[allow(missing_docs)]
 pub mod v2_compile;
 
 use std::collections::HashMap;

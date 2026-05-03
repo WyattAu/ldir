@@ -130,6 +130,10 @@ struct Cli {
     /// Path to BibTeX (.bib) file for citations.
     #[arg(long, value_name = "PATH")]
     bibliography: Option<PathBuf>,
+
+    /// Use the L-IR layout pipeline (S-IR → L-IR → G-IR) instead of direct compilation.
+    #[arg(long)]
+    lir: bool,
 }
 
 const V2_FORMATS: &[&str] = &["html", "epub", "txt", "docx", "sir2", "ldir"];
@@ -722,7 +726,18 @@ fn main() -> Result<()> {
         .unwrap_or_else(|| "DejaVu Sans".to_string());
     ctx.font_mono_family = cli.font_mono.clone().unwrap_or_default();
 
-    let gir_doc = if let Some(ref bib_path) = cli.bibliography {
+    let gir_doc = if cli.lir {
+        use ldir_core::compile_sir_to_lir;
+        use ldir_pdf::lir_render::render_lir_to_gir;
+
+        eprintln!("[ldir] compiling via L-IR pipeline (S-IR → L-IR → G-IR)");
+        let lir_doc = compile_sir_to_lir(&module, &ctx)
+            .map_err(|e| anyhow::anyhow!("L-IR compilation failed: {e}"))?;
+        eprintln!("[ldir] L-IR layout → {} pages", lir_doc.pages.len());
+        let gir = render_lir_to_gir(&lir_doc);
+        eprintln!("[ldir] L-IR → G-IR render complete");
+        gir
+    } else if let Some(ref bib_path) = cli.bibliography {
         let bib_content = std::fs::read_to_string(bib_path)
             .with_context(|| format!("failed to read bibliography: {}", bib_path.display()))?;
         let bib_entries = ldir_core::compiler::bibtex::parse_bib(&bib_content)

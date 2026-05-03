@@ -34,15 +34,16 @@ fn compress(data: &[u8]) -> Vec<u8> {
     encoder.finish().unwrap_or_else(|_| data.to_vec())
 }
 
-fn jpeg_dims(data: &[u8]) -> Option<(u32, u32)> {
+fn jpeg_info(data: &[u8]) -> Option<(u32, u32, u8)> {
     let mut i = 2;
-    while i + 13 < data.len() {
+    while i + 9 < data.len() {
         if data[i] == 0xFF {
             let marker = data[i + 1];
             if marker == 0xC0 || marker == 0xC2 {
-                let h = u32::from_be_bytes([data[i + 5], data[i + 6], data[i + 7], data[i + 8]]);
-                let w = u32::from_be_bytes([data[i + 9], data[i + 10], data[i + 11], data[i + 12]]);
-                return Some((w, h));
+                let h = u16::from_be_bytes([data[i + 5], data[i + 6]]) as u32;
+                let w = u16::from_be_bytes([data[i + 7], data[i + 8]]) as u32;
+                let components = data[i + 9];
+                return Some((w, h, components));
             }
             if i + 3 < data.len() {
                 let len = u16::from_be_bytes([data[i + 2], data[i + 3]]) as usize;
@@ -55,6 +56,10 @@ fn jpeg_dims(data: &[u8]) -> Option<(u32, u32)> {
         }
     }
     None
+}
+
+fn jpeg_dims(data: &[u8]) -> Option<(u32, u32)> {
+    jpeg_info(data).map(|(w, h, _)| (w, h))
 }
 
 struct PageState {
@@ -534,46 +539,38 @@ impl PdfDocumentBuilder {
             let xobj_id = image_xobject_ids[img_idx];
             match img.format {
                 PdfImageFormat::Png => {
-                    // PNG: embed with FlateDecode, use the raw PNG data
-                    // Parse width/height from IHDR
-                    let (w, h) = if img.data.len() >= 24 && &img.data[12..16] == b"IHDR" {
-                        let pw = u32::from_be_bytes([
-                            img.data[16],
-                            img.data[17],
-                            img.data[18],
-                            img.data[19],
-                        ]);
-                        let ph = u32::from_be_bytes([
-                            img.data[20],
-                            img.data[21],
-                            img.data[22],
-                            img.data[23],
-                        ]);
-                        (pw as i32, ph as i32)
-                    } else {
-                        (100, 100)
+                    let decoded = match crate::image::decode_png(&img.data) {
+                        Ok(d) => d,
+                        Err(_) => continue,
                     };
-                    // Embed raw PNG file as stream
-                    let compressed = compress(&img.data);
+                    let color_space_name = match decoded.color_space {
+                        crate::image::ColorSpace::RGB => Name(b"DeviceRGB"),
+                        crate::image::ColorSpace::Gray => Name(b"DeviceGray"),
+                    };
+                    let compressed = compress(&decoded.data);
                     pdf.stream(xobj_id, &compressed)
                         .filter(Filter::FlateDecode)
                         .pair(Name(b"Type"), Name(b"XObject"))
                         .pair(Name(b"Subtype"), Name(b"Image"))
-                        .pair(Name(b"Width"), w)
-                        .pair(Name(b"Height"), h)
-                        .pair(Name(b"ColorSpace"), Name(b"DeviceRGB"))
-                        .pair(Name(b"BitsPerComponent"), 8);
+                        .pair(Name(b"Width"), decoded.width as i32)
+                        .pair(Name(b"Height"), decoded.height as i32)
+                        .pair(Name(b"ColorSpace"), color_space_name)
+                        .pair(Name(b"BitsPerComponent"), decoded.bits_per_component as i32);
                 }
                 PdfImageFormat::Jpeg => {
-                    // JPEG: embed with DCTDecode
-                    let (w, h) = jpeg_dims(&img.data).unwrap_or((100, 100));
+                    let (w, h, components) = jpeg_info(&img.data).unwrap_or((100, 100, 3));
+                    let color_space_name = if components == 1 {
+                        Name(b"DeviceGray")
+                    } else {
+                        Name(b"DeviceRGB")
+                    };
                     pdf.stream(xobj_id, &img.data)
                         .filter(Filter::DctDecode)
                         .pair(Name(b"Type"), Name(b"XObject"))
                         .pair(Name(b"Subtype"), Name(b"Image"))
                         .pair(Name(b"Width"), w as i32)
                         .pair(Name(b"Height"), h as i32)
-                        .pair(Name(b"ColorSpace"), Name(b"DeviceRGB"))
+                        .pair(Name(b"ColorSpace"), color_space_name)
                         .pair(Name(b"BitsPerComponent"), 8);
                 }
             }

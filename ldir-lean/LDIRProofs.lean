@@ -1,1 +1,2 @@
 import LDIRProofs.proof_ir_wellformedness
+import LDIRProofs.ProofLayoutProperties

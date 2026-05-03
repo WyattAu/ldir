@@ -1,0 +1,412 @@
+#![deny(unsafe_code)]
+
+use std::fmt;
+use std::path::Path;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColorSpace {
+    RGB,
+    Gray,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImageData {
+    pub width: u32,
+    pub height: u32,
+    pub color_space: ColorSpace,
+    pub bits_per_component: u8,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    Io(std::io::Error),
+    UnsupportedFormat,
+    PngDecode(String),
+    JpegDecode(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Io(e) => write!(f, "IO error: {e}"),
+            Error::UnsupportedFormat => write!(f, "unsupported image format"),
+            Error::PngDecode(msg) => write!(f, "PNG decode error: {msg}"),
+            Error::JpegDecode(msg) => write!(f, "JPEG decode error: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImageFormat {
+    Png,
+    Jpeg,
+}
+
+pub fn load_image(path: &Path) -> Result<ImageData, Error> {
+    let data = std::fs::read(path)?;
+    let format = detect_format(&data).ok_or(Error::UnsupportedFormat)?;
+    decode_image(&data, format)
+}
+
+pub fn detect_format(data: &[u8]) -> Option<ImageFormat> {
+    if data.len() >= 4 && data[0..4] == [0x89, 0x50, 0x4E, 0x47] {
+        Some(ImageFormat::Png)
+    } else if data.len() >= 3 && data[0..3] == [0xFF, 0xD8, 0xFF] {
+        Some(ImageFormat::Jpeg)
+    } else {
+        None
+    }
+}
+
+pub fn decode_image(data: &[u8], format: ImageFormat) -> Result<ImageData, Error> {
+    match format {
+        ImageFormat::Png => decode_png(data),
+        ImageFormat::Jpeg => decode_jpeg(data),
+    }
+}
+
+pub fn decode_png(data: &[u8]) -> Result<ImageData, Error> {
+    let mut decoder = png::Decoder::new(data);
+    decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
+    let mut reader = decoder
+        .read_info()
+        .map_err(|e| Error::PngDecode(e.to_string()))?;
+
+    let mut buf = vec![0; reader.output_buffer_size()];
+    let info = reader
+        .next_frame(&mut buf)
+        .map_err(|e| Error::PngDecode(e.to_string()))?;
+    buf.truncate(info.buffer_size());
+
+    let width = info.width;
+    let height = info.height;
+    let color_type = info.color_type;
+
+    let (color_space, pixel_data) = match color_type {
+        png::ColorType::Grayscale => (ColorSpace::Gray, buf),
+        png::ColorType::Rgb => (ColorSpace::RGB, buf),
+        png::ColorType::GrayscaleAlpha => {
+            let mut gray = Vec::with_capacity(width as usize * height as usize);
+            for chunk in buf.chunks_exact(2) {
+                gray.push(chunk[0]);
+            }
+            (ColorSpace::Gray, gray)
+        }
+        png::ColorType::Rgba => {
+            let mut rgb = Vec::with_capacity(width as usize * height as usize * 3);
+            for chunk in buf.chunks_exact(4) {
+                rgb.extend_from_slice(&chunk[..3]);
+            }
+            (ColorSpace::RGB, rgb)
+        }
+        png::ColorType::Indexed => (ColorSpace::RGB, buf),
+    };
+
+    Ok(ImageData {
+        width,
+        height,
+        color_space,
+        bits_per_component: 8,
+        data: pixel_data,
+    })
+}
+
+pub fn decode_jpeg(data: &[u8]) -> Result<ImageData, Error> {
+    let mut decoder = jpeg_decoder::Decoder::new(data);
+    let pixels = decoder
+        .decode()
+        .map_err(|e| Error::JpegDecode(e.to_string()))?;
+    let info = decoder
+        .info()
+        .ok_or_else(|| Error::JpegDecode("no image info after decode".to_string()))?;
+
+    let width = info.width as u32;
+    let height = info.height as u32;
+
+    let (color_space, pixel_data) = match info.pixel_format {
+        jpeg_decoder::PixelFormat::RGB24 => (ColorSpace::RGB, pixels),
+        jpeg_decoder::PixelFormat::L8 => (ColorSpace::Gray, pixels),
+        jpeg_decoder::PixelFormat::CMYK32 => {
+            let mut rgb = Vec::with_capacity(width as usize * height as usize * 3);
+            for chunk in pixels.chunks_exact(4) {
+                let c = f32::from(chunk[0]) / 255.0;
+                let m = f32::from(chunk[1]) / 255.0;
+                let y = f32::from(chunk[2]) / 255.0;
+                let k = f32::from(chunk[3]) / 255.0;
+                let r = (255.0 * (1.0 - c) * (1.0 - k)) as u8;
+                let g = (255.0 * (1.0 - m) * (1.0 - k)) as u8;
+                let b = (255.0 * (1.0 - y) * (1.0 - k)) as u8;
+                rgb.extend_from_slice(&[r, g, b]);
+            }
+            (ColorSpace::RGB, rgb)
+        }
+        _ => return Err(Error::UnsupportedFormat),
+    };
+
+    Ok(ImageData {
+        width,
+        height,
+        color_space,
+        bits_per_component: 8,
+        data: pixel_data,
+    })
+}
+
+pub fn scale_to_fit(width: u32, height: u32, max_width_pt: f64, max_height_pt: f64) -> (f64, f64) {
+    let w = width as f64;
+    let h = height as f64;
+    if w <= 0.0 || h <= 0.0 {
+        return (0.0, 0.0);
+    }
+    let scale_w = if w > max_width_pt { max_width_pt / w } else { 1.0 };
+    let scaled_w = w * scale_w;
+    let scaled_h = h * scale_w;
+    if scaled_h > max_height_pt && max_height_pt > 0.0 {
+        let scale_h = max_height_pt / scaled_h;
+        (scaled_w * scale_h, max_height_pt)
+    } else {
+        (scaled_w, scaled_h)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_test_png(width: u32, height: u32) -> Vec<u8> {
+        let mut buf = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut buf, width, height);
+            encoder.set_color(png::ColorType::Rgb);
+            encoder.set_depth(png::BitDepth::Eight);
+            let mut writer = encoder.write_header().expect("header");
+            let pixel_data: Vec<u8> = (0..width * height)
+                .flat_map(|i| {
+                    let r = ((i * 7) % 256) as u8;
+                    let g = ((i * 13) % 256) as u8;
+                    let b = ((i * 23) % 256) as u8;
+                    [r, g, b]
+                })
+                .collect();
+            writer
+                .write_image_data(&pixel_data)
+                .expect("write data");
+        }
+        buf
+    }
+
+    fn make_test_grayscale_png(width: u32, height: u32) -> Vec<u8> {
+        let mut buf = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut buf, width, height);
+            encoder.set_color(png::ColorType::Grayscale);
+            encoder.set_depth(png::BitDepth::Eight);
+            let mut writer = encoder.write_header().expect("header");
+            let pixel_data: Vec<u8> = (0..width * height).map(|i| ((i * 7) % 256) as u8).collect();
+            writer
+                .write_image_data(&pixel_data)
+                .expect("write data");
+        }
+        buf
+    }
+
+    fn make_test_rgba_png(width: u32, height: u32) -> Vec<u8> {
+        let mut buf = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut buf, width, height);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            let mut writer = encoder.write_header().expect("header");
+            let pixel_data: Vec<u8> = (0..width * height)
+                .flat_map(|i| {
+                    let r = ((i * 7) % 256) as u8;
+                    let g = ((i * 13) % 256) as u8;
+                    let b = ((i * 23) % 256) as u8;
+                    let a = 255u8;
+                    [r, g, b, a]
+                })
+                .collect();
+            writer
+                .write_image_data(&pixel_data)
+                .expect("write data");
+        }
+        buf
+    }
+
+    #[test]
+    fn test_decode_rgb_png() {
+        let data = make_test_png(4, 3);
+        let img = decode_png(&data).expect("decode RGB PNG");
+
+        assert_eq!(img.width, 4);
+        assert_eq!(img.height, 3);
+        assert_eq!(img.color_space, ColorSpace::RGB);
+        assert_eq!(img.bits_per_component, 8);
+        assert_eq!(img.data.len(), 4 * 3 * 3);
+    }
+
+    #[test]
+    fn test_decode_grayscale_png() {
+        let data = make_test_grayscale_png(4, 3);
+        let img = decode_png(&data).expect("decode grayscale PNG");
+
+        assert_eq!(img.width, 4);
+        assert_eq!(img.height, 3);
+        assert_eq!(img.color_space, ColorSpace::Gray);
+        assert_eq!(img.bits_per_component, 8);
+        assert_eq!(img.data.len(), 4 * 3);
+    }
+
+    #[test]
+    fn test_decode_rgba_png_strips_alpha() {
+        let data = make_test_rgba_png(4, 3);
+        let img = decode_png(&data).expect("decode RGBA PNG");
+
+        assert_eq!(img.width, 4);
+        assert_eq!(img.height, 3);
+        assert_eq!(img.color_space, ColorSpace::RGB);
+        assert_eq!(img.bits_per_component, 8);
+        assert_eq!(img.data.len(), 4 * 3 * 3);
+    }
+
+    #[test]
+    fn test_decode_png_1x1() {
+        let data = make_test_png(1, 1);
+        let img = decode_png(&data).expect("decode 1x1 PNG");
+
+        assert_eq!(img.width, 1);
+        assert_eq!(img.height, 1);
+        assert_eq!(img.data.len(), 3);
+    }
+
+    #[test]
+    fn test_detect_format_png() {
+        let data = make_test_png(2, 2);
+        assert_eq!(detect_format(&data), Some(ImageFormat::Png));
+    }
+
+    #[test]
+    fn test_detect_format_jpeg() {
+        let jpeg_header: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
+        assert_eq!(detect_format(jpeg_header), Some(ImageFormat::Jpeg));
+    }
+
+    #[test]
+    fn test_detect_format_unknown() {
+        let garbage: &[u8] = &[0x00, 0x01, 0x02, 0x03];
+        assert_eq!(detect_format(garbage), None);
+    }
+
+    #[test]
+    fn test_detect_format_empty() {
+        let empty: &[u8] = &[];
+        assert_eq!(detect_format(empty), None);
+    }
+
+    #[test]
+    fn test_decode_image_with_format() {
+        let data = make_test_png(2, 2);
+        let img = decode_image(&data, ImageFormat::Png).expect("decode");
+        assert_eq!(img.width, 2);
+        assert_eq!(img.height, 2);
+    }
+
+    #[test]
+    fn test_decode_invalid_data() {
+        let garbage = vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05];
+        let result = decode_png(&garbage);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_missing_file() {
+        let result = load_image(Path::new("/nonexistent/path/to/image.png"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_unsupported_format() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("ldir_test_unsupported.img");
+        std::fs::write(&path, &[0x00, 0x01, 0x02]).expect("write temp");
+        let result = load_image(&path);
+        assert!(result.is_err());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_scale_to_fit_wider_than_max() {
+        let (w, h) = scale_to_fit(200, 100, 100.0, 1000.0);
+        assert!((w - 100.0).abs() < 0.01);
+        assert!((h - 50.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_scale_to_fit_no_scale_needed() {
+        let (w, h) = scale_to_fit(50, 50, 100.0, 1000.0);
+        assert!((w - 50.0).abs() < 0.01);
+        assert!((h - 50.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_scale_to_fit_height_constrained() {
+        let (w, h) = scale_to_fit(100, 200, 1000.0, 50.0);
+        assert!((w - 25.0).abs() < 0.01);
+        assert!((h - 50.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_scale_to_fit_both_constrained() {
+        let (w, h) = scale_to_fit(400, 400, 100.0, 100.0);
+        assert!((w - 100.0).abs() < 0.01);
+        assert!((h - 100.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_scale_to_fit_aspect_ratio_preserved() {
+        let (w, h) = scale_to_fit(1600, 900, 500.0, 500.0);
+        let ratio_before = 1600.0 / 900.0;
+        let ratio_after = w / h;
+        assert!((ratio_before - ratio_after).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_scale_to_fit_zero_dimensions() {
+        let (w, h) = scale_to_fit(0, 100, 500.0, 500.0);
+        assert!((w - 0.0).abs() < 0.01);
+        assert!((h - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_load_png_from_file() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("ldir_test_image.png");
+        let png_data = make_test_png(8, 6);
+        std::fs::write(&path, &png_data).expect("write temp PNG");
+
+        let img = load_image(&path).expect("load PNG from file");
+        assert_eq!(img.width, 8);
+        assert_eq!(img.height, 6);
+        assert_eq!(img.color_space, ColorSpace::RGB);
+        assert_eq!(img.bits_per_component, 8);
+        assert_eq!(img.data.len(), 8 * 6 * 3);
+
+        let _ = std::fs::remove_file(&path);
+    }
+}

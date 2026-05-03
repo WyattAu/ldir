@@ -92,6 +92,10 @@ impl ModuleLinker {
                         ldir_ir::sir::v2::annotations::LabelCategory::Section
                     } else if matches!(new_node.node_type, NodeType::MathBlock { .. }) {
                         ldir_ir::sir::v2::annotations::LabelCategory::Equation
+                    } else if matches!(new_node.node_type, NodeType::Figure { .. }) {
+                        ldir_ir::sir::v2::annotations::LabelCategory::Figure
+                    } else if matches!(new_node.node_type, NodeType::Table { .. }) {
+                        ldir_ir::sir::v2::annotations::LabelCategory::Table
                     } else {
                         ldir_ir::sir::v2::annotations::LabelCategory::Custom
                     };
