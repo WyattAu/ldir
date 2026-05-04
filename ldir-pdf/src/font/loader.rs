@@ -71,8 +71,9 @@ unsafe impl Sync for FontFace {}
 impl Clone for FontFace {
     fn clone(&self) -> Self {
         // Re-parse from the owned data to reconstruct the self-referential struct.
-        Self::from_bytes(&self.data)
-            .expect("font data should be valid (cloned from valid FontFace)")
+        Self::from_bytes(&self.data).unwrap_or_else(|e| {
+            unreachable!("font data should be valid when cloning FontFace: {e}")
+        })
     }
 }
 

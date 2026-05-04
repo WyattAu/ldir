@@ -14,11 +14,11 @@ use ldir_ir::sir::v2::resources::ResourceDecls;
 use ldir_ir::sir::v2::{DocumentMetadata, SIRModuleV2};
 
 use crate::compiler::bibtex::{BibEntry, format_citation_ieee};
-use crate::compiler::cross_ref;
 use crate::compiler::context::{
     CompileContext, FONT_ID_BOLD, FONT_ID_BOLD_ITALIC, FONT_ID_ITALIC, FONT_ID_MONO,
     FONT_ID_REGULAR,
 };
+use crate::compiler::cross_ref;
 use crate::compiler::emit_helpers;
 use crate::compiler::justify;
 use crate::error::Result;

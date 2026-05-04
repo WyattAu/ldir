@@ -131,7 +131,10 @@ mod tests {
 
     #[test]
     fn structure_type_from_node_type() {
-        assert_eq!(StructureType::Document.to_struct_role(), StructRole::Document);
+        assert_eq!(
+            StructureType::Document.to_struct_role(),
+            StructRole::Document
+        );
         assert_eq!(StructureType::Paragraph.to_struct_role(), StructRole::P);
         assert_eq!(StructureType::Chapter.to_struct_role(), StructRole::Sect);
         assert_eq!(StructureType::List.to_struct_role(), StructRole::L);
@@ -140,15 +143,27 @@ mod tests {
         assert_eq!(StructureType::Figure.to_struct_role(), StructRole::Figure);
         assert_eq!(StructureType::Caption.to_struct_role(), StructRole::Caption);
         assert_eq!(StructureType::CodeBlock.to_struct_role(), StructRole::Code);
-        assert_eq!(StructureType::BlockQuote.to_struct_role(), StructRole::BlockQuote);
-        assert_eq!(StructureType::MathBlock.to_struct_role(), StructRole::Formula);
+        assert_eq!(
+            StructureType::BlockQuote.to_struct_role(),
+            StructRole::BlockQuote
+        );
+        assert_eq!(
+            StructureType::MathBlock.to_struct_role(),
+            StructRole::Formula
+        );
         assert_eq!(StructureType::TOC.to_struct_role(), StructRole::TOC);
     }
 
     #[test]
     fn custom_role_names() {
-        assert_eq!(StructureType::Chapter.custom_role_name(), Some(b"Chapter".as_slice()));
-        assert_eq!(StructureType::Subsection.custom_role_name(), Some(b"Subsection".as_slice()));
+        assert_eq!(
+            StructureType::Chapter.custom_role_name(),
+            Some(b"Chapter".as_slice())
+        );
+        assert_eq!(
+            StructureType::Subsection.custom_role_name(),
+            Some(b"Subsection".as_slice())
+        );
         assert_eq!(StructureType::Document.custom_role_name(), None);
         assert_eq!(StructureType::Paragraph.custom_role_name(), None);
     }
@@ -164,15 +179,13 @@ mod tests {
     fn nested_structure() {
         let doc = StructureNode::with_children(
             StructureType::Document,
-            vec![
-                StructureNode::with_children(
-                    StructureType::Section,
-                    vec![
-                        StructureNode::new(StructureType::Paragraph, 1, 0),
-                        StructureNode::new(StructureType::Paragraph, 1, 1),
-                    ],
-                ),
-            ],
+            vec![StructureNode::with_children(
+                StructureType::Section,
+                vec![
+                    StructureNode::new(StructureType::Paragraph, 1, 0),
+                    StructureNode::new(StructureType::Paragraph, 1, 1),
+                ],
+            )],
         );
         let section = &doc.children[0];
         assert_eq!(section.element_type, StructureType::Section);

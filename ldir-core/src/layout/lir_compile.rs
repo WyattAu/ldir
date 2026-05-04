@@ -17,6 +17,7 @@ use ldir_ir::lir::types::*;
 use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::NodeType;
 
+use crate::compiler::bibtex::{BibEntry, format_citation_apa, format_citation_ieee};
 use crate::compiler::context::CompileContext;
 use crate::compiler::context::{
     FONT_ID_BOLD, FONT_ID_BOLD_ITALIC, FONT_ID_ITALIC, FONT_ID_MONO, FONT_ID_REGULAR,
@@ -104,10 +105,23 @@ struct LirCompiler<'a> {
     figure_counter: u32,
     eq_counter: u32,
     style_table: LIRStyleTable,
+    bibliography: Option<&'a HashMap<String, BibEntry>>,
+    cite_counter: u32,
+    cite_numbers: HashMap<String, u32>,
+    bib_style: &'static str,
 }
 
 impl<'a> LirCompiler<'a> {
     fn new(module: &'a SIRModuleV2, ctx: &'a CompileContext) -> Self {
+        Self::with_bib(module, ctx, None, "ieee")
+    }
+
+    fn with_bib(
+        module: &'a SIRModuleV2,
+        ctx: &'a CompileContext,
+        bibliography: Option<&'a HashMap<String, BibEntry>>,
+        bib_style: &'static str,
+    ) -> Self {
         let mut style_table = LIRStyleTable::with_capacity(8);
         let body_font_size = fp_core_to_lir(ctx.font_size);
         style_table.insert(LIRTextStyle::new(0, FONT_ID_REGULAR, body_font_size));
@@ -132,6 +146,10 @@ impl<'a> LirCompiler<'a> {
             figure_counter: 0,
             eq_counter: 0,
             style_table,
+            bibliography,
+            cite_counter: 0,
+            cite_numbers: HashMap::new(),
+            bib_style,
         }
     }
 
@@ -1062,11 +1080,27 @@ impl<'a> LirCompiler<'a> {
             }
 
             NodeType::Citation { ref keys, .. } => {
-                let text = keys
-                    .iter()
-                    .map(|k| format!("[{}]", k))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let mut resolved_nums = Vec::new();
+                let mut parts: Vec<String> = Vec::new();
+
+                for key in keys {
+                    if let Some(_bib) = self.bibliography {
+                        if !self.cite_numbers.contains_key(key) {
+                            self.cite_counter += 1;
+                            self.cite_numbers.insert(key.clone(), self.cite_counter);
+                        }
+                        if let Some(&num) = self.cite_numbers.get(key) {
+                            resolved_nums.push(num);
+                            parts.push(format!("[{}]", num));
+                        } else {
+                            parts.push(format!("[{}]", key));
+                        }
+                    } else {
+                        parts.push(format!("[{}]", key));
+                    }
+                }
+
+                let text = parts.join(", ");
                 let lh = self.line_height(12);
                 self.ensure_space(lh);
 
@@ -1082,6 +1116,22 @@ impl<'a> LirCompiler<'a> {
                     self.cursor_y += height;
                     self.add_block(LIRNode::Paragraph(p), height);
                 }
+
+                if self.bibliography.is_some() && !resolved_nums.is_empty() {
+                    let mut citation = LIRCitation::new(keys.clone());
+                    citation.id = self.alloc_id();
+                    citation.source_node_id = source_id;
+                    citation.numbers = resolved_nums;
+                    let font_size = Fp266::from_int(12);
+                    citation.geometry = LIRGeometry::new(
+                        fp_core_to_lir(self.cursor_x),
+                        fp_core_to_lir(self.cursor_y - self.line_height(12)),
+                        fp_core_to_lir(Fp266::from_int(20)),
+                        fp_core_to_lir(font_size),
+                    );
+                    return Ok(vec![LIRNode::Citation(citation)]);
+                }
+
                 Ok(Vec::new())
             }
 
@@ -1092,7 +1142,103 @@ impl<'a> LirCompiler<'a> {
         }
     }
 
+    fn emit_bibliography_section(&mut self) {
+        let bib = match self.bibliography {
+            Some(b) => b,
+            None => return,
+        };
+        if self.cite_numbers.is_empty() || bib.is_empty() {
+            return;
+        }
+
+        if !self.current_page_children.is_empty() {
+            self.finish_page();
+            self.cursor_x = self.ctx.margin_left;
+            self.cursor_y = self.ctx.margin_top;
+        }
+
+        let mut bibliography = LIRBibliography::new("References");
+        bibliography.id = self.alloc_id();
+        bibliography.style = self.bib_style.to_string();
+
+        let heading_font_size = 16;
+        let heading_lh = self.line_height(heading_font_size);
+        self.ensure_space(heading_lh + Fp266::from_int(8));
+
+        if let Some(p) = self.build_paragraph(
+            "References",
+            None,
+            Some(1),
+            heading_font_size,
+            self.content_width(),
+            self.cursor_x,
+        ) {
+            let height = fp_lir_to_core(p.geometry.height);
+            self.cursor_y += height + Fp266::from_int(8);
+            bibliography.children.push(LIRNode::Paragraph(p));
+        }
+
+        let entry_font_size = 10;
+        let mut sorted: Vec<(String, u32)> = self
+            .cite_numbers
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+        sorted.sort_by_key(|&(_, num)| num);
+
+        let bib_entries: Vec<(u32, String, String)> = sorted
+            .iter()
+            .filter_map(|(key, num)| {
+                bib.get(key.as_str()).map(|entry| {
+                    let formatted = match self.bib_style {
+                        "apa" => format_citation_apa(entry),
+                        _ => format_citation_ieee(entry),
+                    };
+                    (*num, key.clone(), formatted)
+                })
+            })
+            .collect();
+
+        for (num, key, formatted) in &bib_entries {
+            let ref_text = format!("[{}] {}", num, formatted);
+
+            bibliography.entries.push(LIRBibEntry {
+                number: *num,
+                key: key.clone(),
+                formatted: formatted.clone(),
+            });
+
+            let entry_lh = self.line_height(entry_font_size);
+            self.ensure_space(entry_lh);
+
+            if let Some(p) = self.build_paragraph(
+                &ref_text,
+                None,
+                Some(0),
+                entry_font_size,
+                self.content_width(),
+                self.cursor_x,
+            ) {
+                let height = fp_lir_to_core(p.geometry.height);
+                self.cursor_y += height + Fp266::from_int(6);
+                bibliography.children.push(LIRNode::Paragraph(p));
+            }
+        }
+
+        let bib_height = Fp266::from_int(100);
+        bibliography.geometry = LIRGeometry::new(
+            fp_core_to_lir(self.cursor_x),
+            fp_core_to_lir(self.ctx.margin_top),
+            fp_core_to_lir(self.content_width()),
+            fp_core_to_lir(bib_height),
+        );
+
+        self.add_block(LIRNode::Bibliography(bibliography), Fp266::ZERO);
+    }
+
     fn build_document(mut self) -> LIRDocument {
+        self.emit_bibliography_section();
+
         if !self.current_page_children.is_empty() {
             self.finish_page();
         }
@@ -1144,6 +1290,15 @@ impl<'a> LirCompiler<'a> {
             doc.toc = Some(toc);
         }
 
+        if let Some(LIRNode::Bibliography(bib)) = doc
+            .pages
+            .iter()
+            .flat_map(|p| p.children.iter())
+            .find(|n| matches!(n, LIRNode::Bibliography(_)))
+        {
+            doc.bibliography = Some(bib.clone());
+        }
+
         doc
     }
 }
@@ -1161,7 +1316,35 @@ impl<'a> LirCompiler<'a> {
 /// - Section numbering for headings
 /// - Collected footnotes and table of contents
 pub fn compile_sir_to_lir(module: &SIRModuleV2, ctx: &CompileContext) -> LirResult<LIRDocument> {
-    let mut compiler = LirCompiler::new(module, ctx);
+    compile_sir_to_lir_inner(module, ctx, None, "ieee")
+}
+
+/// Compile an S-IR v2 module with bibliography into a positioned LIR document tree.
+///
+/// Same as [`compile_sir_to_lir`] but also resolves citations against the provided
+/// bibliography and emits a formatted references section.
+///
+/// `bib_style` controls formatting: `"ieee"` (default) or `"apa"`.
+pub fn compile_sir_to_lir_with_bib(
+    module: &SIRModuleV2,
+    ctx: &CompileContext,
+    bibliography: &HashMap<String, BibEntry>,
+    bib_style: &str,
+) -> LirResult<LIRDocument> {
+    let style: &'static str = match bib_style {
+        "apa" => "apa",
+        _ => "ieee",
+    };
+    compile_sir_to_lir_inner(module, ctx, Some(bibliography), style)
+}
+
+fn compile_sir_to_lir_inner(
+    module: &SIRModuleV2,
+    ctx: &CompileContext,
+    bibliography: Option<&HashMap<String, BibEntry>>,
+    bib_style: &'static str,
+) -> LirResult<LIRDocument> {
+    let mut compiler = LirCompiler::with_bib(module, ctx, bibliography, bib_style);
 
     for &root_id in module.body.roots() {
         compiler.compile_node(root_id)?;
@@ -1750,5 +1933,141 @@ mod tests {
             assert_eq!(mb.math_type, MathType::Display);
             assert_eq!(mb.number, Some(1));
         }
+    }
+
+    #[test]
+    fn test_citation_without_bib() {
+        let mut module = make_module();
+        let doc_id = module.body.push(Node::new(1, NodeType::Document));
+        let para_id = module
+            .body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        let cite_id = module.body.push(
+            Node::new(
+                3,
+                NodeType::Citation {
+                    keys: vec!["knuth1984".into()],
+                    style: None,
+                },
+            )
+            .with_parent(2),
+        );
+        let text_id = module.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "See ".into(),
+                },
+            )
+            .with_parent(2),
+        );
+
+        add_child(&mut module.body, doc_id, para_id);
+        add_child(&mut module.body, para_id, text_id);
+        add_child(&mut module.body, para_id, cite_id);
+
+        let ctx = make_ctx();
+        let doc = compile_sir_to_lir(&module, &ctx).unwrap();
+        assert_eq!(doc.pages.len(), 1);
+        assert!(
+            doc.bibliography.is_none(),
+            "no bib data means no bibliography"
+        );
+    }
+
+    #[test]
+    fn test_bibliography_with_citations() {
+        use crate::compiler::bibtex::parse_bib;
+
+        let mut module = make_module();
+        let doc_id = module.body.push(Node::new(1, NodeType::Document));
+        let para_id = module
+            .body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        let text_id = module.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "As shown by [knuth1984].".into(),
+                },
+            )
+            .with_parent(2),
+        );
+        let cite_id = module.body.push(
+            Node::new(
+                4,
+                NodeType::Citation {
+                    keys: vec!["knuth1984".into()],
+                    style: None,
+                },
+            )
+            .with_parent(1),
+        );
+
+        add_child(&mut module.body, doc_id, para_id);
+        add_child(&mut module.body, para_id, text_id);
+        add_child(&mut module.body, doc_id, cite_id);
+
+        let bib_content = r#"@article{knuth1984,
+            author = {Donald E. Knuth},
+            title = {Literate Programming},
+            journal = {The Computer Journal},
+            volume = {27},
+            pages = {97--111},
+            year = {1984},
+        }"#;
+
+        let bibliography = parse_bib(bib_content).expect("parse bib");
+        let ctx = make_ctx();
+        let doc = compile_sir_to_lir_with_bib(&module, &ctx, &bibliography, "ieee").unwrap();
+
+        assert!(
+            doc.bibliography.is_some(),
+            "bibliography should be generated"
+        );
+        let bib = doc.bibliography.as_ref().unwrap();
+        assert_eq!(bib.entries.len(), 1);
+        assert_eq!(bib.entries[0].key, "knuth1984");
+        assert_eq!(bib.entries[0].number, 1);
+        assert!(bib.entries[0].formatted.contains("Knuth"));
+        assert!(bib.entries[0].formatted.contains("1984"));
+    }
+
+    #[test]
+    fn test_bibliography_apa_style() {
+        use crate::compiler::bibtex::parse_bib;
+
+        let mut module = make_module();
+        let doc_id = module.body.push(Node::new(1, NodeType::Document));
+        let para_id = module
+            .body
+            .push(Node::new(2, NodeType::Paragraph).with_parent(1));
+        let cite_id = module.body.push(
+            Node::new(
+                3,
+                NodeType::Citation {
+                    keys: vec!["knuth1984".into()],
+                    style: None,
+                },
+            )
+            .with_parent(1),
+        );
+        add_child(&mut module.body, doc_id, para_id);
+        add_child(&mut module.body, doc_id, cite_id);
+
+        let bib_content = r#"@article{knuth1984,
+            author = {Donald E. Knuth},
+            title = {Literate Programming},
+            journal = {The Computer Journal},
+            year = {1984},
+        }"#;
+
+        let bibliography = parse_bib(bib_content).expect("parse bib");
+        let ctx = make_ctx();
+        let doc = compile_sir_to_lir_with_bib(&module, &ctx, &bibliography, "apa").unwrap();
+
+        let bib = doc.bibliography.as_ref().unwrap();
+        assert_eq!(bib.style, "apa");
+        assert!(bib.entries[0].formatted.contains("Knuth (1984)"));
     }
 }

@@ -157,7 +157,7 @@ impl LIRDocumentMeta {
 #[derive(Debug, Clone, PartialEq)]
 pub enum LIRNode {
     /// Top-level document container.
-    Document(LIRDocument),
+    Document(Box<LIRDocument>),
     /// A single page.
     Page(LIRPage),
     /// Vertical stack of block-level boxes.
@@ -200,6 +200,10 @@ pub enum LIRNode {
     ThematicBreak(LIRThematicBreak),
     /// Auto-generated table of contents.
     TableOfContents(LIRTableOfContents),
+    /// Bibliography section with formatted entries.
+    Bibliography(LIRBibliography),
+    /// In-flow citation marker.
+    Citation(LIRCitation),
     /// Explicit page break (leaf sentinel).
     PageBreak(LIRPageBreak),
 }
@@ -230,6 +234,8 @@ impl LIRNode {
             Self::MathBlock(n) => n.id,
             Self::ThematicBreak(n) => n.id,
             Self::TableOfContents(n) => n.id,
+            Self::Bibliography(n) => n.id,
+            Self::Citation(n) => n.id,
             Self::PageBreak(n) => n.id,
         }
     }
@@ -259,6 +265,8 @@ impl LIRNode {
             Self::MathBlock(n) => &n.geometry,
             Self::ThematicBreak(n) => &n.geometry,
             Self::TableOfContents(n) => &n.geometry,
+            Self::Bibliography(n) => &n.geometry,
+            Self::Citation(n) => &n.geometry,
             Self::PageBreak(n) => &n.geometry,
         }
     }
@@ -288,6 +296,8 @@ impl LIRNode {
             Self::MathBlock(n) => n.source_node_id,
             Self::ThematicBreak(n) => n.source_node_id,
             Self::TableOfContents(n) => n.source_node_id,
+            Self::Bibliography(n) => n.source_node_id,
+            Self::Citation(n) => n.source_node_id,
             Self::PageBreak(n) => n.source_node_id,
         }
     }
@@ -317,6 +327,8 @@ impl LIRNode {
             Self::MathBlock(_) => "MathBlock",
             Self::ThematicBreak(_) => "ThematicBreak",
             Self::TableOfContents(_) => "TableOfContents",
+            Self::Bibliography(_) => "Bibliography",
+            Self::Citation(_) => "Citation",
             Self::PageBreak(_) => "PageBreak",
         }
     }
@@ -351,6 +363,8 @@ pub struct LIRDocument {
     pub footnotes: Vec<LIRFootnoteBlock>,
     /// Optional auto-generated table of contents.
     pub toc: Option<LIRTableOfContents>,
+    /// Optional bibliography section.
+    pub bibliography: Option<LIRBibliography>,
     /// Resolved style table.
     pub style_table: LIRStyleTable,
 }
@@ -366,6 +380,7 @@ impl Default for LIRDocument {
             pages: Vec::new(),
             footnotes: Vec::new(),
             toc: None,
+            bibliography: None,
             style_table: LIRStyleTable::new(),
         }
     }
@@ -1253,6 +1268,93 @@ impl LIRTableOfContents {
 }
 
 // ---------------------------------------------------------------------------
+// LIRBibliography
+// ---------------------------------------------------------------------------
+
+/// A single bibliography entry with formatted text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LIRBibEntry {
+    /// Citation number (1-based).
+    pub number: u32,
+    /// BibTeX key.
+    pub key: String,
+    /// Formatted reference text (IEEE or APA style).
+    pub formatted: String,
+}
+
+/// A bibliography section containing formatted reference entries.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LIRBibliography {
+    /// Unique node ID.
+    pub id: u32,
+    /// Resolved geometry.
+    pub geometry: LIRGeometry,
+    /// S-IR source node ID.
+    pub source_node_id: Option<u32>,
+    /// Resolved style ID.
+    pub style_id: Option<u32>,
+    /// Section title (e.g. "References").
+    pub title: String,
+    /// Formatting style used.
+    pub style: String,
+    /// Ordered bibliography entries.
+    pub entries: Vec<LIRBibEntry>,
+    /// Laid-out children (heading + entry paragraphs).
+    pub children: Vec<LIRNode>,
+}
+
+impl LIRBibliography {
+    /// Create a new bibliography section.
+    pub fn new(title: impl Into<String>) -> Self {
+        Self {
+            id: 0,
+            geometry: LIRGeometry::ZERO,
+            source_node_id: None,
+            style_id: None,
+            title: title.into(),
+            style: "ieee".to_string(),
+            entries: Vec::new(),
+            children: Vec::new(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// LIRCitation
+// ---------------------------------------------------------------------------
+
+/// An in-flow citation marker referencing bibliography entries.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LIRCitation {
+    /// Unique node ID.
+    pub id: u32,
+    /// Resolved geometry.
+    pub geometry: LIRGeometry,
+    /// S-IR source node ID.
+    pub source_node_id: Option<u32>,
+    /// Resolved style ID.
+    pub style_id: Option<u32>,
+    /// BibTeX keys referenced.
+    pub keys: Vec<String>,
+    /// Resolved citation numbers (parallel to keys).
+    pub numbers: Vec<u32>,
+}
+
+impl LIRCitation {
+    /// Create a new citation marker.
+    pub fn new(keys: Vec<String>) -> Self {
+        Self {
+            id: 0,
+            geometry: LIRGeometry::ZERO,
+            source_node_id: None,
+            style_id: None,
+            keys,
+            numbers: Vec::new(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // LIRPageBreak (leaf, zero-height sentinel)
 // ---------------------------------------------------------------------------
 
@@ -1600,7 +1702,7 @@ mod tests {
 
     #[test]
     fn test_all_node_types_constructible() {
-        let _ = LIRNode::Document(LIRDocument::default());
+        let _ = LIRNode::Document(Box::new(LIRDocument::default()));
         let _ = LIRNode::Page(LIRPage::new(1, &LIRDocumentMeta::us_letter()));
         let _ = LIRNode::Flow(LIRFlow::new(FlowDirection::TopToBottom));
         let _ = LIRNode::Paragraph(LIRParagraph::new());
@@ -1622,6 +1724,8 @@ mod tests {
         let _ = LIRNode::MathBlock(LIRMathBlock::new(MathType::Inline));
         let _ = LIRNode::ThematicBreak(LIRThematicBreak::new());
         let _ = LIRNode::TableOfContents(LIRTableOfContents::new(3));
+        let _ = LIRNode::Bibliography(LIRBibliography::new("References"));
+        let _ = LIRNode::Citation(LIRCitation::new(vec!["key".into()]));
         let _ = LIRNode::PageBreak(LIRPageBreak::new());
     }
 

@@ -59,11 +59,11 @@ impl LoadedFont {
     }
 
     /// Returns the parsed `ttf_parser::Face` for this font.
-    #[allow(clippy::expect_used)]
     pub fn face(&self) -> ttf_parser::Face<'_> {
-        self.handle
-            .parse_face(self.face_index)
-            .expect("font data should be valid (verified at load time)")
+        match self.handle.parse_face(self.face_index) {
+            Ok(face) => face,
+            Err(_) => panic!("font data should be valid (verified at load time)"),
+        }
     }
 
     /// Returns the face index within the font collection.

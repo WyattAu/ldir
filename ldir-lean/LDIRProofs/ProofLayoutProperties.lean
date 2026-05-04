@@ -58,20 +58,17 @@ def validBreakSet (items : List KPItem) (breaks : KPBreakSet) : Bool :=
     3. The fitness class is monotonically non-decreasing
 
     Existence argument (fallback strategy):
-    Breaking at every position is always valid (though suboptimal).
-    The last break will have position = items.length, satisfying validBreakSet.
-
-    sorry: requires constructing an explicit break list via List.range
-    and proving getLast? / length equations.
-    The construction is straightforward (map List.range to KPBreak),
-    but the proof requires Mathlib lemmas:
-    - List.getLast?_eq_some (connecting getLast? to the last element)
-    - List.length_range (length of List.range n = n)
-    These lemmas exist but the proof chain through getLast? is intricate
-    in this Lean version. -/
+    A single break at the final position is always valid.
+    For an empty item list, the empty break set is valid.
+    For a non-empty item list, a singleton break at position = items.length
+    satisfies validBreakSet since getLast? of a singleton is that element. -/
 theorem kp_termination (items : List KPItem) :
     ∃ breaks : KPBreakSet, validBreakSet items breaks = true := by
-  sorry
+  by_cases h : items.length = 0
+  · exists []
+    simp [validBreakSet, h]
+  · exists [⟨items.length, 0, 0, none⟩]
+    simp [validBreakSet]
 
 -- ============================================================================
 -- SECTION 3: Incremental Compilation Types

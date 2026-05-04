@@ -135,11 +135,17 @@ impl CrdtDocument {
     fn get_origins_at(&self, index: usize) -> (CharId, CharId) {
         let visible: Vec<&CrdtChar> = self.chars.iter().filter(|c| !c.deleted).collect();
         let left = if index == 0 {
-            CharId { site: 0, counter: 0 }
+            CharId {
+                site: 0,
+                counter: 0,
+            }
         } else if let Some(ch) = visible.get(index - 1) {
             ch.id
         } else {
-            CharId { site: 0, counter: 0 }
+            CharId {
+                site: 0,
+                counter: 0,
+            }
         };
 
         let right = if let Some(ch) = visible.get(index) {
@@ -147,7 +153,10 @@ impl CrdtDocument {
         } else if let Some(ch) = visible.last() {
             ch.id
         } else {
-            CharId { site: 0, counter: 0 }
+            CharId {
+                site: 0,
+                counter: 0,
+            }
         };
 
         (left, right)

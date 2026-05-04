@@ -8,8 +8,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use ldir_ir::gir::{GIRDocument, GIROpcode};
+use ttf_parser::OutlineBuilder;
+use vello::peniko::kurbo::{Affine, BezPath, Rect, RoundedRect};
 use vello::peniko::{Blob, Color, Fill, Font};
-use vello::peniko::kurbo::{Affine, Rect, RoundedRect};
 use vello::{Glyph, Scene};
 
 /// Scale factor for converting 26.6 fixed-point to scene units.
@@ -28,6 +29,8 @@ pub struct FontEntry {
     pub font: Font,
     /// Font size in pixels per em for rendering.
     pub scale: f32,
+    /// Raw font data bytes for outline extraction via ttf_parser.
+    data: Arc<Vec<u8>>,
 }
 
 impl FontMap {
@@ -48,14 +51,21 @@ impl FontMap {
             let arc_dyn: Arc<dyn AsRef<[u8]> + Send + Sync> = Arc::clone(data) as _;
             let blob = Blob::new(arc_dyn);
             let font = Font::new(blob, 0);
-            map.insert(id, FontEntry { font, scale });
+            map.insert(
+                id,
+                FontEntry {
+                    font,
+                    scale,
+                    data: Arc::clone(data),
+                },
+            );
         }
         Self { fonts: map }
     }
 
     /// Insert a font into the map.
-    pub fn insert(&mut self, id: usize, font: Font, scale: f32) {
-        self.fonts.insert(id, FontEntry { font, scale });
+    pub fn insert(&mut self, id: usize, font: Font, scale: f32, data: Arc<Vec<u8>>) {
+        self.fonts.insert(id, FontEntry { font, scale, data });
     }
 
     /// Look up a font entry by ID.
@@ -83,6 +93,85 @@ impl Default for FontMap {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Outline builder that converts ttf_parser glyph outline commands
+/// into a kurbo `BezPath` suitable for Vello scene rendering.
+struct GlyphOutlineBuilder(BezPath);
+
+impl OutlineBuilder for GlyphOutlineBuilder {
+    fn move_to(&mut self, x: f32, y: f32) {
+        self.0.move_to((x as f64, y as f64));
+    }
+
+    fn line_to(&mut self, x: f32, y: f32) {
+        self.0.line_to((x as f64, y as f64));
+    }
+
+    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+        self.0.quad_to((x1 as f64, y1 as f64), (x as f64, y as f64));
+    }
+
+    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+        self.0.curve_to(
+            (x1 as f64, y1 as f64),
+            (x2 as f64, y2 as f64),
+            (x as f64, y as f64),
+        );
+    }
+
+    fn close(&mut self) {
+        self.0.close_path();
+    }
+}
+
+/// Render a single glyph as a filled outline path.
+///
+/// Uses `ttf_parser` to extract the glyph outline from raw font data,
+/// converts it to a kurbo `BezPath`, and fills it into the scene.
+///
+/// Returns `true` if the glyph was successfully rendered, `false` if
+/// it should fall back to a placeholder rectangle.
+fn render_glyph_outline(
+    scene: &mut Scene,
+    transform: Affine,
+    font_data: &[u8],
+    glyph_id: u32,
+    font_size: f32,
+    x: f64,
+    y: f64,
+) -> bool {
+    if glyph_id == 0 {
+        return false;
+    }
+
+    let Ok(face) = ttf_parser::Face::parse(font_data, 0) else {
+        return false;
+    };
+
+    let upem = face.units_per_em();
+    if upem == 0 {
+        return false;
+    }
+
+    let gid = ttf_parser::GlyphId(glyph_id as u16);
+    let mut builder = GlyphOutlineBuilder(BezPath::new());
+    let Some(_bbox) = face.outline_glyph(gid, &mut builder) else {
+        return false;
+    };
+
+    let path = builder.0;
+    if path.is_empty() {
+        return false;
+    }
+
+    let scale_factor = font_size as f64 / upem as f64;
+    let glyph_transform = transform
+        * Affine::translate((x, y))
+        * Affine::scale_non_uniform(scale_factor, -scale_factor);
+
+    scene.fill(Fill::NonZero, glyph_transform, Color::BLACK, None, &path);
+    true
 }
 
 /// Convert a single G-IR page to a Vello scene (without font data).
@@ -132,12 +221,22 @@ fn gir_page_to_scene_inner(page: &ldir_ir::gir::GIRPage, fonts: Option<&FontMap>
         }
         if let Some(fonts) = fonts {
             if let Some(entry) = fonts.get(font_id as usize) {
-                let builder = scene
-                    .draw_glyphs(&entry.font)
-                    .transform(Affine::translate((x_start, y)))
-                    .font_size(entry.scale)
-                    .brush(Color::BLACK);
-                builder.draw(Fill::NonZero, glyphs.drain(..));
+                for glyph in glyphs.drain(..) {
+                    let gx = x_start + glyph.x as f64;
+                    if !render_glyph_outline(
+                        scene,
+                        transform,
+                        &entry.data,
+                        glyph.id,
+                        entry.scale,
+                        gx,
+                        y,
+                    ) {
+                        let tx = transform * Affine::translate((gx, y));
+                        let rect = RoundedRect::new(0.0, 0.0, 10.0, 12.0, 0.0);
+                        scene.fill(Fill::NonZero, tx, Color::BLACK, None, &rect);
+                    }
+                }
             }
         } else {
             for glyph in glyphs.drain(..) {
@@ -153,17 +252,16 @@ fn gir_page_to_scene_inner(page: &ldir_ir::gir::GIRPage, fonts: Option<&FontMap>
         match cmd.opcode() {
             GIROpcode::SetFont => {
                 if let Some(font_id) = cmd.arg(0) {
-                    if glyph_run_font_id.is_some() {
+                    if let Some(id) = glyph_run_font_id.take() {
                         flush_glyph_run(
                             &mut scene,
                             current_transform,
-                            glyph_run_font_id.unwrap(),
+                            id,
                             glyph_run_x_start,
                             cursor_y,
                             &mut pending_glyphs,
                             fonts,
                         );
-                        glyph_run_font_id = None;
                     }
                     current_font_id = font_id;
                 }
@@ -171,17 +269,16 @@ fn gir_page_to_scene_inner(page: &ldir_ir::gir::GIRPage, fonts: Option<&FontMap>
             GIROpcode::MoveXY => {
                 let x_fp = cmd.arg(0).unwrap_or(0) as f64 / FP266_SCALE;
                 let y_fp = cmd.arg(1).unwrap_or(0) as f64 / FP266_SCALE;
-                if glyph_run_font_id.is_some() {
+                if let Some(id) = glyph_run_font_id.take() {
                     flush_glyph_run(
                         &mut scene,
                         current_transform,
-                        glyph_run_font_id.unwrap(),
+                        id,
                         glyph_run_x_start,
                         cursor_y,
                         &mut pending_glyphs,
                         fonts,
                     );
-                    glyph_run_font_id = None;
                 }
                 cursor_x = x_fp;
                 cursor_y = y_fp;
@@ -213,17 +310,16 @@ fn gir_page_to_scene_inner(page: &ldir_ir::gir::GIRPage, fonts: Option<&FontMap>
                 cursor_x += advance_x;
             }
             GIROpcode::DrawRule => {
-                if glyph_run_font_id.is_some() {
+                if let Some(id) = glyph_run_font_id.take() {
                     flush_glyph_run(
                         &mut scene,
                         current_transform,
-                        glyph_run_font_id.unwrap(),
+                        id,
                         glyph_run_x_start,
                         cursor_y,
                         &mut pending_glyphs,
                         fonts,
                     );
-                    glyph_run_font_id = None;
                 }
                 let x_fp = cmd.arg(0).unwrap_or(0) as f64 / FP266_SCALE;
                 let y_fp = cmd.arg(1).unwrap_or(0) as f64 / FP266_SCALE;
@@ -236,32 +332,30 @@ fn gir_page_to_scene_inner(page: &ldir_ir::gir::GIRPage, fonts: Option<&FontMap>
                 scene.fill(Fill::NonZero, tx, Color::BLACK, None, &rect);
             }
             GIROpcode::PushStack => {
-                if glyph_run_font_id.is_some() {
+                if let Some(id) = glyph_run_font_id.take() {
                     flush_glyph_run(
                         &mut scene,
                         current_transform,
-                        glyph_run_font_id.unwrap(),
+                        id,
                         glyph_run_x_start,
                         cursor_y,
                         &mut pending_glyphs,
                         fonts,
                     );
-                    glyph_run_font_id = None;
                 }
                 transform_stack.push(current_transform);
             }
             GIROpcode::PopStack => {
-                if glyph_run_font_id.is_some() {
+                if let Some(id) = glyph_run_font_id.take() {
                     flush_glyph_run(
                         &mut scene,
                         current_transform,
-                        glyph_run_font_id.unwrap(),
+                        id,
                         glyph_run_x_start,
                         cursor_y,
                         &mut pending_glyphs,
                         fonts,
                     );
-                    glyph_run_font_id = None;
                 }
                 if let Some(prev) = transform_stack.pop() {
                     current_transform = prev;
@@ -417,7 +511,12 @@ mod tests {
     #[test]
     fn draw_rule_command() {
         let mut page = GIRPage::new();
-        page.push(GIRCommand::new_draw_rule(10 * 64, 20 * 64, 200 * 64, 2 * 64));
+        page.push(GIRCommand::new_draw_rule(
+            10 * 64,
+            20 * 64,
+            200 * 64,
+            2 * 64,
+        ));
         let scene = gir_page_to_scene(&page);
         assert!(!scene.encoding().is_empty());
     }
@@ -466,10 +565,11 @@ mod tests {
     #[test]
     fn font_map_insert() {
         let mut fonts = FontMap::new();
-        let data: Arc<dyn AsRef<[u8]> + Send + Sync> = Arc::new(vec![0u8; 64]);
-        let blob = Blob::new(Arc::clone(&data));
+        let data = Arc::new(vec![0u8; 64]);
+        let arc_dyn: Arc<dyn AsRef<[u8]> + Send + Sync> = Arc::clone(&data) as _;
+        let blob = Blob::new(arc_dyn);
         let font = Font::new(blob, 0);
-        fonts.insert(42, font, 16.0);
+        fonts.insert(42, font, 16.0, data);
         assert_eq!(fonts.len(), 1);
         assert_eq!(fonts.get(42).unwrap().scale, 16.0);
     }
@@ -590,5 +690,95 @@ mod tests {
         let fonts = FontMap::new();
         let scenes = gir_doc_to_scenes(&doc, &fonts);
         assert!(scenes.is_empty());
+    }
+
+    fn load_system_font() -> Option<Vec<u8>> {
+        let paths = [
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ];
+        for path in &paths {
+            if let Ok(data) = std::fs::read(path) {
+                return Some(data);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn test_glyph_outline_with_real_font() {
+        let font_data = match load_system_font() {
+            Some(d) => d,
+            None => return,
+        };
+        let arc_data = Arc::new(font_data);
+        let face = ttf_parser::Face::parse(&arc_data, 0).unwrap();
+        let gid_a = face.glyph_index('A').unwrap();
+
+        let mut page = GIRPage::new();
+        page.push(GIRCommand::new_set_font(0));
+        page.push(GIRCommand::new_move_xy(100 * 64, 200 * 64));
+        page.push(GIRCommand::new_put_glyph(gid_a.0 as i32, 10 * 64));
+        let fonts = FontMap::from_fonts(&[(0, Arc::clone(&arc_data), 12.0)]);
+        let scene = gir_page_to_scene_with_fonts(&page, &fonts);
+        assert!(!scene.encoding().is_empty());
+    }
+
+    #[test]
+    fn test_glyph_outline_missing_glyph_id_zero_fallback() {
+        let font_data = match load_system_font() {
+            Some(d) => d,
+            None => return,
+        };
+        let arc_data = Arc::new(font_data);
+
+        let mut page = GIRPage::new();
+        page.push(GIRCommand::new_set_font(0));
+        page.push(GIRCommand::new_move_xy(50 * 64, 50 * 64));
+        page.push(GIRCommand::new_put_glyph(0, 10 * 64));
+        let fonts = FontMap::from_fonts(&[(0, Arc::clone(&arc_data), 12.0)]);
+        let scene = gir_page_to_scene_with_fonts(&page, &fonts);
+        assert!(!scene.encoding().is_empty());
+    }
+
+    #[test]
+    fn test_glyph_outline_invalid_font_data_fallback() {
+        let arc_data = Arc::new(vec![0u8; 64]);
+
+        let mut page = GIRPage::new();
+        page.push(GIRCommand::new_set_font(0));
+        page.push(GIRCommand::new_move_xy(50 * 64, 50 * 64));
+        page.push(GIRCommand::new_put_glyph(65, 10 * 64));
+        let fonts = FontMap::from_fonts(&[(0, Arc::clone(&arc_data), 12.0)]);
+        let scene = gir_page_to_scene_with_fonts(&page, &fonts);
+        assert!(!scene.encoding().is_empty());
+    }
+
+    #[test]
+    fn test_render_glyph_outline_returns_false_for_glyph_zero() {
+        let result = render_glyph_outline(
+            &mut Scene::new(),
+            Affine::IDENTITY,
+            &[0u8; 64],
+            0,
+            12.0,
+            0.0,
+            0.0,
+        );
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_render_glyph_outline_returns_false_for_invalid_font() {
+        let result = render_glyph_outline(
+            &mut Scene::new(),
+            Affine::IDENTITY,
+            &[0u8; 10],
+            65,
+            12.0,
+            0.0,
+            0.0,
+        );
+        assert!(!result);
     }
 }

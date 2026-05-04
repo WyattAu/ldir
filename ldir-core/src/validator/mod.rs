@@ -65,13 +65,11 @@ mod tests {
 
     fn make_wellformed_doc() -> SIRDocument {
         let mut doc = SIRDocument::new();
-        doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock,
-            0,
-            ROOT_SENTINEL,
-            0,
-        ));
-        doc.push(SIRInstruction::new(SIROpcode::SetContent, 1, 0, 0));
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 0, ROOT_SENTINEL, 0),
+            &[ldir_ir::sir::BlockType::Document as u8],
+        );
+        doc.push_with_payload(SIRInstruction::new(SIROpcode::SetContent, 1, 0, 0), b"text");
         doc.push(SIRInstruction::new(SIROpcode::ApplyStyle, 2, 0, 10));
         doc
     }
@@ -175,14 +173,15 @@ mod tests {
     #[test]
     fn test_large_tree_passes() {
         let mut doc = SIRDocument::new();
-        doc.push(SIRInstruction::new(
-            SIROpcode::PushBlock,
-            0,
-            ROOT_SENTINEL,
-            0,
-        ));
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 0, ROOT_SENTINEL, 0),
+            &[ldir_ir::sir::BlockType::Document as u8],
+        );
         for i in 1..100 {
-            doc.push(SIRInstruction::new(SIROpcode::SetContent, i, 0, 0));
+            doc.push_with_payload(
+                SIRInstruction::new(SIROpcode::SetContent, i, 0, 0),
+                format!("t{}", i).as_bytes(),
+            );
         }
         assert!(validate_sir(&doc).is_ok());
     }

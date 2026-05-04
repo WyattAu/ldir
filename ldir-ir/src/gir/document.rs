@@ -133,8 +133,9 @@ impl GIRDocument {
     /// Add a new empty page with default dimensions and return a mutable
     /// reference to it.
     pub fn new_page(&mut self) -> &mut GIRPage {
+        let idx = self.pages.len();
         self.pages.push(GIRPage::new());
-        self.pages.last_mut().unwrap()
+        &mut self.pages[idx]
     }
 
     /// Iterate over pages in order.

@@ -73,13 +73,15 @@ pub fn indic_char_category(ch: char) -> IndicCharCategory {
 
     if matches!(
         cp,
-        0x094D | 0x09CD | 0x0A4D | 0x0ACD | 0x0B4D | 0x0BCD | 0x0C4D | 0x0CCD | 0x0D4D
-            | 0x0DCA
+        0x094D | 0x09CD | 0x0A4D | 0x0ACD | 0x0B4D | 0x0BCD | 0x0C4D | 0x0CCD | 0x0D4D | 0x0DCA
     ) {
         return IndicCharCategory::Virama;
     }
 
-    if matches!(cp, 0x093C | 0x09BC | 0x0A3C | 0x0ABC | 0x0B3C | 0x0C3C | 0x0CBC | 0x0D3C) {
+    if matches!(
+        cp,
+        0x093C | 0x09BC | 0x0A3C | 0x0ABC | 0x0B3C | 0x0C3C | 0x0CBC | 0x0D3C
+    ) {
         return IndicCharCategory::Nukta;
     }
 
@@ -139,10 +141,7 @@ fn classify_bengali(cp: u32) -> IndicCharCategory {
         IndicCharCategory::Consonant
     } else if in_ranges(cp, &[(0x0985, 0x0994), (0x09E0, 0x09E1)]) {
         IndicCharCategory::Vowel
-    } else if in_ranges(
-        cp,
-        &[(0x09BE, 0x09CC), (0x09D7, 0x09D7), (0x09E2, 0x09E3)],
-    ) {
+    } else if in_ranges(cp, &[(0x09BE, 0x09CC), (0x09D7, 0x09D7), (0x09E2, 0x09E3)]) {
         IndicCharCategory::VowelSign
     } else {
         IndicCharCategory::Other
@@ -172,10 +171,7 @@ fn classify_gurmukhi(cp: u32) -> IndicCharCategory {
         ],
     ) {
         IndicCharCategory::Vowel
-    } else if in_ranges(
-        cp,
-        &[(0x0A3E, 0x0A42), (0x0A47, 0x0A48), (0x0A4B, 0x0A4C)],
-    ) {
+    } else if in_ranges(cp, &[(0x0A3E, 0x0A42), (0x0A47, 0x0A48), (0x0A4B, 0x0A4C)]) {
         IndicCharCategory::VowelSign
     } else {
         IndicCharCategory::Other
@@ -226,7 +222,12 @@ fn classify_oriya(cp: u32) -> IndicCharCategory {
         IndicCharCategory::Vowel
     } else if in_ranges(
         cp,
-        &[(0x0B3E, 0x0B43), (0x0B47, 0x0B48), (0x0B4B, 0x0B4C), (0x0B56, 0x0B57)],
+        &[
+            (0x0B3E, 0x0B43),
+            (0x0B47, 0x0B48),
+            (0x0B4B, 0x0B4C),
+            (0x0B56, 0x0B57),
+        ],
     ) {
         IndicCharCategory::VowelSign
     } else {
@@ -251,7 +252,12 @@ fn classify_tamil(cp: u32) -> IndicCharCategory {
         IndicCharCategory::Vowel
     } else if in_ranges(
         cp,
-        &[(0x0BBE, 0x0BC2), (0x0BC6, 0x0BC8), (0x0BCA, 0x0BCC), (0x0BD7, 0x0BD7)],
+        &[
+            (0x0BBE, 0x0BC2),
+            (0x0BC6, 0x0BC8),
+            (0x0BCA, 0x0BCC),
+            (0x0BD7, 0x0BD7),
+        ],
     ) {
         IndicCharCategory::VowelSign
     } else {
@@ -266,7 +272,12 @@ fn classify_telugu(cp: u32) -> IndicCharCategory {
         IndicCharCategory::Vowel
     } else if in_ranges(
         cp,
-        &[(0x0C3E, 0x0C44), (0x0C46, 0x0C48), (0x0C4A, 0x0C4C), (0x0C55, 0x0C56)],
+        &[
+            (0x0C3E, 0x0C44),
+            (0x0C46, 0x0C48),
+            (0x0C4A, 0x0C4C),
+            (0x0C55, 0x0C56),
+        ],
     ) {
         IndicCharCategory::VowelSign
     } else {
@@ -281,7 +292,12 @@ fn classify_kannada(cp: u32) -> IndicCharCategory {
         IndicCharCategory::Vowel
     } else if in_ranges(
         cp,
-        &[(0x0CBE, 0x0CC4), (0x0CC6, 0x0CC8), (0x0CCA, 0x0CCC), (0x0CD5, 0x0CD6)],
+        &[
+            (0x0CBE, 0x0CC4),
+            (0x0CC6, 0x0CC8),
+            (0x0CCA, 0x0CCC),
+            (0x0CD5, 0x0CD6),
+        ],
     ) {
         IndicCharCategory::VowelSign
     } else {
@@ -296,7 +312,12 @@ fn classify_malayalam(cp: u32) -> IndicCharCategory {
         IndicCharCategory::Vowel
     } else if in_ranges(
         cp,
-        &[(0x0D3E, 0x0D44), (0x0D46, 0x0D48), (0x0D4A, 0x0D4C), (0x0D57, 0x0D57)],
+        &[
+            (0x0D3E, 0x0D44),
+            (0x0D46, 0x0D48),
+            (0x0D4A, 0x0D4C),
+            (0x0D57, 0x0D57),
+        ],
     ) {
         IndicCharCategory::VowelSign
     } else {
@@ -355,45 +376,41 @@ pub fn cluster_indic_text(text: &str) -> Vec<IndicCluster> {
         let mut j = i + 1;
 
         match cat {
-            IndicCharCategory::Consonant => {
-                loop {
-                    if j >= chars.len() {
+            IndicCharCategory::Consonant => loop {
+                if j >= chars.len() {
+                    break;
+                }
+                let next_cat = indic_char_category(chars[j].1);
+                match next_cat {
+                    IndicCharCategory::Nukta => {
+                        cluster_chars.push(chars[j].1);
+                        j += 1;
+                    }
+                    IndicCharCategory::Virama => {
+                        cluster_chars.push(chars[j].1);
+                        j += 1;
+                        if j < chars.len()
+                            && indic_char_category(chars[j].1) == IndicCharCategory::Consonant
+                        {
+                            cluster_chars.push(chars[j].1);
+                            j += 1;
+                            continue;
+                        }
                         break;
                     }
-                    let next_cat = indic_char_category(chars[j].1);
-                    match next_cat {
-                        IndicCharCategory::Nukta => {
-                            cluster_chars.push(chars[j].1);
-                            j += 1;
-                        }
-                        IndicCharCategory::Virama => {
-                            cluster_chars.push(chars[j].1);
-                            j += 1;
-                            if j < chars.len()
-                                && indic_char_category(chars[j].1)
-                                    == IndicCharCategory::Consonant
-                            {
-                                cluster_chars.push(chars[j].1);
-                                j += 1;
-                                continue;
-                            }
-                            break;
-                        }
-                        IndicCharCategory::VowelSign => {
-                            cluster_chars.push(chars[j].1);
-                            j += 1;
-                            break;
-                        }
-                        _ => break,
+                    IndicCharCategory::VowelSign => {
+                        cluster_chars.push(chars[j].1);
+                        j += 1;
+                        break;
                     }
+                    _ => break,
                 }
-            }
+            },
             IndicCharCategory::Vowel | IndicCharCategory::Danda | IndicCharCategory::Other => {
                 j = i + 1;
             }
             IndicCharCategory::Digit => {
-                while j < chars.len()
-                    && indic_char_category(chars[j].1) == IndicCharCategory::Digit
+                while j < chars.len() && indic_char_category(chars[j].1) == IndicCharCategory::Digit
                 {
                     cluster_chars.push(chars[j].1);
                     j += 1;
@@ -404,7 +421,11 @@ pub fn cluster_indic_text(text: &str) -> Vec<IndicCluster> {
             }
         }
 
-        let end = if j < chars.len() { chars[j].0 } else { text.len() };
+        let end = if j < chars.len() {
+            chars[j].0
+        } else {
+            text.len()
+        };
         clusters.push(IndicCluster {
             chars: cluster_chars,
             start,
@@ -478,42 +499,21 @@ mod tests {
 
     #[test]
     fn indic_char_category_virama() {
-        assert_eq!(
-            indic_char_category('\u{094D}'),
-            IndicCharCategory::Virama
-        );
-        assert_eq!(
-            indic_char_category('\u{09CD}'),
-            IndicCharCategory::Virama
-        );
-        assert_eq!(
-            indic_char_category('\u{0BCD}'),
-            IndicCharCategory::Virama
-        );
+        assert_eq!(indic_char_category('\u{094D}'), IndicCharCategory::Virama);
+        assert_eq!(indic_char_category('\u{09CD}'), IndicCharCategory::Virama);
+        assert_eq!(indic_char_category('\u{0BCD}'), IndicCharCategory::Virama);
     }
 
     #[test]
     fn indic_char_category_nukta() {
-        assert_eq!(
-            indic_char_category('\u{093C}'),
-            IndicCharCategory::Nukta
-        );
-        assert_eq!(
-            indic_char_category('\u{09BC}'),
-            IndicCharCategory::Nukta
-        );
+        assert_eq!(indic_char_category('\u{093C}'), IndicCharCategory::Nukta);
+        assert_eq!(indic_char_category('\u{09BC}'), IndicCharCategory::Nukta);
     }
 
     #[test]
     fn indic_char_category_danda() {
-        assert_eq!(
-            indic_char_category('\u{0964}'),
-            IndicCharCategory::Danda
-        );
-        assert_eq!(
-            indic_char_category('\u{0965}'),
-            IndicCharCategory::Danda
-        );
+        assert_eq!(indic_char_category('\u{0964}'), IndicCharCategory::Danda);
+        assert_eq!(indic_char_category('\u{0965}'), IndicCharCategory::Danda);
     }
 
     #[test]

@@ -8,6 +8,7 @@ description = "LDIR Vello/GPU rendering integration"
 [dependencies]
 ldir-core = { workspace = true }
 ldir-ir = { workspace = true }
+ttf-parser = { workspace = true }
 vello = { workspace = true }
 parley = { workspace = true }
 wgpu = { workspace = true }

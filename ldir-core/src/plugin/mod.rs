@@ -41,7 +41,11 @@ pub trait BackendPlugin: Send + Sync {
     fn extension(&self) -> &str;
 
     /// Convert S-IR v2 to output bytes.
-    fn generate(&self, module: &SIRModuleV2, options: &GenerateOptions) -> Result<Vec<u8>, PluginError>;
+    fn generate(
+        &self,
+        module: &SIRModuleV2,
+        options: &GenerateOptions,
+    ) -> Result<Vec<u8>, PluginError>;
 }
 
 /// Options for output generation.
@@ -162,7 +166,10 @@ mod tests {
 
     impl MockFrontend {
         fn new(name: &'static str, exts: &'static [&'static str]) -> Self {
-            Self { name_str: name, exts }
+            Self {
+                name_str: name,
+                exts,
+            }
         }
     }
 
@@ -179,7 +186,11 @@ mod tests {
             Ok(SIRModuleV2::new())
         }
 
-        fn parse_string(&self, _text: &str, _source_name: &str) -> Result<SIRModuleV2, PluginError> {
+        fn parse_string(
+            &self,
+            _text: &str,
+            _source_name: &str,
+        ) -> Result<SIRModuleV2, PluginError> {
             Ok(SIRModuleV2::new())
         }
     }
@@ -191,7 +202,10 @@ mod tests {
 
     impl MockBackend {
         fn new(name: &'static str, ext: &'static str) -> Self {
-            Self { name_str: name, ext }
+            Self {
+                name_str: name,
+                ext,
+            }
         }
     }
 
@@ -204,7 +218,11 @@ mod tests {
             self.ext
         }
 
-        fn generate(&self, _module: &SIRModuleV2, _options: &GenerateOptions) -> Result<Vec<u8>, PluginError> {
+        fn generate(
+            &self,
+            _module: &SIRModuleV2,
+            _options: &GenerateOptions,
+        ) -> Result<Vec<u8>, PluginError> {
             Ok(vec![b'<', b'h', b't', b'm', b'l', b'>'])
         }
     }
@@ -335,7 +353,9 @@ mod tests {
 
         let backend = registry.find_backend("html").unwrap();
         let module = SIRModuleV2::new();
-        let result = backend.generate(&module, &GenerateOptions::default()).unwrap();
+        let result = backend
+            .generate(&module, &GenerateOptions::default())
+            .unwrap();
         assert_eq!(result, b"<html>");
     }
 

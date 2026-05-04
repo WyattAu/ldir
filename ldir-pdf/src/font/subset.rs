@@ -106,15 +106,15 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
     new_loca.push(0);
 
     for gid in 0..=max_gid {
-        let range = if let (Some(loca), Some(glyf)) = (loca_table, glyf_table) {
-            get_glyph_range(loca, glyf, gid, loca_format)
+        let (start, len) = if let (Some(loca), Some(glyf)) = (loca_table, glyf_table) {
+            get_glyph_range(loca, glyf, gid, loca_format).unwrap_or((0, 0))
         } else {
-            None
+            (0, 0)
         };
-
-        let (start, len) = range.unwrap_or((0, 0));
-        if len > 0 {
-            new_glyf.extend_from_slice(&glyf_table.unwrap()[start..start + len]);
+        if len > 0
+            && let Some(glyf) = glyf_table
+        {
+            new_glyf.extend_from_slice(&glyf[start..start + len]);
         }
         // Pad to 2-byte boundary (required by short loca format)
         while !new_glyf.len().is_multiple_of(2) {

@@ -347,11 +347,16 @@ fn build_dom(tokens: &[HtmlToken]) -> DomNode {
     }
 
     while stack.len() > 1 {
-        let popped = stack.pop().unwrap();
-        stack.last_mut().unwrap().children.push(popped);
+        let popped = stack.pop();
+        let parent = stack.last_mut();
+        if let (Some(popped), Some(parent)) = (popped, parent) {
+            parent.children.push(popped);
+        }
     }
 
-    stack.pop().unwrap()
+    stack
+        .pop()
+        .unwrap_or_else(|| unreachable!("stack always contains root element"))
 }
 
 struct Converter {

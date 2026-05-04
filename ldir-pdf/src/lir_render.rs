@@ -200,6 +200,14 @@ fn render_node(node: &LIRNode, page: &mut GIRPage) {
             page.push(GIRCommand::new_draw_rule(x, y, w, thickness));
         }
         LIRNode::TableOfContents(_toc) => {}
+        LIRNode::Bibliography(bib) => {
+            page.push_stack();
+            for child in &bib.children {
+                render_node(child, page);
+            }
+            page.pop_stack();
+        }
+        LIRNode::Citation(_) => {}
         LIRNode::PageBreak(_) => {}
     }
 }

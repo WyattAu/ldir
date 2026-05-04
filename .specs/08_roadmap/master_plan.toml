@@ -2,14 +2,15 @@
 # Topologically sorted DAG of implementation tasks
 # Format: TOML (not JSON/YAML per project standard)
 #
-# NOTE: This file is historical. All Phase A tasks (TASK-001 through TASK-030)
-# are marked complete. See the Phase 8 section at the bottom for current work.
+# All Phase A (TASK-001..030), Phase B, Phase C, and Phase 9 tasks COMPLETE.
+# Total: 47 tasks, all done.
 
 [metadata]
-total_tasks = 30
+total_tasks = 47
 critical_path_length = 212
 created = "2026-04-23"
-version = "0.1.0"
+last_updated = "2026-05-04"
+version = "1.1.0"
 
 [[task]]
 id = "TASK-001"
@@ -402,7 +403,8 @@ quality_gate = "QG-TASK-030"
 status = "complete"
 
 # Phase 8: Hardening & Polish (2026-05 onward)
-# Priority: HIGH
+# All Phase A (TASK-001..030), Phase B, and Phase C tasks COMPLETE.
+# See Phase 9 section at the bottom for next work.
 
 [[task]]
 id = "TASK-031"
@@ -421,7 +423,7 @@ estimated_hours = 8
 [[task]]
 id = "TASK-033"
 title = "v2-native PDF backend (eliminate v1/v2 split)"
-status = "pending"
+status = "complete"
 era = "B"
 estimated_hours = 40
 depends_on = ["TASK-031", "TASK-032"]
@@ -429,49 +431,101 @@ depends_on = ["TASK-031", "TASK-032"]
 [[task]]
 id = "TASK-034"
 title = "Cross-reference resolution across all formats"
-status = "pending"
+status = "complete"
 era = "B"
 estimated_hours = 16
 
 [[task]]
 id = "TASK-035"
 title = "BibTeX/citation support"
-status = "pending"
+status = "complete"
 era = "B"
 estimated_hours = 24
 
 [[task]]
 id = "TASK-036"
 title = "CJK line breaking and vertical text"
-status = "pending"
+status = "complete"
 era = "C"
 estimated_hours = 40
 
 [[task]]
 id = "TASK-037"
 title = "RTL support (Arabic, Hebrew)"
-status = "pending"
+status = "complete"
 era = "C"
 estimated_hours = 32
 
 [[task]]
 id = "TASK-038"
 title = "Template system (header/footer, page masters)"
-status = "pending"
+status = "complete"
 era = "B"
 estimated_hours = 24
 
 [[task]]
 id = "TASK-039"
 title = "GPU-accelerated preview (Vello integration)"
-status = "pending"
+status = "complete"
 era = "C"
 estimated_hours = 40
 
 [[task]]
 id = "TASK-040"
 title = "Incremental PDF recompilation"
-status = "pending"
+status = "complete"
 era = "C"
 estimated_hours = 32
 depends_on = ["TASK-033"]
+
+# Phase 9: Quality Hardening (2026-05-04)
+# Quality hardening sprint — eliminate all production unwrap/expect, resolve Lean4 sorry, clean stubs
+
+[[task]]
+id = "TASK-041"
+title = "Eliminate all production unwrap/expect (42 instances)"
+status = "complete"
+era = "C"
+estimated_hours = 16
+
+[[task]]
+id = "TASK-042"
+title = "Resolve Lean4 kp_termination sorry"
+status = "complete"
+era = "C"
+estimated_hours = 4
+
+[[task]]
+id = "TASK-043"
+title = "Implement real payload_integrity validator"
+status = "complete"
+era = "C"
+estimated_hours = 4
+
+[[task]]
+id = "TASK-044"
+title = "Rewrite stale doc examples (tex-basic, markdown-to-pdf)"
+status = "complete"
+era = "C"
+estimated_hours = 4
+
+[[task]]
+id = "TASK-045"
+title = "Wire bibliography into L-IR default path"
+status = "complete"
+era = "C"
+estimated_hours = 8
+
+[[task]]
+id = "TASK-046"
+title = "Full UBA N0.b bracket pair resolution"
+status = "complete"
+era = "C"
+estimated_hours = 8
+
+[[task]]
+id = "TASK-047"
+title = "Vello real glyph outlines (ttf_parser + kurbo)"
+status = "complete"
+era = "C"
+estimated_hours = 8

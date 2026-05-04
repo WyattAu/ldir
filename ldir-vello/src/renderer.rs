@@ -165,7 +165,11 @@ impl VelloRenderer {
 
 impl Default for VelloRenderer {
     fn default() -> Self {
-        Self::new().unwrap()
+        Self {
+            scenes: Vec::new(),
+            font_map: FontMap::new(),
+            device_label: "headless".to_string(),
+        }
     }
 }
 

@@ -155,7 +155,9 @@ impl OrgParser {
         if trimmed.len() < 5 {
             return false;
         }
-        let first = trimmed.chars().next().unwrap();
+        let Some(first) = trimmed.chars().next() else {
+            return false;
+        };
         matches!(first, '-' | '_' | '*') && trimmed.chars().all(|c| c == first)
     }
 
@@ -633,7 +635,9 @@ impl OrgParser {
                         } else {
                             break;
                         }
-                        let item_text = self.advance().unwrap();
+                        let Some(item_text) = self.advance() else {
+                            break;
+                        };
                         let content = item_text
                             .trim_start_matches('-')
                             .trim_start_matches('+')
@@ -678,7 +682,9 @@ impl OrgParser {
                         } else {
                             break;
                         }
-                        let item_text = self.advance().unwrap();
+                        let Some(item_text) = self.advance() else {
+                            break;
+                        };
                         let trimmed = item_text.trim_start();
                         let dot_pos = trimmed.find(['.', ')']).unwrap_or(0);
                         let content = trimmed[dot_pos + 1..].trim();

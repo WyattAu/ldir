@@ -665,7 +665,15 @@ impl PdfDocumentBuilder {
 
         // Structure tree (PDF/UA)
         if let Some((all_nodes, node_start, root_id, parent_tree_id)) = struct_tree_info {
-            write_structure_tree(&mut pdf, &mut next_id, &all_nodes, node_start, root_id, parent_tree_id, &page_ids);
+            write_structure_tree(
+                &mut pdf,
+                &mut next_id,
+                &all_nodes,
+                node_start,
+                root_id,
+                parent_tree_id,
+                &page_ids,
+            );
         }
 
         pdf.finish()
@@ -719,7 +727,9 @@ fn write_structure_tree(
     }
 
     {
-        let mut root = pdf.indirect(root_id).start::<pdf_writer::writers::StructTreeRoot>();
+        let mut root = pdf
+            .indirect(root_id)
+            .start::<pdf_writer::writers::StructTreeRoot>();
         {
             let mut kids = root.children();
             for &r in &node_refs {

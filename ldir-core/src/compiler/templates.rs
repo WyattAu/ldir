@@ -646,10 +646,12 @@ pub fn parse_template(toml: &str) -> Result<DocumentTemplate, TemplateError> {
     let defaults = DocumentTemplate::minimal();
 
     let page_size = if let (Some(w), Some(h)) = (raw.page_width, raw.page_height) {
-        PageSize::Custom { width: w, height: h }
+        PageSize::Custom {
+            width: w,
+            height: h,
+        }
     } else if let Some(ps) = &raw.page_size {
-        PageSize::from_name(ps)
-            .ok_or_else(|| TemplateError::UnknownPageSize(ps.clone()))?
+        PageSize::from_name(ps).ok_or_else(|| TemplateError::UnknownPageSize(ps.clone()))?
     } else {
         defaults.page_size.clone()
     };
@@ -703,9 +705,7 @@ pub fn parse_template(toml: &str) -> Result<DocumentTemplate, TemplateError> {
                     font_size: val.font_size.unwrap_or(default_hs.font_size),
                     bold: val.bold.unwrap_or(default_hs.bold),
                     italic: val.italic.unwrap_or(default_hs.italic),
-                    spacing_before: val
-                        .spacing_before
-                        .unwrap_or(default_hs.spacing_before),
+                    spacing_before: val.spacing_before.unwrap_or(default_hs.spacing_before),
                     spacing_after: val.spacing_after.unwrap_or(default_hs.spacing_after),
                 },
             );
@@ -745,9 +745,7 @@ pub fn parse_template(toml: &str) -> Result<DocumentTemplate, TemplateError> {
         font_size: raw.font_size.unwrap_or(defaults.font_size),
         line_spacing: raw.line_spacing.unwrap_or(defaults.line_spacing),
         paragraph_indent: raw.paragraph_indent.or(defaults.paragraph_indent),
-        paragraph_spacing: raw
-            .paragraph_spacing
-            .unwrap_or(defaults.paragraph_spacing),
+        paragraph_spacing: raw.paragraph_spacing.unwrap_or(defaults.paragraph_spacing),
         heading_styles,
         header,
         footer,

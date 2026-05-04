@@ -8,9 +8,6 @@
 //! binary operators, delimiters, `\begin{cases}`, matrix environments,
 //! and stretchy delimiters (`\left`/`\right`).
 
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::expect_used)]
-
 use std::sync::Arc;
 
 use crate::fp266::Fp266;
@@ -186,9 +183,11 @@ fn tokenize_math(content: &str) -> Vec<MathToken> {
                     } else {
                         let inner_tokens = tokenize_math(&inner);
                         if inner_tokens.len() == 1 {
-                            tokens.push(MathToken::Radical(Box::new(
-                                inner_tokens.into_iter().next().expect("len == 1"),
-                            )));
+                            if let Some(token) = inner_tokens.into_iter().next() {
+                                tokens.push(MathToken::Radical(Box::new(token)));
+                            } else {
+                                tokens.push(MathToken::Radical(Box::new(MathToken::Text(inner))));
+                            }
                         } else {
                             tokens.push(MathToken::Radical(Box::new(MathToken::Text(inner))));
                         }

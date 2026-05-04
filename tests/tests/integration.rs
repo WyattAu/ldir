@@ -10,7 +10,9 @@ fn ldc_bin() -> PathBuf {
     let target = PathBuf::from(target);
     if target.is_relative() {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let workspace_root = manifest_dir.parent().expect("tests/ should be inside workspace");
+        let workspace_root = manifest_dir
+            .parent()
+            .expect("tests/ should be inside workspace");
         workspace_root.join(target).join("debug").join("ldc")
     } else {
         target.join("debug").join("ldc")
@@ -41,7 +43,12 @@ fn compile_to_pdf(input: &str, ext: &str) -> Result<Vec<u8>, String> {
     if !status.status.success() {
         let stderr = String::from_utf8_lossy(&status.stderr);
         let stdout = String::from_utf8_lossy(&status.stdout);
-        return Err(format!("ldc failed (exit {:?}):\n{}\n{}", status.status.code(), stderr, stdout));
+        return Err(format!(
+            "ldc failed (exit {:?}):\n{}\n{}",
+            status.status.code(),
+            stderr,
+            stdout
+        ));
     }
 
     std::fs::read(&output_path).map_err(|e| e.to_string())
@@ -140,7 +147,10 @@ fn test_pdf_structure() {
     assert!(pdf.starts_with(b"%PDF"), "must start with %PDF header");
     let pdf_str = String::from_utf8_lossy(&pdf);
     assert!(pdf_str.contains("/Pages"), "PDF must contain /Pages object");
-    assert!(pdf_str.contains("/Type /Catalog"), "PDF must contain /Type /Catalog");
+    assert!(
+        pdf_str.contains("/Type /Catalog"),
+        "PDF must contain /Type /Catalog"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +186,11 @@ fn test_multiformat() {
 #[test]
 fn test_empty_document() {
     let result = compile_to_pdf("", "md");
-    assert!(result.is_ok(), "empty input should produce a valid PDF: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "empty input should produce a valid PDF: {:?}",
+        result.err()
+    );
     let pdf = result.unwrap();
     assert!(pdf.starts_with(b"%PDF"));
 }

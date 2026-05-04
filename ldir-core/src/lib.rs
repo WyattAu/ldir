@@ -23,11 +23,17 @@
 //! ```rust
 //! use ldir_core::compiler::compile_sir;
 //! use ldir_core::validator::validate_sir;
-//! use ldir_ir::sir::{SIRDocument, SIRInstruction, SIROpcode, ROOT_SENTINEL};
+//! use ldir_ir::sir::{SIRDocument, SIRInstruction, SIROpcode, ROOT_SENTINEL, BlockType};
 //!
 //! let mut doc = SIRDocument::new();
-//! doc.push(SIRInstruction::new(SIROpcode::PushBlock, 0, ROOT_SENTINEL, 0));
-//! doc.push(SIRInstruction::new(SIROpcode::SetContent, 1, 0, 0));
+//! doc.push_with_payload(
+//!     SIRInstruction::new(SIROpcode::PushBlock, 0, ROOT_SENTINEL, 0),
+//!     &[BlockType::Document as u8],
+//! );
+//! doc.push_with_payload(
+//!     SIRInstruction::new(SIROpcode::SetContent, 1, 0, 0),
+//!     b"Hello",
+//! );
 //!
 //! validate_sir(&doc).expect("document should be well-formed");
 //! let gir = compile_sir(&doc).expect("compilation should succeed");

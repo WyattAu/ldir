@@ -24,8 +24,9 @@ pub use style::{
     FlowDirection, LIRStyleTable, LIRTextStyle, ListType, MathType, Padding, Placement, TextAlign,
 };
 pub use types::{
-    LIRBlockQuote, LIRCaption, LIRCodeBlock, LIRDocument, LIRDocumentMeta, LIRFigure, LIRFlow,
-    LIRFootnote, LIRFootnoteBlock, LIRGeometry, LIRGlyph, LIRHeading, LIRLine, LIRList,
-    LIRListItem, LIRMathBlock, LIRNode, LIRPage, LIRPageBreak, LIRParagraph, LIRSpace, LIRTable,
-    LIRTableCell, LIRTableOfContents, LIRTableRow, LIRThematicBreak, TOCEntry,
+    LIRBibEntry, LIRBibliography, LIRBlockQuote, LIRCaption, LIRCitation, LIRCodeBlock,
+    LIRDocument, LIRDocumentMeta, LIRFigure, LIRFlow, LIRFootnote, LIRFootnoteBlock, LIRGeometry,
+    LIRGlyph, LIRHeading, LIRLine, LIRList, LIRListItem, LIRMathBlock, LIRNode, LIRPage,
+    LIRPageBreak, LIRParagraph, LIRSpace, LIRTable, LIRTableCell, LIRTableOfContents, LIRTableRow,
+    LIRThematicBreak, TOCEntry,
 };

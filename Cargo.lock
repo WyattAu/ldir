@@ -1432,7 +1432,9 @@ dependencies = [
  "fontdb",
  "harfbuzz-sys",
  "ldir-ir",
+ "ldir-md",
  "ldir-pdf",
+ "ldir-tex",
  "proptest",
  "quickcheck",
  "rkyv",
@@ -1618,6 +1620,7 @@ dependencies = [
  "ldir-core",
  "ldir-ir",
  "parley",
+ "ttf-parser 0.25.1",
  "vello",
  "wgpu 23.0.1",
 ]

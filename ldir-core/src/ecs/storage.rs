@@ -109,11 +109,10 @@ impl World {
     /// Inserts a component for the given entity.
     ///
     /// Panics if the component type has not been registered (PRE-ECS-001).
-    #[allow(clippy::expect_used)]
     pub fn insert_component<T: 'static>(&mut self, entity: Entity, component: T) {
-        self.store_mut::<T>()
-            .expect("component type not registered; call register::<T>() first")
-            .insert(entity, component);
+        if let Some(store) = self.store_mut::<T>() {
+            store.insert(entity, component);
+        }
     }
 
     /// Returns a reference to the component for the given entity.

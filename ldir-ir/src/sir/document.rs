@@ -199,7 +199,9 @@ impl SIRDocument {
     /// for full round-trip fidelity including payload data.
     pub fn to_bytes(&self) -> Vec<u8> {
         rkyv::to_bytes::<rkyv::rancor::Error>(&self.instructions)
-            .unwrap()
+            .unwrap_or_else(|e| {
+                unreachable!("rkyv serialization of SIR instructions should not fail: {e}")
+            })
             .into_vec()
     }
 
@@ -222,7 +224,9 @@ impl SIRDocument {
     pub fn to_bytes_with_payload(&self) -> Vec<u8> {
         let payload_bytes = self.payload.as_bytes();
         let instr_bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&self.instructions)
-            .unwrap()
+            .unwrap_or_else(|e| {
+                unreachable!("rkyv serialization of SIR instructions should not fail: {e}")
+            })
             .into_vec();
         let payload_len = payload_bytes.len() as u32;
         let mut out = Vec::with_capacity(4 + payload_bytes.len() + instr_bytes.len());

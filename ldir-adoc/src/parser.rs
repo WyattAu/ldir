@@ -705,7 +705,9 @@ impl AsciidocParser {
                         } else {
                             break;
                         }
-                        let item_text = self.advance().unwrap();
+                        let Some(item_text) = self.advance() else {
+                            break;
+                        };
                         let content = item_text.trim_start_matches('*').trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
@@ -747,7 +749,9 @@ impl AsciidocParser {
                         } else {
                             break;
                         }
-                        let item_text = self.advance().unwrap();
+                        let Some(item_text) = self.advance() else {
+                            break;
+                        };
                         let content = item_text.trim_start_matches('.').trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();

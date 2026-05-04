@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 use std::collections::HashMap;
 
 use ldir_ir::sir::v2::module::SIRModuleV2;
@@ -127,8 +125,7 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                     .trim_end_matches('\0')
                     .to_string();
 
-                if !style_stack.is_empty() {
-                    let style_node_type = style_stack.last().unwrap().clone();
+                if let Some(style_node_type) = style_stack.last().cloned() {
                     let mut style_node = Node::new(v2_id, style_node_type);
                     if let Some(pid) = parent_v2.or(current_block_v2) {
                         style_node = style_node.with_parent(pid);

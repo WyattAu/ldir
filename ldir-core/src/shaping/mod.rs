@@ -11,9 +11,9 @@
 
 pub mod cache;
 pub mod fast_path;
-pub mod indic;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod harfbuzz;
+pub mod indic;
 
 use crate::fp266::Fp266;
 use crate::shaping::cache::ThreadSafeShapeCache;
@@ -24,7 +24,11 @@ use crate::shaping::cache::ThreadSafeShapeCache;
 #[allow(dead_code)]
 pub use harfbuzz::{CALT, Feature, KERN, LIGA, LNUM, ONUM, TNUM};
 
-/// OpenType feature stub for WASM targets.
+/// No-op OpenType feature placeholder for WASM targets.
+///
+/// Features (kerning, ligatures, etc.) are not supported without HarfBuzz.
+/// This type allows code to compile on WASM but feature parameters are
+/// silently ignored during shaping.
 #[cfg(target_arch = "wasm32")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Feature {

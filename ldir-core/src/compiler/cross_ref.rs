@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::annotations::LabelCategory;
 use ldir_ir::sir::v2::nodes::NodeType;
-use ldir_ir::sir::v2::SIRModuleV2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LabelKind {
@@ -270,7 +270,9 @@ pub fn resolve_text_references(
         if bytes[i] == b'@' && i + 1 < bytes.len() {
             let rest = &text[i + 1..];
             let label_end = rest
-                .find(|c: char| !c.is_alphanumeric() && c != ':' && c != '_' && c != '-' && c != '.')
+                .find(|c: char| {
+                    !c.is_alphanumeric() && c != ':' && c != '_' && c != '-' && c != '.'
+                })
                 .unwrap_or(rest.len());
             if label_end > 0 {
                 let label = &rest[..label_end];
@@ -330,9 +332,11 @@ mod tests {
     fn make_section_module(label: &str) -> SIRModuleV2 {
         let mut m = SIRModuleV2::new();
         let doc_id = m.body.push(Node::new(0, NodeType::Document));
-        let sec_id = m
-            .body
-            .push(Node::new(1, NodeType::Section).with_label(label).with_parent(doc_id));
+        let sec_id = m.body.push(
+            Node::new(1, NodeType::Section)
+                .with_label(label)
+                .with_parent(doc_id),
+        );
         let text_id = m.body.push(
             Node::new(
                 2,
@@ -364,13 +368,16 @@ mod tests {
     #[test]
     fn test_collect_labels_equation() {
         let mut m = SIRModuleV2::new();
-        m.body.push(Node::new(
-            0,
-            NodeType::MathBlock {
-                math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
-                numbered: true,
-            },
-        ).with_label("eq:einstein"));
+        m.body.push(
+            Node::new(
+                0,
+                NodeType::MathBlock {
+                    math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
+                    numbered: true,
+                },
+            )
+            .with_label("eq:einstein"),
+        );
         let labels = collect_labels(&m);
         assert_eq!(labels.len(), 1);
         assert_eq!(labels[0].label, "eq:einstein");
@@ -382,9 +389,12 @@ mod tests {
     fn test_collect_labels_figure() {
         let mut m = SIRModuleV2::new();
         m.body.push(
-            Node::new(0, NodeType::Figure {
-                placement: ldir_ir::sir::v2::nodes::FloatPlacement::Here,
-            })
+            Node::new(
+                0,
+                NodeType::Figure {
+                    placement: ldir_ir::sir::v2::nodes::FloatPlacement::Here,
+                },
+            )
             .with_label("fig:diagram"),
         );
         let labels = collect_labels(&m);
@@ -419,9 +429,11 @@ mod tests {
         let mut m = SIRModuleV2::new();
         let doc_id = m.body.push(Node::new(0, NodeType::Document));
 
-        let sec_id = m
-            .body
-            .push(Node::new(1, NodeType::Section).with_label("sec:methods").with_parent(doc_id));
+        let sec_id = m.body.push(
+            Node::new(1, NodeType::Section)
+                .with_label("sec:methods")
+                .with_parent(doc_id),
+        );
         if let Some(d) = m.body.get_mut(doc_id) {
             d.add_child(sec_id);
         }
@@ -437,9 +449,12 @@ mod tests {
             .with_label("eq:pythagoras"),
         );
         m.body.push(
-            Node::new(3, NodeType::Figure {
-                placement: ldir_ir::sir::v2::nodes::FloatPlacement::Here,
-            })
+            Node::new(
+                3,
+                NodeType::Figure {
+                    placement: ldir_ir::sir::v2::nodes::FloatPlacement::Here,
+                },
+            )
             .with_label("fig:results"),
         );
 
@@ -464,15 +479,21 @@ mod tests {
         let mut m = SIRModuleV2::new();
         let doc_id = m.body.push(Node::new(0, NodeType::Document));
 
-        let sec1 = m
-            .body
-            .push(Node::new(1, NodeType::Section).with_label("sec:a").with_parent(doc_id));
-        let sec2 = m
-            .body
-            .push(Node::new(2, NodeType::Section).with_label("sec:b").with_parent(doc_id));
-        let sub = m
-            .body
-            .push(Node::new(3, NodeType::Subsection).with_label("subsec:c").with_parent(doc_id));
+        let sec1 = m.body.push(
+            Node::new(1, NodeType::Section)
+                .with_label("sec:a")
+                .with_parent(doc_id),
+        );
+        let sec2 = m.body.push(
+            Node::new(2, NodeType::Section)
+                .with_label("sec:b")
+                .with_parent(doc_id),
+        );
+        let sub = m.body.push(
+            Node::new(3, NodeType::Subsection)
+                .with_label("subsec:c")
+                .with_parent(doc_id),
+        );
         if let Some(d) = m.body.get_mut(doc_id) {
             d.add_child(sec1);
             d.add_child(sec2);
@@ -490,13 +511,11 @@ mod tests {
 
     #[test]
     fn test_resolve_references_basic() {
-        let labels = vec![
-            ResolvedLabel {
-                label: "sec:intro".to_string(),
-                kind: LabelKind::Section { level: 2 },
-                number: "1.2".to_string(),
-            },
-        ];
+        let labels = vec![ResolvedLabel {
+            label: "sec:intro".to_string(),
+            kind: LabelKind::Section { level: 2 },
+            number: "1.2".to_string(),
+        }];
         let map = resolve_references(&labels);
         assert_eq!(map.get("sec:intro").unwrap(), "1.2");
     }
@@ -580,10 +599,7 @@ mod tests {
 
         let text = r"See \ref{sec:intro}, \eqref{eq:einstein}, and \autoref{fig:diagram}.";
         let resolved = resolve_text_references(text, &numbers, &kinds);
-        assert_eq!(
-            resolved,
-            "See 1, (1), and Figure 2."
-        );
+        assert_eq!(resolved, "See 1, (1), and Figure 2.");
     }
 
     #[test]
@@ -636,16 +652,20 @@ mod tests {
         let mut m = SIRModuleV2::new();
         let doc_id = m.body.push(Node::new(0, NodeType::Document));
 
-        let ch = m
-            .body
-            .push(Node::new(1, NodeType::Chapter).with_label("ch:intro").with_parent(doc_id));
+        let ch = m.body.push(
+            Node::new(1, NodeType::Chapter)
+                .with_label("ch:intro")
+                .with_parent(doc_id),
+        );
         if let Some(d) = m.body.get_mut(doc_id) {
             d.add_child(ch);
         }
 
-        let sec = m
-            .body
-            .push(Node::new(2, NodeType::Section).with_label("sec:background").with_parent(doc_id));
+        let sec = m.body.push(
+            Node::new(2, NodeType::Section)
+                .with_label("sec:background")
+                .with_parent(doc_id),
+        );
         if let Some(d) = m.body.get_mut(doc_id) {
             d.add_child(sec);
         }
@@ -663,20 +683,26 @@ mod tests {
     #[test]
     fn test_collect_labels_multiple_equations() {
         let mut m = SIRModuleV2::new();
-        m.body.push(Node::new(
-            0,
-            NodeType::MathBlock {
-                math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
-                numbered: true,
-            },
-        ).with_label("eq:first"));
-        m.body.push(Node::new(
-            1,
-            NodeType::MathBlock {
-                math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
-                numbered: true,
-            },
-        ).with_label("eq:second"));
+        m.body.push(
+            Node::new(
+                0,
+                NodeType::MathBlock {
+                    math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
+                    numbered: true,
+                },
+            )
+            .with_label("eq:first"),
+        );
+        m.body.push(
+            Node::new(
+                1,
+                NodeType::MathBlock {
+                    math_type: ldir_ir::sir::v2::nodes::MathType::Equation,
+                    numbered: true,
+                },
+            )
+            .with_label("eq:second"),
+        );
         m.body.push(Node::new(
             2,
             NodeType::MathBlock {

@@ -5,8 +5,6 @@
 //! - Per page: command count u32 LE + width i32 LE + height i32 LE
 //! - Per command: opcode u8 + 3 padding + 8 × i32 LE args = 36 bytes
 
-#![allow(clippy::expect_used)]
-
 use ldir_ir::gir::{GIR_COMMAND_ARGS, GIRCommand, GIRDocument, GIROpcode, GIRPage};
 
 use crate::error::{EmitErrorKind, Result};
@@ -90,7 +88,7 @@ pub fn parse_gir(bytes: &[u8]) -> Result<GIRDocument> {
         .into());
     }
 
-    let page_count = u32::from_le_bytes(bytes[4..8].try_into().expect("header slice")) as usize;
+    let page_count = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as usize;
     let mut doc = GIRDocument::with_capacity(page_count);
     let mut offset = HEADER_SIZE;
 
@@ -103,21 +101,24 @@ pub fn parse_gir(bytes: &[u8]) -> Result<GIRDocument> {
             .into());
         }
 
-        let cmd_count = u32::from_le_bytes(
-            bytes[offset..offset + 4]
-                .try_into()
-                .expect("page header slice"),
-        ) as usize;
-        let width = i32::from_le_bytes(
-            bytes[offset + 4..offset + 8]
-                .try_into()
-                .expect("width slice"),
-        );
-        let height = i32::from_le_bytes(
-            bytes[offset + 8..offset + 12]
-                .try_into()
-                .expect("height slice"),
-        );
+        let cmd_count = u32::from_le_bytes([
+            bytes[offset],
+            bytes[offset + 1],
+            bytes[offset + 2],
+            bytes[offset + 3],
+        ]) as usize;
+        let width = i32::from_le_bytes([
+            bytes[offset + 4],
+            bytes[offset + 5],
+            bytes[offset + 6],
+            bytes[offset + 7],
+        ]);
+        let height = i32::from_le_bytes([
+            bytes[offset + 8],
+            bytes[offset + 9],
+            bytes[offset + 10],
+            bytes[offset + 11],
+        ]);
         offset += PAGE_HEADER_SIZE;
 
         let page_data_end = offset + cmd_count * COMMAND_SIZE;
@@ -143,11 +144,12 @@ pub fn parse_gir(bytes: &[u8]) -> Result<GIRDocument> {
             let args_start = offset + 4;
             for (i, arg) in args.iter_mut().enumerate() {
                 let arg_offset = args_start + i * 4;
-                *arg = i32::from_le_bytes(
-                    bytes[arg_offset..arg_offset + 4]
-                        .try_into()
-                        .expect("arg slice"),
-                );
+                *arg = i32::from_le_bytes([
+                    bytes[arg_offset],
+                    bytes[arg_offset + 1],
+                    bytes[arg_offset + 2],
+                    bytes[arg_offset + 3],
+                ]);
             }
 
             page.push(GIRCommand::new(opcode, args));

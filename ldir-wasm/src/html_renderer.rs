@@ -77,7 +77,11 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
                         let escaped = escape_html(text);
 
                         if let Some(url) = link_url_for_block.get(&parent_id) {
-                            html.push_str(&format!("<a href=\"{}\">{}</a>", escape_attr(url), escaped));
+                            html.push_str(&format!(
+                                "<a href=\"{}\">{}</a>",
+                                escape_attr(url),
+                                escaped
+                            ));
                         } else {
                             html.push_str(&escaped);
                         }
@@ -150,22 +154,43 @@ fn detect_language(code: &str) -> &str {
 fn highlight_code(code: &str, language: &str) -> String {
     let keywords: &[&str] = match language {
         "rust" => &[
-            "fn", "let", "mut", "pub", "struct", "impl", "use", "mod", "enum",
-            "match", "if", "else", "for", "while", "loop", "return", "self",
-            "super", "crate", "true", "false", "async", "await", "unsafe",
-            "type", "trait", "where", "const", "static", "extern", "in",
+            "fn", "let", "mut", "pub", "struct", "impl", "use", "mod", "enum", "match", "if",
+            "else", "for", "while", "loop", "return", "self", "super", "crate", "true", "false",
+            "async", "await", "unsafe", "type", "trait", "where", "const", "static", "extern",
+            "in",
         ],
         "latex" | "tex" => &[
-            "\\section", "\\subsection", "\\subsubsection", "\\begin", "\\end",
-            "\\textbf", "\\textit", "\\emph", "\\cite", "\\ref", "\\label",
-            "\\equation", "\\frac", "\\sqrt", "\\int", "\\sum", "\\alpha",
-            "\\beta", "\\gamma", "\\delta", "\\lambda", "\\pi", "\\infty",
-            "\\partial", "\\documentclass", "\\usepackage", "\\hline",
+            "\\section",
+            "\\subsection",
+            "\\subsubsection",
+            "\\begin",
+            "\\end",
+            "\\textbf",
+            "\\textit",
+            "\\emph",
+            "\\cite",
+            "\\ref",
+            "\\label",
+            "\\equation",
+            "\\frac",
+            "\\sqrt",
+            "\\int",
+            "\\sum",
+            "\\alpha",
+            "\\beta",
+            "\\gamma",
+            "\\delta",
+            "\\lambda",
+            "\\pi",
+            "\\infty",
+            "\\partial",
+            "\\documentclass",
+            "\\usepackage",
+            "\\hline",
         ],
         "typst" => &[
-            "let", "set", "show", "import", "include", "context", "for",
-            "if", "else", "while", "return", "break", "continue", "true",
-            "false", "none", "auto",
+            "let", "set", "show", "import", "include", "context", "for", "if", "else", "while",
+            "return", "break", "continue", "true", "false", "none", "auto",
         ],
         _ => return escape_html(code),
     };
@@ -302,8 +327,7 @@ fn highlight_code(code: &str, language: &str) -> String {
         // Numbers
         if chars[i].is_ascii_digit() {
             let start = i;
-            while i < len && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == '_')
-            {
+            while i < len && (chars[i].is_ascii_digit() || chars[i] == '.' || chars[i] == '_') {
                 i += 1;
             }
             let num: String = chars[start..i].iter().collect();
@@ -603,10 +627,7 @@ mod tests {
             html.contains("code-container"),
             "missing code-container in: {html}"
         );
-        assert!(
-            html.contains("copy-btn"),
-            "missing copy-btn in: {html}"
-        );
+        assert!(html.contains("copy-btn"), "missing copy-btn in: {html}");
         assert!(
             html.contains("code-block"),
             "missing code-block class in: {html}"
@@ -759,7 +780,11 @@ mod tests {
     fn highlight_unknown_language() {
         let code = "just plain text with <html> & stuff";
         let html = highlight_code(code, "unknown");
-        assert_eq!(html, escape_html(code), "unknown language should passthrough escaped");
+        assert_eq!(
+            html,
+            escape_html(code),
+            "unknown language should passthrough escaped"
+        );
         assert!(html.contains("&lt;html&gt;"));
         assert!(html.contains("&amp;"));
     }
@@ -847,8 +872,14 @@ mod tests {
             result.contains("<span class=\"ln\">   2</span>"),
             "line 2 missing in: {result}"
         );
-        assert!(result.contains("line1"), "content line1 missing in: {result}");
-        assert!(result.contains("line2"), "content line2 missing in: {result}");
+        assert!(
+            result.contains("line1"),
+            "content line1 missing in: {result}"
+        );
+        assert!(
+            result.contains("line2"),
+            "content line2 missing in: {result}"
+        );
     }
 
     #[test]

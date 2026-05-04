@@ -3,7 +3,7 @@ use proptest::prelude::*;
 use ldir_core::compiler::compile_sir;
 use ldir_core::validator::validate_sir;
 use ldir_core::verifier::check_gir;
-use ldir_ir::sir::{ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
+use ldir_ir::sir::{BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
@@ -28,24 +28,21 @@ fn arbitrary_valid_sir() -> impl Strategy<Value = SIRDocument> {
             let mut doc = SIRDocument::new();
             let mut next_id: u32 = 0;
 
-            doc.push(SIRInstruction::new(
-                SIROpcode::PushBlock,
-                next_id,
-                ROOT_SENTINEL,
-                0,
-            ));
+            doc.push_with_payload(
+                SIRInstruction::new(SIROpcode::PushBlock, next_id, ROOT_SENTINEL, 0),
+                &[BlockType::Document as u8],
+            );
             let root_id = next_id;
             next_id += 1;
 
             for children in &children_groups {
                 let mut parent_id = root_id;
                 for _ in children {
-                    doc.push(SIRInstruction::new(
-                        SIROpcode::SetContent,
-                        next_id,
-                        parent_id,
-                        0,
-                    ));
+                    let text = format!("text {}\x00", next_id);
+                    doc.push_with_payload(
+                        SIRInstruction::new(SIROpcode::SetContent, next_id, parent_id, 0),
+                        text.as_bytes(),
+                    );
                     next_id += 1;
                 }
                 if !children.is_empty() {

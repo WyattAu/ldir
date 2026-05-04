@@ -174,7 +174,11 @@ pub fn scale_to_fit(width: u32, height: u32, max_width_pt: f64, max_height_pt: f
     if w <= 0.0 || h <= 0.0 {
         return (0.0, 0.0);
     }
-    let scale_w = if w > max_width_pt { max_width_pt / w } else { 1.0 };
+    let scale_w = if w > max_width_pt {
+        max_width_pt / w
+    } else {
+        1.0
+    };
     let scaled_w = w * scale_w;
     let scaled_h = h * scale_w;
     if scaled_h > max_height_pt && max_height_pt > 0.0 {
@@ -204,9 +208,7 @@ mod tests {
                     [r, g, b]
                 })
                 .collect();
-            writer
-                .write_image_data(&pixel_data)
-                .expect("write data");
+            writer.write_image_data(&pixel_data).expect("write data");
         }
         buf
     }
@@ -219,9 +221,7 @@ mod tests {
             encoder.set_depth(png::BitDepth::Eight);
             let mut writer = encoder.write_header().expect("header");
             let pixel_data: Vec<u8> = (0..width * height).map(|i| ((i * 7) % 256) as u8).collect();
-            writer
-                .write_image_data(&pixel_data)
-                .expect("write data");
+            writer.write_image_data(&pixel_data).expect("write data");
         }
         buf
     }
@@ -242,9 +242,7 @@ mod tests {
                     [r, g, b, a]
                 })
                 .collect();
-            writer
-                .write_image_data(&pixel_data)
-                .expect("write data");
+            writer.write_image_data(&pixel_data).expect("write data");
         }
         buf
     }

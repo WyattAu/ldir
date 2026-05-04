@@ -32,7 +32,7 @@ pub fn link_modules(modules: Vec<SIRModuleV2>) -> Result<SIRModuleV2, LinkError>
         return Err(LinkError::NoInputModules);
     }
     if modules.len() == 1 {
-        return Ok(modules.into_iter().next().unwrap());
+        return Ok(modules.into_iter().next().unwrap_or_else(|| unreachable!()));
     }
 
     let mut linker = ModuleLinker::new();

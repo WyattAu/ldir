@@ -1,9 +1,15 @@
-//! ASCII/Latin-1 fast-path shaping (bypasses HarfBuzz).
+//! WASM-safe text shaping without HarfBuzz dependency.
 //!
-//! Produces identical output for ASCII text as the full shaping path would.
-//! Uses a monospace assumption: each character advances by `0.6 * font_size`.
+//! Provides two shaping functions for environments where HarfBuzz is
+//! unavailable (primarily WASM targets):
 //!
-//! This is a **stub** implementation. Full HarfBuzz integration is deferred to Phase D.
+//! - [`shape_ascii`] — monospace ASCII fallback: each character advances
+//!   by `0.6 * font_size` with glyph ID based on byte value.
+//! - [`shape_unicode_basic`] — uses `ttf_parser` cmap lookup for proper
+//!   Unicode glyph IDs and advance widths from font data.
+//!
+//! This is the production shaping path on WASM targets and a fallback
+//! on native targets when font data is unavailable.
 
 use crate::fp266::Fp266;
 use crate::shaping::{ShapedGlyph, ShapedRun};
@@ -27,7 +33,7 @@ pub fn mono_advance(font_size: Fp266) -> Fp266 {
 
 /// Shape an ASCII text string using the fast path.
 ///
-/// Each ASCII character is mapped to a placeholder glyph ID (its byte value + 1,
+/// Each ASCII character is mapped to a glyph ID based on byte value (byte + 1,
 /// so NUL maps to 1 and 0x7F maps to 128). All characters use the monospace advance
 /// and zero offsets.
 ///

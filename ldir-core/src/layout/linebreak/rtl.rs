@@ -64,23 +64,88 @@ fn is_strong(bc: BidiClass) -> bool {
 fn is_weak(bc: BidiClass) -> bool {
     matches!(
         bc,
-        BidiClass::EN | BidiClass::ES | BidiClass::ET | BidiClass::AN | BidiClass::CS | BidiClass::NSM | BidiClass::BN
+        BidiClass::EN
+            | BidiClass::ES
+            | BidiClass::ET
+            | BidiClass::AN
+            | BidiClass::CS
+            | BidiClass::NSM
+            | BidiClass::BN
     )
 }
 
 fn is_neutral(bc: BidiClass) -> bool {
-    matches!(bc, BidiClass::B | BidiClass::S | BidiClass::WS | BidiClass::ON)
+    matches!(
+        bc,
+        BidiClass::B | BidiClass::S | BidiClass::WS | BidiClass::ON
+    )
 }
 
 fn is_isolate_or_format(bc: BidiClass) -> bool {
     matches!(
         bc,
-        BidiClass::LRE
-            | BidiClass::RLE
-            | BidiClass::LRO
-            | BidiClass::RLO
-            | BidiClass::PDF
+        BidiClass::LRE | BidiClass::RLE | BidiClass::LRO | BidiClass::RLO | BidiClass::PDF
     )
+}
+
+fn bracket_open_pair(ch: char) -> Option<char> {
+    match ch {
+        '(' => Some(')'),
+        '[' => Some(']'),
+        '{' => Some('}'),
+        '\u{2045}' => Some('\u{2046}'),
+        '\u{207D}' => Some('\u{207E}'),
+        '\u{208D}' => Some('\u{208E}'),
+        '\u{2329}' => Some('\u{232A}'),
+        '\u{3008}' => Some('\u{3009}'),
+        '\u{300A}' => Some('\u{300B}'),
+        '\u{300C}' => Some('\u{300D}'),
+        '\u{300E}' => Some('\u{300F}'),
+        '\u{3010}' => Some('\u{3011}'),
+        '\u{3014}' => Some('\u{3015}'),
+        '\u{3016}' => Some('\u{3017}'),
+        '\u{3018}' => Some('\u{3019}'),
+        '\u{301A}' => Some('\u{301B}'),
+        '\u{FE59}' => Some('\u{FE5A}'),
+        '\u{FE5B}' => Some('\u{FE5C}'),
+        '\u{FE5D}' => Some('\u{FE5E}'),
+        _ => None,
+    }
+}
+
+fn bracket_close_pair(ch: char) -> Option<char> {
+    match ch {
+        ')' => Some('('),
+        ']' => Some('['),
+        '}' => Some('{'),
+        '\u{2046}' => Some('\u{2045}'),
+        '\u{207E}' => Some('\u{207D}'),
+        '\u{208E}' => Some('\u{208D}'),
+        '\u{232A}' => Some('\u{2329}'),
+        '\u{3009}' => Some('\u{3008}'),
+        '\u{300B}' => Some('\u{300A}'),
+        '\u{300D}' => Some('\u{300C}'),
+        '\u{300F}' => Some('\u{300E}'),
+        '\u{3011}' => Some('\u{3010}'),
+        '\u{3015}' => Some('\u{3014}'),
+        '\u{3017}' => Some('\u{3016}'),
+        '\u{3019}' => Some('\u{3018}'),
+        '\u{301B}' => Some('\u{301A}'),
+        '\u{FE5A}' => Some('\u{FE59}'),
+        '\u{FE5C}' => Some('\u{FE5B}'),
+        '\u{FE5E}' => Some('\u{FE5D}'),
+        _ => None,
+    }
+}
+
+fn strong_direction(bc: BidiClass) -> Option<BidiClass> {
+    match bc {
+        BidiClass::L => Some(BidiClass::L),
+        BidiClass::R => Some(BidiClass::R),
+        BidiClass::EN => Some(BidiClass::L),
+        BidiClass::AN => Some(BidiClass::R),
+        _ => None,
+    }
 }
 
 /// Classify a character's bidirectional class per UAX#9 Table 3.
@@ -221,10 +286,7 @@ pub fn bidi_class(ch: char) -> BidiClass {
 
 /// Check if a character is a strong RTL character.
 pub fn is_rtl_strong(ch: char) -> bool {
-    matches!(
-        bidi_class(ch),
-        BidiClass::R | BidiClass::AL | BidiClass::AN
-    )
+    matches!(bidi_class(ch), BidiClass::R | BidiClass::AL | BidiClass::AN)
 }
 
 pub fn is_rtl_char(ch: char) -> bool {
@@ -446,8 +508,7 @@ impl BidiProcessor {
                         | BidiClass::RLO
                         | BidiClass::PDF
                         | BidiClass::BN
-                )
-                {
+                ) {
                     self.classes[i] = BidiClass::ON;
                 } else {
                     self.classes[i] = prev;
@@ -465,10 +526,7 @@ impl BidiProcessor {
                             found_al = true;
                             break;
                         }
-                        BidiClass::L
-                        | BidiClass::R
-                        | BidiClass::EN
-                        | BidiClass::AN => break,
+                        BidiClass::L | BidiClass::R | BidiClass::EN | BidiClass::AN => break,
                         _ => {}
                     }
                 }
@@ -487,8 +545,10 @@ impl BidiProcessor {
 
         // W4: Single separator between European numbers → EN
         for i in 1..len - 1 {
-            if matches!(self.classes[i], BidiClass::ES | BidiClass::CS | BidiClass::ET)
-                && self.classes[i - 1] == BidiClass::EN
+            if matches!(
+                self.classes[i],
+                BidiClass::ES | BidiClass::CS | BidiClass::ET
+            ) && self.classes[i - 1] == BidiClass::EN
                 && self.classes[i + 1] == BidiClass::EN
             {
                 self.classes[i] = BidiClass::EN;
@@ -539,7 +599,11 @@ impl BidiProcessor {
         for i in 0..len {
             match self.classes[i] {
                 BidiClass::ES | BidiClass::ET | BidiClass::CS => {
-                    let before = if i > 0 { self.classes[i - 1] } else { BidiClass::ON };
+                    let before = if i > 0 {
+                        self.classes[i - 1]
+                    } else {
+                        BidiClass::ON
+                    };
                     let after = if i + 1 < len {
                         self.classes[i + 1]
                     } else {
@@ -573,6 +637,136 @@ impl BidiProcessor {
                     self.classes[i] = BidiClass::L;
                 }
             }
+        }
+    }
+
+    fn resolve_bracket_pairs(&mut self) {
+        let len = self.chars.len();
+        if len == 0 {
+            return;
+        }
+
+        // BD16: Build list of bracket pairs using a stack-based algorithm.
+        // Only ON-type characters participate in bracket pair resolution.
+        let mut stack: Vec<(usize, char)> = Vec::new();
+        let mut pairs: Vec<(usize, usize)> = Vec::new();
+
+        for i in 0..len {
+            if !matches!(self.classes[i], BidiClass::ON) {
+                continue;
+            }
+
+            let ch = self.chars[i];
+
+            if let Some(closing) = bracket_open_pair(ch) {
+                stack.push((i, closing));
+            } else if bracket_close_pair(ch).is_some() {
+                // Scan back through the stack for a matching opening bracket
+                // at the same embedding level (BD16).
+                for j in (0..stack.len()).rev() {
+                    let (open_idx, expected_closing) = stack[j];
+                    if expected_closing == ch && self.levels[open_idx] == self.levels[i] {
+                        pairs.push((open_idx, i));
+                        stack.remove(j);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Track which positions belong to a resolved pair so context scans
+        // can skip them.
+        let mut paired = vec![false; len];
+        for &(open, close) in &pairs {
+            paired[open] = true;
+            paired[close] = true;
+        }
+
+        // N0.b: Resolve each bracket pair in list order.
+        for &(open, close) in &pairs {
+            let level = self.levels[open];
+            let embedding_dir = if level.is_multiple_of(2) {
+                BidiClass::L
+            } else {
+                BidiClass::R
+            };
+
+            // Find the nearest strong type within the pair, skipping BN
+            // and characters that belong to another pair.
+            let strong_within = 'found: {
+                for (k, &is_paired) in paired[open + 1..close].iter().enumerate() {
+                    let idx = open + 1 + k;
+                    if is_paired {
+                        continue;
+                    }
+                    if matches!(self.original_classes[idx], BidiClass::BN) {
+                        continue;
+                    }
+                    if let Some(dir) = strong_direction(self.classes[idx]) {
+                        break 'found Some(dir);
+                    }
+                }
+                None
+            };
+
+            let resolved = if let Some(strong) = strong_within {
+                if strong == embedding_dir {
+                    strong
+                } else {
+                    embedding_dir
+                }
+            } else {
+                // No strong type within the pair: fall back to surrounding context.
+                // Check preceding context (first strong type before the opening bracket).
+                let strong_before = {
+                    let mut idx = open;
+                    let mut result = None;
+                    while idx > 0 {
+                        idx -= 1;
+                        if paired[idx] {
+                            continue;
+                        }
+                        if matches!(self.original_classes[idx], BidiClass::BN) {
+                            continue;
+                        }
+                        result = strong_direction(self.classes[idx]);
+                        break;
+                    }
+                    result
+                };
+
+                // Check succeeding context (first strong type after the closing bracket).
+                let strong_after = {
+                    let mut result = None;
+                    for (offset, &is_paired) in paired[close + 1..len].iter().enumerate() {
+                        let idx = close + 1 + offset;
+                        if is_paired {
+                            continue;
+                        }
+                        if matches!(self.original_classes[idx], BidiClass::BN) {
+                            continue;
+                        }
+                        result = strong_direction(self.classes[idx]);
+                        break;
+                    }
+                    result
+                };
+
+                match (strong_before, strong_after) {
+                    (Some(dir), _) | (_, Some(dir)) if dir == embedding_dir => embedding_dir,
+                    (Some(_), _) | (_, Some(_)) => embedding_dir,
+                    (None, None) => {
+                        if self.paragraph_level.is_multiple_of(2) {
+                            BidiClass::L
+                        } else {
+                            BidiClass::R
+                        }
+                    }
+                }
+            };
+
+            self.classes[open] = resolved;
+            self.classes[close] = resolved;
         }
     }
 
@@ -617,7 +811,8 @@ impl BidiProcessor {
                     while idx > 0
                         && matches!(
                             self.original_classes[idx],
-                            BidiClass::BN | BidiClass::LRE
+                            BidiClass::BN
+                                | BidiClass::LRE
                                 | BidiClass::RLE
                                 | BidiClass::PDF
                                 | BidiClass::LRO
@@ -637,7 +832,8 @@ impl BidiProcessor {
                     while idx < len
                         && matches!(
                             self.original_classes[idx],
-                            BidiClass::BN | BidiClass::LRE
+                            BidiClass::BN
+                                | BidiClass::LRE
                                 | BidiClass::RLE
                                 | BidiClass::PDF
                                 | BidiClass::LRO
@@ -694,11 +890,7 @@ impl BidiProcessor {
             // Skip explicit format characters
             if matches!(
                 self.original_classes[i],
-                BidiClass::LRE
-                    | BidiClass::RLE
-                    | BidiClass::PDF
-                    | BidiClass::LRO
-                    | BidiClass::RLO
+                BidiClass::LRE | BidiClass::RLE | BidiClass::PDF | BidiClass::LRO | BidiClass::RLO
             ) {
                 self.levels[i] = self.paragraph_level;
                 continue;
@@ -821,6 +1013,7 @@ impl BidiProcessor {
     fn process(mut self) -> BidiResult {
         self.process_explicit();
         self.resolve_weak_types();
+        self.resolve_bracket_pairs();
         self.resolve_neutrals();
         self.resolve_implicit_levels();
 
@@ -1039,7 +1232,10 @@ mod tests {
         let runs = analyze_bidi(text);
         assert!(runs.len() >= 3);
         assert_eq!(runs[0].direction, TextDirection::LeftToRight);
-        assert!(runs.iter().any(|r| r.direction == TextDirection::RightToLeft));
+        assert!(
+            runs.iter()
+                .any(|r| r.direction == TextDirection::RightToLeft)
+        );
         assert_eq!(runs[runs.len() - 1].direction, TextDirection::LeftToRight);
     }
 
@@ -1093,7 +1289,10 @@ mod tests {
         let runs = analyze_bidi(text);
         assert!(runs.len() >= 3);
         assert_eq!(runs[0].direction, TextDirection::RightToLeft);
-        assert!(runs.iter().any(|r| r.direction == TextDirection::LeftToRight));
+        assert!(
+            runs.iter()
+                .any(|r| r.direction == TextDirection::LeftToRight)
+        );
     }
 
     #[test]
@@ -1264,7 +1463,12 @@ mod tests {
         // Hebrew chars should have odd level (RTL)
         for (i, ch) in text.chars().enumerate() {
             if is_rtl_strong(ch) {
-                assert_eq!(result.levels[i] % 2, 1, "Hebrew char at pos {} should have odd level", i);
+                assert_eq!(
+                    result.levels[i] % 2,
+                    1,
+                    "Hebrew char at pos {} should have odd level",
+                    i
+                );
             }
         }
     }
@@ -1362,5 +1566,165 @@ mod tests {
         let result = analyze_bidi_full(text, Some(TextDirection::RightToLeft));
         assert_eq!(result.base_direction, TextDirection::RightToLeft);
         assert!(result.runs.len() >= 2);
+    }
+
+    #[test]
+    fn bracket_pair_ltr_simple() {
+        let text = "(abc)";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        assert_eq!(result.base_direction, TextDirection::LeftToRight);
+        for &level in &result.levels {
+            assert_eq!(level, 0, "all chars in '(abc)' should be level 0");
+        }
+    }
+
+    #[test]
+    fn bracket_pair_rtl_with_hebrew() {
+        let text = "(שלום)";
+        let result = analyze_bidi_full(text, Some(TextDirection::RightToLeft));
+        assert_eq!(result.base_direction, TextDirection::RightToLeft);
+        for &level in &result.levels {
+            assert_eq!(level, 1, "all chars in '(שלום)' should be level 1");
+        }
+    }
+
+    #[test]
+    fn bracket_pair_mixed_ltr_hebrew() {
+        let text = "Hello(שלום)";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        assert_eq!(result.base_direction, TextDirection::LeftToRight);
+        assert_eq!(result.levels.len(), text.chars().count());
+        // Brackets at positions 5 and 10 should be level 0 (LTR)
+        assert_eq!(result.levels[5], 0, "opening '(' should be level 0");
+        assert_eq!(result.levels[10], 0, "closing ')' should be level 0");
+        // Hebrew chars at positions 6-9 should be level 1 (RTL)
+        for i in 6..10 {
+            assert_eq!(
+                result.levels[i] % 2,
+                1,
+                "Hebrew char at pos {} should have odd level",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn bracket_pair_nested() {
+        let text = "((ab))";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        for &level in &result.levels {
+            assert_eq!(level, 0, "all chars in '((ab))' should be level 0");
+        }
+    }
+
+    #[test]
+    fn bracket_pair_neutral_inside() {
+        // Brackets with only neutral/separator content inside.
+        // No strong type within → falls back to paragraph embedding direction.
+        let text = "( - )";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        assert_eq!(result.levels[0], 0, "opening '(' should be level 0");
+        assert_eq!(result.levels[4], 0, "closing ')' should be level 0");
+    }
+
+    #[test]
+    fn bracket_pair_square_brackets() {
+        let text = "[abc]";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        for &level in &result.levels {
+            assert_eq!(level, 0, "all chars in '[abc]' should be level 0");
+        }
+    }
+
+    #[test]
+    fn bracket_pair_curly_braces() {
+        let text = "{abc}";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        for &level in &result.levels {
+            assert_eq!(level, 0, "all chars in '{{abc}}' should be level 0");
+        }
+    }
+
+    #[test]
+    fn bracket_pair_unmatched_opening() {
+        // Unmatched opening bracket stays as ON, resolved by N1/N2.
+        let text = "(abc";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        assert_eq!(result.levels.len(), 4);
+        // '(' at position 0: no pair found, resolved by N1/N2 → paragraph embedding (L → level 0)
+        assert_eq!(result.levels[0], 0);
+    }
+
+    #[test]
+    fn bracket_pair_unmatched_closing() {
+        let text = "abc)";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        assert_eq!(result.levels.len(), 4);
+        // ')' at position 3: no pair found, resolved by N1/N2 → paragraph embedding (L → level 0)
+        assert_eq!(result.levels[3], 0);
+    }
+
+    #[test]
+    fn bracket_pair_multiple_pairs() {
+        let text = "(abc)(def)";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        for &level in &result.levels {
+            assert_eq!(level, 0);
+        }
+    }
+
+    #[test]
+    fn bracket_pair_rtl_mixed_content() {
+        // RTL base with LTR content inside brackets: brackets follow embedding direction.
+        let text = "שלום (Hello) עולם";
+        let result = analyze_bidi_full(text, Some(TextDirection::RightToLeft));
+        assert_eq!(result.base_direction, TextDirection::RightToLeft);
+        assert_eq!(result.levels.len(), text.chars().count());
+    }
+
+    #[test]
+    fn bracket_open_pair_recognizes_ascii() {
+        assert_eq!(bracket_open_pair('('), Some(')'));
+        assert_eq!(bracket_open_pair('['), Some(']'));
+        assert_eq!(bracket_open_pair('{'), Some('}'));
+        assert_eq!(bracket_open_pair('a'), None);
+    }
+
+    #[test]
+    fn bracket_close_pair_recognizes_ascii() {
+        assert_eq!(bracket_close_pair(')'), Some('('));
+        assert_eq!(bracket_close_pair(']'), Some('['));
+        assert_eq!(bracket_close_pair('}'), Some('{'));
+        assert_eq!(bracket_close_pair('a'), None);
+    }
+
+    #[test]
+    fn bracket_pair_mismatched_type() {
+        // ( and ] don't match — should not form a pair.
+        let text = "(abc]";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        // Neither bracket matches the other, so both stay ON → resolved by N1/N2.
+        // Both should end up at level 0 (LTR paragraph embedding).
+        assert_eq!(result.levels[0], 0);
+        assert_eq!(result.levels[4], 0);
+    }
+
+    #[test]
+    fn bracket_pair_with_numbers() {
+        // EN inside brackets in LTR context: EN maps to L direction.
+        // Brackets resolve to L (matching embedding direction).
+        // EN chars get level 2 per I1 (even level + EN → level + 2).
+        let text = "(123)";
+        let result = analyze_bidi_full(text, Some(TextDirection::LeftToRight));
+        assert_eq!(result.levels[0], 0, "opening '(' should be level 0");
+        assert_eq!(result.levels[4], 0, "closing ')' should be level 0");
+        // EN digits get level 2 at even embedding level per I1
+        for i in 1..4 {
+            assert_eq!(
+                result.levels[i], 2,
+                "EN digit at pos {} should be level 2",
+                i
+            );
+        }
     }
 }

@@ -3,8 +3,6 @@
 //! Converts the flat `SIRDocument` instruction list into an adjacency list
 //! representation suitable for DFS traversal during compilation.
 
-#![allow(clippy::unwrap_used)]
-
 use std::collections::{HashMap, HashSet};
 
 use ldir_ir::sir::{EntityId, SIRDocument, SIRInstruction};
@@ -102,7 +100,9 @@ impl<'a> InstructionTree<'a> {
             nodes[parent_idx].children.push(idx);
         }
 
-        let root_idx = root_index.unwrap();
+        let root_idx = root_index.ok_or_else(|| {
+            crate::error::LdirError::from(crate::error::ValidationErrorKind::NoRoot)
+        })?;
         let mut on_path = HashSet::new();
         detect_cycle(&nodes, root_idx, &mut on_path)?;
 
@@ -124,7 +124,7 @@ impl<'a> InstructionTree<'a> {
 
     /// Get the root node index.
     pub fn root_index(&self) -> usize {
-        self.root_index.unwrap()
+        self.root_index.unwrap_or_default()
     }
 
     /// Get a node by index.

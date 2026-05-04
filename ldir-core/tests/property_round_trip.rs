@@ -1,6 +1,6 @@
 use proptest::prelude::*;
 
-use ldir_ir::sir::{ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
+use ldir_ir::sir::{SIRDocument, SIRInstruction, SIROpcode};
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
