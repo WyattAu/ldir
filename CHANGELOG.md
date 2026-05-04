@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - Unreleased
+
+### Added — Era D: Proof Alignment, Determinism, Performance, Backend Parity
+
+**Formal verification alignment, deterministic output guarantees, and backend consistency.**
+
+- Lean4 proofs: 0 errors, 0 sorry across all active proof files
+- PDF bit-identical determinism verified
+- G-IR well-formedness verifier with diagnostic output
+- L-IR pipeline: S-IR → L-IR → G-IR compilation with Knuth-Plass line breaking, widow/orphan avoidance
+- Bibliography support: LIRBibEntry, LIRBibliography, LIRCitation with IEEE/APA formatting
+- UBA: Full UAX#9 L1-L4 + N0.b bracket pair resolution (14 tests)
+- Vello: Real glyph outlines via ttf_parser + kurbo::BezPath with rectangle fallback (5 tests)
+- Comprehensive user guide (docs/user-guide.md)
+- Plugin documentation with FrontendPlugin/BackendPlugin trait reference (docs/plugins.md)
+
+### Changed
+- Test count: 1,617 total, all passing
+- Rust source code: ~63,000 lines across 25 crates + 1 Lean4 project
+- Zero production unwrap/expect calls (all 42 instances eliminated)
+- Real payload integrity validator replacing no-op placeholder (9 tests)
+
+## [3.1.0] - 2026-05-04
+
+### Added — Quality Hardening
+
+**Production hardening: error handling, proof completion, functional examples.**
+
+- Zero production unwrap/expect: eliminated all 42 instances across ldir-core (19), ldir-pdf (2), ldir-ir (3), ldir-vello (6), ldir-link (1), ldir-html-reader (3), ldir-org (3), ldir-docx-reader (3), ldir-adoc (2). Removed all `#![allow(clippy::unwrap_used)]` and `#![allow(clippy::expect_used)]` attributes.
+- Lean4 proof complete: resolved `kp_termination` sorry using constructive singleton witness. All active proofs compile with 0 sorry.
+- Real payload integrity validator: replaced no-op placeholder with actual bounds checking and UTF-8 validation (9 tests).
+- Doc examples working: `tex-basic.rs` and `markdown-to-pdf.rs` rewritten as functional examples using ldir-tex and ldir-md.
+- Bibliography in L-IR path: `LIRBibEntry`, `LIRBibliography`, `LIRCitation` types with IEEE/APA formatting (3 tests).
+- Full UBA N0.b bracket pairs: BD16 pair identification and N0.b resolution per UAX#9 (14 tests).
+- Vello real glyph outlines: ttf_parser-based rendering via kurbo::BezPath (5 tests).
+
+### Changed
+- Test count: 1,617 total (743 ldir-core, 20 integration, 2 property, 852 other crates)
+- Added ldir-tex and ldir-md as dev-dependencies of ldir-core for examples.
+
 ## [3.0.0] - 2026-05-01
 
 ### Added — Era 7: Ecosystem

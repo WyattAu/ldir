@@ -62,7 +62,10 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                             numbered,
                         }
                     }
-                    Some(BlockType::Code) => NodeType::CodeBlock { language: None },
+                    Some(BlockType::Code) => NodeType::CodeBlock {
+                        language: None,
+                        content: String::new(),
+                    },
                     Some(BlockType::BlockQuote) => NodeType::BlockQuote,
                     Some(BlockType::ThematicBreak) => NodeType::ThematicBreak,
                     Some(BlockType::Image) => NodeType::Image {
@@ -70,6 +73,7 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                         alt: String::new(),
                         width: None,
                         height: None,
+                        placement: FloatPlacement::Here,
                     },
                     Some(BlockType::Table) => {
                         let num_cols = doc
@@ -80,6 +84,9 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                         NodeType::Table {
                             col_specs: Vec::new(),
                             num_cols,
+                            caption: None,
+                            column_widths: Vec::new(),
+                            header_row: false,
                         }
                     }
                     Some(BlockType::TableRow) => {

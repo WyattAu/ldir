@@ -1,7 +1,7 @@
 //! Recursive descent parser for Asciidoc → S-IR v2.
 
 use ldir_ir::sir::v2::SIRModuleV2;
-use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
+use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, FloatPlacement, ListType, Node, NodeType};
 
 pub fn parse_asciidoc(text: &str) -> SIRModuleV2 {
     let lines: Vec<&str> = text.lines().collect();
@@ -290,6 +290,7 @@ impl AsciidocParser {
                         alt: alt_text,
                         width: None,
                         height: None,
+                        placement: FloatPlacement::Here,
                     });
                     continue;
                 }
@@ -442,6 +443,7 @@ impl AsciidocParser {
                         alt: alt_text,
                         width: None,
                         height: None,
+                        placement: FloatPlacement::Here,
                     });
                     continue;
                 }
@@ -797,8 +799,14 @@ impl AsciidocParser {
                             }
                             let cb_id = self.gen_id();
                             module.body.push(
-                                Node::new(cb_id, NodeType::CodeBlock { language: lang })
-                                    .with_parent(doc_id),
+                                Node::new(
+                                    cb_id,
+                                    NodeType::CodeBlock {
+                                        language: lang,
+                                        content: String::new(),
+                                    },
+                                )
+                                .with_parent(doc_id),
                             );
                             if !code_content.is_empty() {
                                 let text_id = self.gen_id();
@@ -840,8 +848,14 @@ impl AsciidocParser {
                     }
                     let cb_id = self.gen_id();
                     module.body.push(
-                        Node::new(cb_id, NodeType::CodeBlock { language: None })
-                            .with_parent(doc_id),
+                        Node::new(
+                            cb_id,
+                            NodeType::CodeBlock {
+                                language: None,
+                                content: String::new(),
+                            },
+                        )
+                        .with_parent(doc_id),
                     );
                     if !literal_content.is_empty() {
                         let text_id = self.gen_id();
@@ -936,6 +950,9 @@ impl AsciidocParser {
                                 NodeType::Table {
                                     col_specs,
                                     num_cols,
+                                    caption: None,
+                                    column_widths: Vec::new(),
+                                    header_row: false,
                                 },
                             )
                             .with_parent(doc_id),
@@ -1123,7 +1140,7 @@ mod tests {
         let module = parse_asciidoc("[source,rust]\n----\nfn main() {}\n----\n");
         let cbs = find_nodes(
             &module,
-            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"),
+            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang), .. } if lang == "rust"),
         );
         assert_eq!(cbs.len(), 1);
     }
@@ -1132,7 +1149,7 @@ mod tests {
     fn test_literal_block() {
         let module = parse_asciidoc("----\nSome literal text.\n----\n");
         let cbs = find_nodes(&module, |nt| {
-            matches!(nt, NodeType::CodeBlock { language: None })
+            matches!(nt, NodeType::CodeBlock { language: None, .. })
         });
         assert_eq!(cbs.len(), 1);
     }

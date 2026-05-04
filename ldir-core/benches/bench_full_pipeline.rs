@@ -181,6 +181,9 @@ fn make_medium_doc() -> SIRModuleV2 {
                         },
                     ],
                     num_cols: 3,
+                    caption: None,
+                    column_widths: vec![],
+                    header_row: false,
                 },
             )
             .with_parent(doc_id),

@@ -1,5 +1,6 @@
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
+use std::collections::HashMap;
 
 /// Plain text rendering options.
 #[derive(Debug, Clone)]
@@ -26,6 +27,7 @@ pub struct TextRenderer {
     options: TextOptions,
     heading_counter: [u32; 6],
     list_counters: Vec<u32>,
+    label_map: HashMap<String, (String, String)>,
 }
 
 impl Default for TextRenderer {
@@ -44,6 +46,7 @@ impl TextRenderer {
             options,
             heading_counter: [0; 6],
             list_counters: Vec::new(),
+            label_map: HashMap::new(),
         }
     }
 
@@ -131,16 +134,14 @@ impl TextRenderer {
                 let num = format_heading_number(&self.heading_counter);
                 let text = module.body.collect_text(node.id);
 
-                let prefix = match level {
-                    0 => "",
-                    1 => "# ",
-                    2 => "## ",
-                    3 => "### ",
-                    4 => "#### ",
-                    _ => "##### ",
-                };
+                let indent = "  ".repeat(level.saturating_sub(2) as usize);
 
-                out.push_str(prefix);
+                if let Some(ref label) = node.label {
+                    self.label_map
+                        .insert(label.clone(), (num.clone(), "Section".into()));
+                }
+
+                out.push_str(&indent);
                 if !num.is_empty() {
                     out.push_str(&num);
                     out.push(' ');
@@ -150,8 +151,9 @@ impl TextRenderer {
 
                 if self.options.underline_headings {
                     let content_len =
-                        prefix.len() + if num.is_empty() { 0 } else { num.len() + 1 } + text.len();
-                    let ch = if level <= 1 { '=' } else { '-' };
+                        indent.len() + if num.is_empty() { 0 } else { num.len() + 1 } + text.len();
+                    let ch = if level <= 2 { '=' } else { '-' };
+                    out.push_str(&indent);
                     out.push_str(&String::from(ch).repeat(content_len));
                     out.push('\n');
                 }
@@ -166,12 +168,12 @@ impl TextRenderer {
 
             NodeType::Paragraph => {
                 let text = self.collect_inline_text(module, node);
-                out.push_str(&text);
+                out.push_str(&self.resolve_text_refs(&text));
                 out.push_str("\n\n");
             }
 
             NodeType::Text { content } => {
-                out.push_str(content);
+                out.push_str(&self.resolve_text_refs(content));
             }
 
             NodeType::Bold => {
@@ -224,7 +226,12 @@ impl TextRenderer {
                 out.push_str(&text);
                 if *numbered {
                     self.heading_counter[0] += 1;
-                    out.push_str(&format!("  ({})", self.heading_counter[0]));
+                    let eq_num = self.heading_counter[0];
+                    out.push_str(&format!("  ({})", eq_num));
+                    if let Some(ref label) = node.label {
+                        self.label_map
+                            .insert(label.clone(), (eq_num.to_string(), "Equation".into()));
+                    }
                 }
                 out.push_str("\n\n");
             }
@@ -255,6 +262,13 @@ impl TextRenderer {
                 let text = self.collect_inline_text(module, node);
                 out.push_str(&text);
                 out.push('\n');
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id)
+                        && matches!(child.node_type, NodeType::List { .. })
+                    {
+                        self.render_node(out, module, child, depth);
+                    }
+                }
             }
 
             NodeType::BlockQuote => {
@@ -266,7 +280,7 @@ impl TextRenderer {
                 out.push('\n');
             }
 
-            NodeType::CodeBlock { language } => {
+            NodeType::CodeBlock { language, .. } => {
                 let text = module.body.collect_text(node.id);
                 if let Some(lang) = language {
                     out.push_str(&format!("```{}", lang));
@@ -336,6 +350,20 @@ impl TextRenderer {
                 for key in keys {
                     out.push_str(&format!("[{}]", key));
                 }
+            }
+
+            NodeType::Reference { label } => {
+                let (number, kind) = self
+                    .label_map
+                    .get(label)
+                    .cloned()
+                    .unwrap_or_else(|| ("??".into(), "Section".into()));
+                let display_num = number.trim_end_matches('.');
+                out.push_str(&format!("{} {}", kind, display_num));
+            }
+
+            NodeType::Label { name } => {
+                let _ = name;
             }
         }
     }
@@ -407,6 +435,42 @@ impl TextRenderer {
         out.push('\n');
     }
 
+    fn resolve_text_refs(&self, text: &str) -> String {
+        let mut result = String::with_capacity(text.len());
+        let bytes = text.as_bytes();
+        let mut i = 0;
+
+        while i < bytes.len() {
+            if bytes[i] == b'\\' {
+                let rest = &text[i..];
+                if let Some((label, consumed)) = try_parse_ref_cmd(rest, "\\ref{", 5) {
+                    let (number, _kind) = self
+                        .label_map
+                        .get(&label)
+                        .cloned()
+                        .unwrap_or_else(|| ("??".into(), "Section".into()));
+                    result.push_str(number.trim_end_matches('.'));
+                    i += consumed;
+                    continue;
+                }
+                if let Some((label, consumed)) = try_parse_ref_cmd(rest, "\\eqref{", 7) {
+                    let (number, _kind) = self
+                        .label_map
+                        .get(&label)
+                        .cloned()
+                        .unwrap_or_else(|| ("??".into(), "Equation".into()));
+                    result.push_str(&format!("({})", number.trim_end_matches('.')));
+                    i += consumed;
+                    continue;
+                }
+            }
+            result.push(bytes[i] as char);
+            i += 1;
+        }
+
+        result
+    }
+
     fn collect_inline_text(&self, module: &SIRModuleV2, node: &Node) -> String {
         let mut text = String::new();
         for &child_id in &node.child_ids {
@@ -454,12 +518,32 @@ impl TextRenderer {
             NodeType::LineBreak => {
                 out.push('\n');
             }
+            NodeType::Reference { label } => {
+                let (number, kind) = self
+                    .label_map
+                    .get(label)
+                    .cloned()
+                    .unwrap_or_else(|| ("??".into(), "Section".into()));
+                let display_num = number.trim_end_matches('.');
+                out.push_str(&format!("{} {}", kind, display_num));
+            }
+            NodeType::List { .. } | NodeType::Label { .. } => {}
             _ => {
                 let text = self.collect_inline_text(module, node);
                 out.push_str(&text);
             }
         }
     }
+}
+
+fn try_parse_ref_cmd(text: &str, prefix: &str, prefix_len: usize) -> Option<(String, usize)> {
+    if !text.starts_with(prefix) {
+        return None;
+    }
+    let after_prefix = &text[prefix_len..];
+    let end = after_prefix.find('}')?;
+    let label = after_prefix[..end].to_string();
+    Some((label, prefix_len + end + 1))
 }
 
 fn format_heading_number(counters: &[u32; 6]) -> String {
@@ -547,7 +631,7 @@ mod tests {
     fn test_heading_prefixes() {
         let m = make_section_module();
         let text = TextRenderer::new().render(&m);
-        assert!(text.contains("## 1. Introduction"));
+        assert!(text.contains("1. Introduction"));
     }
 
     #[test]
@@ -684,6 +768,7 @@ mod tests {
                 1,
                 NodeType::CodeBlock {
                     language: Some("rust".into()),
+                    content: String::new(),
                 },
             )
             .with_parent(0),
@@ -821,6 +906,9 @@ mod tests {
                 NodeType::Table {
                     col_specs: vec![],
                     num_cols: 2,
+                    caption: None,
+                    column_widths: vec![],
+                    header_row: false,
                 },
             )
             .with_parent(0),
@@ -998,9 +1086,9 @@ mod tests {
         m.body.get_mut(5).unwrap().add_child(6);
 
         let text = TextRenderer::new().render(&m);
-        assert!(text.contains("## 1. First"));
-        assert!(text.contains("## 2. Second"));
-        assert!(text.contains("### 2.1. Sub"));
+        assert!(text.contains("1. First"));
+        assert!(text.contains("2. Second"));
+        assert!(text.contains("  2.1. Sub"));
     }
 
     #[test]
@@ -1017,6 +1105,7 @@ mod tests {
                     alt: "A photo".into(),
                     width: None,
                     height: None,
+                    placement: FloatPlacement::Here,
                 },
             )
             .with_parent(1),
@@ -1045,5 +1134,260 @@ mod tests {
         assert_eq!(format_heading_number(&c2), "2.1.");
         let c3 = [0, 0, 0, 0, 0, 0];
         assert_eq!(format_heading_number(&c3), "");
+    }
+
+    #[test]
+    fn test_heading_underlines() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body.push(Node::new(1, NodeType::Section).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Introduction".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body
+            .push(Node::new(3, NodeType::Subsection).with_parent(0));
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "Setup".into(),
+                },
+            )
+            .with_parent(3),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(0).unwrap().add_child(3);
+        m.body.get_mut(1).unwrap().add_child(2);
+        m.body.get_mut(3).unwrap().add_child(4);
+
+        let text = TextRenderer::new().render(&m);
+        assert!(text.contains("1. Introduction\n====="));
+        assert!(text.contains("  1.1. Setup\n  -----"));
+    }
+
+    #[test]
+    fn test_heading_no_underline_when_disabled() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body.push(Node::new(1, NodeType::Section).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Test".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let text = TextRenderer::with_options(TextOptions {
+            underline_headings: false,
+            ..Default::default()
+        })
+        .render(&m);
+        assert!(text.contains("1. Test\n\n"));
+        assert!(!text.contains("===="));
+    }
+
+    #[test]
+    fn test_list_nested_indentation() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body.push(
+            Node::new(
+                1,
+                NodeType::List {
+                    list_type: ListType::Ordered,
+                    ordered: true,
+                    start: None,
+                },
+            )
+            .with_parent(0),
+        );
+        m.body.push(Node::new(2, NodeType::ListItem).with_parent(1));
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Text {
+                    content: "First item".into(),
+                },
+            )
+            .with_parent(2),
+        );
+        m.body.push(Node::new(4, NodeType::ListItem).with_parent(1));
+        m.body.push(
+            Node::new(
+                5,
+                NodeType::Text {
+                    content: "Second item".into(),
+                },
+            )
+            .with_parent(4),
+        );
+        m.body.push(
+            Node::new(
+                6,
+                NodeType::List {
+                    list_type: ListType::Unordered,
+                    ordered: false,
+                    start: None,
+                },
+            )
+            .with_parent(4),
+        );
+        m.body.push(Node::new(7, NodeType::ListItem).with_parent(6));
+        m.body.push(
+            Node::new(
+                8,
+                NodeType::Text {
+                    content: "Sub-item".into(),
+                },
+            )
+            .with_parent(7),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+        m.body.get_mut(1).unwrap().add_child(4);
+        m.body.get_mut(2).unwrap().add_child(3);
+        m.body.get_mut(4).unwrap().add_child(5);
+        m.body.get_mut(4).unwrap().add_child(6);
+        m.body.get_mut(6).unwrap().add_child(7);
+        m.body.get_mut(7).unwrap().add_child(8);
+
+        let text = TextRenderer::new().render(&m);
+        assert!(text.contains("1. First item"));
+        assert!(text.contains("2. Second item"));
+        assert!(text.contains("    - Sub-item"));
+    }
+
+    #[test]
+    fn test_code_block_preservation() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body.push(
+            Node::new(
+                1,
+                NodeType::CodeBlock {
+                    language: Some("rust".into()),
+                    content: String::new(),
+                },
+            )
+            .with_parent(0),
+        );
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "fn main() {\n    println!(\"Hello\");\n}".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let text = TextRenderer::new().render(&m);
+        assert!(text.contains("```rust"));
+        assert!(text.contains("fn main() {"));
+        assert!(text.contains("    println!"));
+        assert!(text.contains("```"));
+    }
+
+    #[test]
+    fn test_ref_resolution_in_text() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body.push(
+            Node::new(1, NodeType::Section)
+                .with_parent(0)
+                .with_label("sec:methods"),
+        );
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Methods".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Text {
+                    content: "See \\ref{sec:methods} for details.".into(),
+                },
+            )
+            .with_parent(3),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(0).unwrap().add_child(3);
+        m.body.get_mut(1).unwrap().add_child(2);
+        m.body.get_mut(3).unwrap().add_child(4);
+
+        let text = TextRenderer::new().render(&m);
+        assert!(text.contains("See 1 for details."));
+        assert!(!text.contains("\\ref{"));
+    }
+
+    #[test]
+    fn test_reference_node_txt() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body.push(
+            Node::new(1, NodeType::Section)
+                .with_parent(0)
+                .with_label("sec:intro"),
+        );
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Intro".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Reference {
+                    label: "sec:intro".into(),
+                },
+            )
+            .with_parent(3),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(0).unwrap().add_child(3);
+        m.body.get_mut(1).unwrap().add_child(2);
+        m.body.get_mut(3).unwrap().add_child(4);
+
+        let text = TextRenderer::new().render(&m);
+        assert!(text.contains("Section 1"));
+    }
+
+    #[test]
+    fn test_try_parse_ref_cmd() {
+        let (label, consumed) = try_parse_ref_cmd("\\ref{sec:intro}", "\\ref{", 5).unwrap();
+        assert_eq!(label, "sec:intro");
+        assert_eq!(consumed, 15);
+
+        let (label, consumed) = try_parse_ref_cmd("\\eqref{eq:1}", "\\eqref{", 7).unwrap();
+        assert_eq!(label, "eq:1");
+        assert_eq!(consumed, 12);
+
+        assert!(try_parse_ref_cmd("hello", "\\ref{", 5).is_none());
     }
 }

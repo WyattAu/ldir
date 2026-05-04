@@ -161,7 +161,7 @@ impl DocxBuilder {
                 out.push_str("</w:p>");
             }
 
-            NodeType::CodeBlock { language } => {
+            NodeType::CodeBlock { language, .. } => {
                 out.push_str("<w:p><w:pPr><w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"F5F5F5\"/></w:pPr>");
                 if let Some(lang) = language {
                     out.push_str("<w:r><w:rPr><w:rStyle w:val=\"Code\"/><w:color w:val=\"606060\"/></w:rPr><w:t xml:space=\"preserve\">");
@@ -651,6 +651,9 @@ mod tests {
                 NodeType::Table {
                     col_specs: vec![],
                     num_cols: 2,
+                    caption: None,
+                    column_widths: vec![],
+                    header_row: false,
                 },
             )
             .with_parent(0),
@@ -697,6 +700,7 @@ mod tests {
                 1,
                 NodeType::CodeBlock {
                     language: Some("rust".into()),
+                    content: String::new(),
                 },
             )
             .with_parent(0),

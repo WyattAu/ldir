@@ -412,6 +412,9 @@ mod tests {
                 NodeType::Table {
                     col_specs: vec![],
                     num_cols: 1,
+                    caption: None,
+                    column_widths: vec![],
+                    header_row: false,
                 },
             )
             .with_label("tab:data"),

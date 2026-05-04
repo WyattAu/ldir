@@ -771,6 +771,9 @@ fn emit_paragraph_inline(
                     shrinkability: space_shrink,
                     penalty: 0.0,
                     is_mandatory: false,
+                    is_hyphenation: false,
+                    hyphen_width: Fp266::ZERO,
+                    text: "",
                 }
             }),
             &ctx.bump,
@@ -1767,6 +1770,9 @@ fn emit_drop_cap_paragraph(
                     shrinkability: space_shrink,
                     penalty: 0.0,
                     is_mandatory: false,
+                    is_hyphenation: false,
+                    hyphen_width: Fp266::ZERO,
+                    text: "",
                 }
             }),
             &ctx.bump,
@@ -1887,6 +1893,9 @@ fn emit_paragraph(
                     shrinkability: space_shrink,
                     penalty: 0.0,
                     is_mandatory: false,
+                    is_hyphenation: false,
+                    hyphen_width: Fp266::ZERO,
+                    text: "",
                 }
             }),
             &ctx.bump,

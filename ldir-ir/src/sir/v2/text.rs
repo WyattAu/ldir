@@ -104,6 +104,7 @@ pub fn text_to_module(text: &str) -> Result<SIRModuleV2, String> {
                     alt: String::new(),
                     width: None,
                     height: None,
+                    placement: nodes::FloatPlacement::Here,
                 },
                 "footnote" => nodes::NodeType::Footnote {
                     content: extract_braced_quoted(body_str).unwrap_or_default(),
@@ -112,7 +113,10 @@ pub fn text_to_module(text: &str) -> Result<SIRModuleV2, String> {
                     placement: nodes::FloatPlacement::Here,
                 },
                 "caption" => nodes::NodeType::Caption,
-                "code-block" => nodes::NodeType::CodeBlock { language: None },
+                "code-block" => nodes::NodeType::CodeBlock {
+                    language: None,
+                    content: String::new(),
+                },
                 "toc" => nodes::NodeType::TableOfContents { max_depth: 3 },
                 "hr" => nodes::NodeType::ThematicBreak,
                 "page-break" => nodes::NodeType::PageBreak,
@@ -132,6 +136,9 @@ pub fn text_to_module(text: &str) -> Result<SIRModuleV2, String> {
                 "table" => nodes::NodeType::Table {
                     col_specs: Vec::new(),
                     num_cols: 0,
+                    caption: None,
+                    column_widths: Vec::new(),
+                    header_row: false,
                 },
                 "table-row" => nodes::NodeType::TableRow { is_header: false },
                 "table-cell" => nodes::NodeType::TableCell {
@@ -377,7 +384,7 @@ fn node_tag(node: &crate::sir::v2::nodes::Node) -> (&'static str, String) {
             ("footnote", format!("{{ {:?} }}", content))
         }
         crate::sir::v2::nodes::NodeType::Figure { .. } => ("figure", "{}".into()),
-        crate::sir::v2::nodes::NodeType::CodeBlock { language } => (
+        crate::sir::v2::nodes::NodeType::CodeBlock { language, .. } => (
             "code-block",
             format!("{{ lang={:?} }}", language.as_deref().unwrap_or("")),
         ),
@@ -413,6 +420,12 @@ fn node_tag(node: &crate::sir::v2::nodes::Node) -> (&'static str, String) {
         crate::sir::v2::nodes::NodeType::FootnoteBlock => ("footnote-block", "{}".into()),
         crate::sir::v2::nodes::NodeType::Citation { keys, .. } => {
             ("citation", format!("{{ keys={:?} }}", keys))
+        }
+        crate::sir::v2::nodes::NodeType::Reference { label } => {
+            ("reference", format!("{{ label={:?} }}", label))
+        }
+        crate::sir::v2::nodes::NodeType::Label { name } => {
+            ("label", format!("{{ name={:?} }}", name))
         }
     }
 }

@@ -140,6 +140,26 @@ pub fn compile_v2_document_with_bib(
 }
 
 fn apply_page_geometry(ctx: &mut CompileContext, metadata: &DocumentMetadata) {
+    if let Some(ps) = &metadata.page_style {
+        let pw_fp = Fp266::from_f64(ps.page_width);
+        let ph_fp = Fp266::from_f64(ps.page_height);
+        let ml_fp = Fp266::from_f64(ps.margin_left);
+        let mr_fp = Fp266::from_f64(ps.margin_right);
+        let mt_fp = Fp266::from_f64(ps.margin_top);
+        let mb_fp = Fp266::from_f64(ps.margin_bottom);
+
+        ctx.page_width = pw_fp;
+        ctx.page_height = ph_fp;
+        ctx.margin_left = ml_fp;
+        ctx.margin_right = mr_fp;
+        ctx.margin_top = mt_fp;
+        ctx.margin_bottom = mb_fp;
+        ctx.content_width = pw_fp - ml_fp - mr_fp;
+        ctx.x = ml_fp;
+        ctx.y = mt_fp;
+        return;
+    }
+
     let pg = match &metadata.page_geometry {
         Some(pg) => pg,
         None => return,
@@ -567,6 +587,7 @@ fn compile_v2_node(
         NodeType::Table {
             col_specs,
             num_cols,
+            ..
         } => {
             compile_v2_table_improved(node_id, module, page, ctx, gir_doc, col_specs, *num_cols)?;
         }
@@ -730,6 +751,14 @@ fn compile_v2_node(
             let cite_text = parts.join(", ");
             emit_v2_text_inline(&cite_text, page, ctx, gir_doc);
         }
+        NodeType::Reference { label } => {
+            let resolved = labels
+                .get(label)
+                .cloned()
+                .unwrap_or_else(|| format!("[{}]", label));
+            emit_v2_text_inline(&resolved, page, ctx, gir_doc);
+        }
+        NodeType::Label { .. } => {}
     }
 
     Ok(())
@@ -1149,6 +1178,7 @@ fn compile_v2_node_with_bib(
         NodeType::Table {
             col_specs,
             num_cols,
+            ..
         } => {
             compile_v2_table_improved(node_id, module, page, ctx, gir_doc, col_specs, *num_cols)?;
         }
@@ -1896,6 +1926,9 @@ fn emit_v2_styled_paragraph(
                     shrinkability: space_shrink,
                     penalty: 0.0,
                     is_mandatory: false,
+                    is_hyphenation: false,
+                    hyphen_width: Fp266::ZERO,
+                    text: "",
                 }
             }),
             &ctx.bump,
@@ -2141,6 +2174,9 @@ fn emit_v2_paragraph_text(
                     shrinkability: space_shrink,
                     penalty: 0.0,
                     is_mandatory: false,
+                    is_hyphenation: false,
+                    hyphen_width: Fp266::ZERO,
+                    text: "",
                 }
             }),
             &ctx.bump,
@@ -3143,6 +3179,7 @@ mod tests {
                 1,
                 NodeType::CodeBlock {
                     language: Some("rust".into()),
+                    content: String::new(),
                 },
             )
             .with_parent(doc_id),

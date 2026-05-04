@@ -458,6 +458,7 @@ impl Converter {
                     alt,
                     width: None,
                     height: None,
+                    placement: FloatPlacement::Here,
                 })
             }
             "ul" => Some(NodeType::List {
@@ -472,10 +473,16 @@ impl Converter {
             }),
             "li" => Some(NodeType::ListItem),
             "blockquote" => Some(NodeType::BlockQuote),
-            "pre" => Some(NodeType::CodeBlock { language: None }),
+            "pre" => Some(NodeType::CodeBlock {
+                language: None,
+                content: String::new(),
+            }),
             "table" => Some(NodeType::Table {
                 col_specs: Vec::new(),
                 num_cols: 0,
+                caption: None,
+                column_widths: Vec::new(),
+                header_row: false,
             }),
             "tr" => {
                 let is_header = dom.children.iter().any(|c| c.tag == "th");
@@ -559,7 +566,10 @@ impl Converter {
                     })
                     .or_else(|| attr(&inner.attrs, "lang"));
                 if let Some(pre_node) = self.module.body.get_mut(emitted_id) {
-                    pre_node.node_type = NodeType::CodeBlock { language: lang };
+                    pre_node.node_type = NodeType::CodeBlock {
+                        language: lang,
+                        content: String::new(),
+                    };
                 }
 
                 if let Some(text) = &inner.text {
@@ -772,7 +782,7 @@ mod tests {
         let module = parse_html(r#"<pre><code class="language-rust">fn main() {}</code></pre>"#);
         let cb = find_node_by_type(
             &module,
-            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"),
+            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang), .. } if lang == "rust"),
         );
         assert!(cb.is_some());
     }

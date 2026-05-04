@@ -91,6 +91,9 @@ pub fn insert_cjk_breaks(text: &str, items: &[LineBreakItem]) -> Vec<LineBreakIt
                     shrinkability: Fp266::ZERO,
                     penalty: 0.0,
                     is_mandatory: false,
+                    is_hyphenation: false,
+                    hyphen_width: Fp266::ZERO,
+                    text: "",
                 });
             }
         }
@@ -110,6 +113,9 @@ mod tests {
             shrinkability: Fp266::ZERO,
             penalty: 0.0,
             is_mandatory: false,
+            is_hyphenation: false,
+            hyphen_width: Fp266::ZERO,
+            text: "",
         }
     }
 

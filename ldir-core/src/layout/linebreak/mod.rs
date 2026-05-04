@@ -3,6 +3,7 @@
 mod badness;
 pub(crate) mod cjk;
 mod knuth_plass;
+mod optical_margin;
 mod rtl;
 mod types;
 

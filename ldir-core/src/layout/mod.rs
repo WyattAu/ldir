@@ -10,6 +10,7 @@
 //! - THM-KP-OPTIMALITY: DP solution finds globally optimal break set
 //! - THM-KP-TERMINATION: Algorithm terminates in O(n²)
 
+pub mod hyphenate;
 pub mod incremental;
 pub mod linebreak;
 pub mod lir_compile;

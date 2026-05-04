@@ -31,6 +31,7 @@ pub enum NodeType {
     BlockQuote,
     CodeBlock {
         language: Option<String>,
+        content: String,
     },
     MathBlock {
         math_type: MathType,
@@ -39,6 +40,9 @@ pub enum NodeType {
     Table {
         col_specs: Vec<ColSpec>,
         num_cols: usize,
+        caption: Option<String>,
+        column_widths: Vec<f64>,
+        header_row: bool,
     },
     TableRow {
         is_header: bool,
@@ -70,6 +74,7 @@ pub enum NodeType {
         alt: String,
         width: Option<Dimension>,
         height: Option<Dimension>,
+        placement: FloatPlacement,
     },
     MathInline {
         content: String,
@@ -95,6 +100,14 @@ pub enum NodeType {
     Citation {
         keys: Vec<String>,
         style: Option<String>,
+    },
+
+    // === Cross-references ===
+    Reference {
+        label: String,
+    },
+    Label {
+        name: String,
     },
 
     // === Container ===
@@ -509,5 +522,90 @@ mod tests {
         assert!(part.is_heading());
         assert!(section.is_heading());
         assert!(!para.is_heading());
+    }
+
+    #[test]
+    fn test_table_with_caption_and_widths() {
+        let table = Node::new(
+            10,
+            NodeType::Table {
+                col_specs: vec![
+                    ColSpec {
+                        align: ColumnAlign::Left,
+                        width: None,
+                    },
+                    ColSpec {
+                        align: ColumnAlign::Right,
+                        width: None,
+                    },
+                ],
+                num_cols: 2,
+                caption: Some("Sample Data".to_string()),
+                column_widths: vec![0.5, 0.5],
+                header_row: true,
+            },
+        );
+
+        if let NodeType::Table {
+            caption,
+            column_widths,
+            header_row,
+            num_cols,
+            ..
+        } = &table.node_type
+        {
+            assert_eq!(caption.as_deref(), Some("Sample Data"));
+            assert_eq!(*column_widths, vec![0.5, 0.5]);
+            assert!(*header_row);
+            assert_eq!(*num_cols, 2);
+        } else {
+            panic!("expected Table node type");
+        }
+    }
+
+    #[test]
+    fn test_image_with_placement() {
+        let img = Node::new(
+            20,
+            NodeType::Image {
+                source: "photo.png".to_string(),
+                alt: "A photo".to_string(),
+                width: None,
+                height: None,
+                placement: FloatPlacement::Top,
+            },
+        );
+
+        if let NodeType::Image {
+            source,
+            alt,
+            placement,
+            ..
+        } = &img.node_type
+        {
+            assert_eq!(source, "photo.png");
+            assert_eq!(alt, "A photo");
+            assert_eq!(*placement, FloatPlacement::Top);
+        } else {
+            panic!("expected Image node type");
+        }
+    }
+
+    #[test]
+    fn test_code_block_with_content() {
+        let cb = Node::new(
+            30,
+            NodeType::CodeBlock {
+                language: Some("rust".to_string()),
+                content: "fn main() {}".to_string(),
+            },
+        );
+
+        if let NodeType::CodeBlock { language, content } = &cb.node_type {
+            assert_eq!(language.as_deref(), Some("rust"));
+            assert_eq!(content, "fn main() {}");
+        } else {
+            panic!("expected CodeBlock node type");
+        }
     }
 }

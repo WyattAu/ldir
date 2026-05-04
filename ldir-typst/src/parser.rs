@@ -656,6 +656,9 @@ impl TypstParser {
                                         NodeType::Table {
                                             col_specs,
                                             num_cols,
+                                            caption: None,
+                                            column_widths: Vec::new(),
+                                            header_row: false,
                                         },
                                     )
                                     .with_parent(doc_id),

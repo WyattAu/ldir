@@ -102,6 +102,9 @@ fn test_binary_roundtrip_preserves_all_sections() {
             nodes::NodeType::Table {
                 col_specs: vec![],
                 num_cols: 0,
+                caption: None,
+                column_widths: vec![],
+                header_row: false,
             },
         )
         .with_parent(3),
@@ -154,6 +157,7 @@ fn test_text_output_contains_expected_content() {
             6,
             nodes::NodeType::CodeBlock {
                 language: Some("rust".into()),
+                content: String::new(),
             },
         )
         .with_parent(2),

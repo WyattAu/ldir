@@ -17,6 +17,12 @@ pub struct LineBreakItem {
     pub penalty: f64,
     /// Whether this is a forced (mandatory) break.
     pub is_mandatory: bool,
+    /// Whether this break point comes from hyphenation.
+    pub is_hyphenation: bool,
+    /// Width of the hyphen character to add when breaking here (only for hyphenation points).
+    pub hyphen_width: Fp266,
+    /// Text content of this item for optical margin analysis.
+    pub text: &'static str,
 }
 
 /// Options controlling the line-breaking algorithm.
@@ -30,15 +36,24 @@ pub struct LineBreakOptions {
     pub line_penalty: f64,
     /// Penalty delta for each fitness class change.
     pub fitness_penalty: f64,
+    /// Penalty for hyphenated line breaks.
+    pub hyphen_penalty: f64,
+    /// Whether to enable optical margin alignment.
+    pub optical_margins: bool,
+    /// Font size in points (used for optical margin calculations).
+    pub em_size: f64,
 }
 
 impl Default for LineBreakOptions {
     fn default() -> Self {
         Self {
-            line_width: Fp266::from_int(500), // ~500pt default
+            line_width: Fp266::from_int(500),
             max_adjustment_ratio: 1.0,
             line_penalty: 10.0,
             fitness_penalty: 100.0,
+            hyphen_penalty: 50.0,
+            optical_margins: false,
+            em_size: 12.0,
         }
     }
 }

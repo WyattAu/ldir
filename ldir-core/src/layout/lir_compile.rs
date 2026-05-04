@@ -339,6 +339,9 @@ impl<'a> LirCompiler<'a> {
                     shrinkability: shrink,
                     penalty: 0.0,
                     is_mandatory: false,
+                    is_hyphenation: false,
+                    hyphen_width: Fp266::ZERO,
+                    text: "",
                 }
             })
             .collect();
@@ -642,7 +645,7 @@ impl<'a> LirCompiler<'a> {
                 Ok(Vec::new())
             }
 
-            NodeType::CodeBlock { ref language } => {
+            NodeType::CodeBlock { ref language, .. } => {
                 let text = self.collect_text(node_id);
                 let lang = language.clone().unwrap_or_default();
 
@@ -1140,6 +1143,8 @@ impl<'a> LirCompiler<'a> {
                 self.cursor_y += self.line_height(12);
                 Ok(Vec::new())
             }
+
+            NodeType::Reference { .. } | NodeType::Label { .. } => Ok(Vec::new()),
         }
     }
 
@@ -1630,6 +1635,9 @@ mod tests {
                         },
                     ],
                     num_cols: 2,
+                    caption: None,
+                    column_widths: vec![],
+                    header_row: false,
                 },
             )
             .with_parent(1),
@@ -1788,6 +1796,7 @@ mod tests {
                 2,
                 NodeType::CodeBlock {
                     language: Some("rust".into()),
+                    content: String::new(),
                 },
             )
             .with_parent(1),

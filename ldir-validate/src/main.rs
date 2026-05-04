@@ -342,6 +342,7 @@ mod parser {
                         alt: String::new(),
                         width: None,
                         height: None,
+                        placement: nodes::FloatPlacement::Here,
                     },
                     "footnote" => nodes::NodeType::Footnote {
                         content: extract_braced_quoted(body_str).unwrap_or_default(),
@@ -350,7 +351,10 @@ mod parser {
                         placement: nodes::FloatPlacement::Here,
                     },
                     "caption" => nodes::NodeType::Caption,
-                    "code-block" => nodes::NodeType::CodeBlock { language: None },
+                    "code-block" => nodes::NodeType::CodeBlock {
+                        language: None,
+                        content: String::new(),
+                    },
                     "toc" => nodes::NodeType::TableOfContents { max_depth: 3 },
                     "hr" => nodes::NodeType::ThematicBreak,
                     "page-break" => nodes::NodeType::PageBreak,
@@ -364,6 +368,9 @@ mod parser {
                     "table" => nodes::NodeType::Table {
                         col_specs: Vec::new(),
                         num_cols: 0,
+                        caption: None,
+                        column_widths: Vec::new(),
+                        header_row: false,
                     },
                     "table-row" => nodes::NodeType::TableRow { is_header: false },
                     "table-cell" => nodes::NodeType::TableCell {

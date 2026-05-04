@@ -60,6 +60,38 @@ impl Default for PageGeometry {
     }
 }
 
+/// Page style for headers, footers, and custom page dimensions.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PageStyle {
+    pub page_width: f64,
+    pub page_height: f64,
+    pub margin_top: f64,
+    pub margin_bottom: f64,
+    pub margin_left: f64,
+    pub margin_right: f64,
+    pub header_text: Option<String>,
+    pub footer_text: Option<String>,
+    pub header_page_number: bool,
+    pub footer_page_number: bool,
+}
+
+impl Default for PageStyle {
+    fn default() -> Self {
+        Self {
+            page_width: 612.0,
+            page_height: 792.0,
+            margin_top: 72.0,
+            margin_bottom: 72.0,
+            margin_left: 72.0,
+            margin_right: 72.0,
+            header_text: None,
+            footer_text: None,
+            header_page_number: false,
+            footer_page_number: false,
+        }
+    }
+}
+
 /// Document-level metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DocumentMetadata {
@@ -71,6 +103,7 @@ pub struct DocumentMetadata {
     pub direction: Direction,
     pub document_class: Option<String>, // "article", "book", "report"
     pub page_geometry: Option<PageGeometry>,
+    pub page_style: Option<PageStyle>,
 }
 
 impl Default for DocumentMetadata {
@@ -84,6 +117,7 @@ impl Default for DocumentMetadata {
             direction: Direction::Auto,
             document_class: None,
             page_geometry: Some(PageGeometry::default()),
+            page_style: None,
         }
     }
 }
@@ -119,5 +153,54 @@ mod tests {
         assert_eq!(m.language, "en");
         assert_eq!(m.direction, Direction::Auto);
         assert!(m.page_geometry.is_some());
+        assert!(m.page_style.is_none());
+    }
+
+    #[test]
+    fn test_page_style_default() {
+        let ps = PageStyle::default();
+        assert_eq!(ps.page_width, 612.0);
+        assert_eq!(ps.page_height, 792.0);
+        assert_eq!(ps.margin_top, 72.0);
+        assert_eq!(ps.margin_bottom, 72.0);
+        assert_eq!(ps.margin_left, 72.0);
+        assert_eq!(ps.margin_right, 72.0);
+        assert!(ps.header_text.is_none());
+        assert!(ps.footer_text.is_none());
+        assert!(!ps.header_page_number);
+        assert!(!ps.footer_page_number);
+    }
+
+    #[test]
+    fn test_page_style_custom_dimensions() {
+        let ps = PageStyle {
+            page_width: 595.28,
+            page_height: 841.89,
+            margin_top: 50.0,
+            margin_bottom: 50.0,
+            margin_left: 60.0,
+            margin_right: 60.0,
+            header_text: Some("My Report".to_string()),
+            footer_text: None,
+            header_page_number: true,
+            footer_page_number: true,
+        };
+        assert_eq!(ps.page_width, 595.28);
+        assert_eq!(ps.page_height, 841.89);
+        assert_eq!(ps.header_text.as_deref(), Some("My Report"));
+        assert!(ps.header_page_number);
+        assert!(ps.footer_page_number);
+    }
+
+    #[test]
+    fn test_metadata_with_page_style() {
+        let mut m = DocumentMetadata::default();
+        m.page_style = Some(PageStyle {
+            page_width: 500.0,
+            page_height: 700.0,
+            ..PageStyle::default()
+        });
+        assert!(m.page_style.is_some());
+        assert_eq!(m.page_style.as_ref().unwrap().page_width, 500.0);
     }
 }

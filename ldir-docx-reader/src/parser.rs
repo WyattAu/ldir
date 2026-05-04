@@ -542,6 +542,9 @@ impl DocxConverter {
                         NodeType::Table {
                             col_specs: Vec::new(),
                             num_cols: 0,
+                            caption: None,
+                            column_widths: Vec::new(),
+                            header_row: false,
                         },
                     )
                     .with_parent(doc_id),
@@ -561,6 +564,9 @@ impl DocxConverter {
                     tbl.node_type = NodeType::Table {
                         col_specs,
                         num_cols,
+                        caption: None,
+                        column_widths: Vec::new(),
+                        header_row: false,
                     };
                 }
 

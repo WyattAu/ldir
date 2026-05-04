@@ -1,7 +1,7 @@
 //! Recursive descent parser for Org-mode → S-IR v2.
 
 use ldir_ir::sir::v2::SIRModuleV2;
-use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
+use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, FloatPlacement, ListType, Node, NodeType};
 
 pub fn parse_org(text: &str) -> SIRModuleV2 {
     let lines: Vec<&str> = text.lines().collect();
@@ -310,6 +310,7 @@ impl OrgParser {
                                 alt: desc.to_string(),
                                 width: None,
                                 height: None,
+                                placement: FloatPlacement::Here,
                             });
                         } else {
                             nodes.push(NodeType::Link {
@@ -326,6 +327,7 @@ impl OrgParser {
                                 alt: path.to_string(),
                                 width: None,
                                 height: None,
+                                placement: FloatPlacement::Here,
                             });
                         } else {
                             nodes.push(NodeType::Link {
@@ -536,8 +538,14 @@ impl OrgParser {
                             let lang = block_arg.clone();
                             let cb_id = self.gen_id();
                             module.body.push(
-                                Node::new(cb_id, NodeType::CodeBlock { language: lang })
-                                    .with_parent(doc_id),
+                                Node::new(
+                                    cb_id,
+                                    NodeType::CodeBlock {
+                                        language: lang,
+                                        content: String::new(),
+                                    },
+                                )
+                                .with_parent(doc_id),
                             );
                             if !block_content.is_empty() {
                                 let text_id = self.gen_id();
@@ -561,8 +569,14 @@ impl OrgParser {
                         "EXAMPLE" => {
                             let cb_id = self.gen_id();
                             module.body.push(
-                                Node::new(cb_id, NodeType::CodeBlock { language: None })
-                                    .with_parent(doc_id),
+                                Node::new(
+                                    cb_id,
+                                    NodeType::CodeBlock {
+                                        language: None,
+                                        content: String::new(),
+                                    },
+                                )
+                                .with_parent(doc_id),
                             );
                             if !block_content.is_empty() {
                                 let text_id = self.gen_id();
@@ -751,6 +765,9 @@ impl OrgParser {
                                 NodeType::Table {
                                     col_specs,
                                     num_cols,
+                                    caption: None,
+                                    column_widths: Vec::new(),
+                                    header_row: false,
                                 },
                             )
                             .with_parent(doc_id),
@@ -968,7 +985,7 @@ mod tests {
         let module = parse_org("#+BEGIN_SRC rust\nfn main() {}\n#+END_SRC\n");
         let cbs = find_nodes(
             &module,
-            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang) } if lang == "rust"),
+            |nt| matches!(nt, NodeType::CodeBlock { language: Some(lang), .. } if lang == "rust"),
         );
         assert_eq!(cbs.len(), 1);
     }

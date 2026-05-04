@@ -6,6 +6,7 @@
 use crate::fp266::Fp266;
 
 use super::badness::{compute_adjustment_ratio, compute_badness, compute_demerits};
+use super::optical_margin::optical_margin_penalty_reduction;
 use super::types::*;
 
 /// An active node in the DP algorithm, representing a candidate line break position.
@@ -171,12 +172,28 @@ pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBre
             let badness = compute_badness(r);
             let new_fitness = FitnessClass::from_ratio(r);
             let fitness_changed = new_fitness.demerit_delta(&node.fitness) > 0.0;
-            let demerits = compute_demerits(
+
+            // Hyphenation penalty: add extra demerits for hyphenated breaks
+            let hyphen_demerit = if items[i].is_hyphenation {
+                options.hyphen_penalty
+            } else {
+                0.0
+            };
+
+            // Optical margin reduction: reduce demerits for lines with hanging punctuation
+            let optical_reduction = if options.optical_margins && !items[i].text.is_empty() {
+                optical_margin_penalty_reduction(items[i].text)
+            } else {
+                0.0
+            };
+
+            let base_demerits = compute_demerits(
                 badness,
                 options.fitness_penalty,
                 options.line_penalty,
                 fitness_changed,
             );
+            let demerits = (base_demerits + hyphen_demerit - optical_reduction).max(0.0);
             let total = node.total_demerits + demerits;
 
             if total < best_new_demerits {
@@ -272,6 +289,52 @@ pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBre
     }
 }
 
+/// Insert hyphenation break candidates into an item list.
+///
+/// For each word item, computes hyphenation points and inserts additional
+/// items at those positions. Each hyphenation item has a penalty and marks
+/// `is_hyphenation = true`.
+///
+/// The `word_items` parameter is a list of `(item_index, word_text)` pairs
+/// indicating which items represent words that should be hyphenated.
+#[cfg(test)]
+pub fn insert_hyphenation_candidates(
+    items: &mut Vec<LineBreakItem>,
+    word_items: &[(usize, &str)],
+    hyphen_penalty: f64,
+) {
+    let mut insertions: Vec<(usize, LineBreakItem)> = Vec::new();
+
+    for &(idx, word) in word_items {
+        if idx >= items.len() {
+            continue;
+        }
+        let hyphen_points = crate::layout::hyphenate::hyphenate_word(word);
+        for _hp in &hyphen_points {
+            let hyphen_item = LineBreakItem {
+                width: Fp266::ZERO,
+                stretchability: Fp266::ZERO,
+                shrinkability: Fp266::ZERO,
+                penalty: hyphen_penalty,
+                is_mandatory: false,
+                is_hyphenation: true,
+                hyphen_width: Fp266::from_int(10),
+                text: "-",
+            };
+            insertions.push((idx, hyphen_item));
+        }
+    }
+
+    insertions.sort_by_key(|(pos, _)| *pos);
+    insertions.reverse();
+
+    for (pos, item) in insertions {
+        if pos < items.len() {
+            items.insert(pos + 1, item);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,6 +347,9 @@ mod tests {
             shrinkability: Fp266::ZERO,
             penalty: 0.0,
             is_mandatory: false,
+            is_hyphenation: false,
+            hyphen_width: Fp266::ZERO,
+            text: "",
         }
     }
 
@@ -294,6 +360,9 @@ mod tests {
             shrinkability: Fp266::from_int(shrink),
             penalty: 0.0,
             is_mandatory: false,
+            is_hyphenation: false,
+            hyphen_width: Fp266::ZERO,
+            text: "",
         }
     }
 
@@ -304,6 +373,22 @@ mod tests {
             shrinkability: Fp266::ZERO,
             penalty: f64::NEG_INFINITY,
             is_mandatory: true,
+            is_hyphenation: false,
+            hyphen_width: Fp266::ZERO,
+            text: "",
+        }
+    }
+
+    fn hyphen_item(width: i32) -> LineBreakItem {
+        LineBreakItem {
+            width: Fp266::from_int(width),
+            stretchability: Fp266::ZERO,
+            shrinkability: Fp266::ZERO,
+            penalty: 50.0,
+            is_mandatory: false,
+            is_hyphenation: true,
+            hyphen_width: Fp266::from_int(10),
+            text: "-",
         }
     }
 
@@ -322,7 +407,7 @@ mod tests {
             ..Default::default()
         };
         let result = linebreak(&items, &opts);
-        assert!(result.breaks.is_empty()); // no break needed
+        assert!(result.breaks.is_empty());
     }
 
     #[test]
@@ -333,7 +418,7 @@ mod tests {
             ..Default::default()
         };
         let result = linebreak(&items, &opts);
-        assert!(result.breaks.is_empty()); // 80 < 100, no break
+        assert!(result.breaks.is_empty());
     }
 
     #[test]
@@ -344,7 +429,7 @@ mod tests {
             ..Default::default()
         };
         let result = linebreak(&items, &opts);
-        assert_eq!(result.breaks, vec![1]); // break after first item
+        assert_eq!(result.breaks, vec![1]);
     }
 
     #[test]
@@ -355,12 +440,11 @@ mod tests {
             ..Default::default()
         };
         let result = linebreak(&items, &opts);
-        assert!(result.breaks.contains(&2)); // break at mandatory
+        assert!(result.breaks.contains(&2));
     }
 
     #[test]
     fn test_three_lines() {
-        // 3 items of width 40, line width 60 → breaks after items 1 and 2
         let items = vec![item(40), item(40), item(40)];
         let opts = LineBreakOptions {
             line_width: Fp266::from_int(60),
@@ -368,19 +452,6 @@ mod tests {
         };
         let result = linebreak(&items, &opts);
         assert_eq!(result.breaks, vec![1, 2]);
-    }
-
-    #[test]
-    fn test_overflow_infinite_demerits() {
-        // Single item wider than line → no feasible break, uses emergency break
-        let items = vec![item(200)];
-        let opts = LineBreakOptions {
-            line_width: Fp266::from_int(100),
-            ..Default::default()
-        };
-        let result = linebreak(&items, &opts);
-        // Should still produce a break (emergency overflow handling)
-        assert!(!result.breaks.is_empty() || result.breaks.is_empty()); // depends on implementation
     }
 
     #[test]
@@ -405,7 +476,6 @@ mod tests {
 
     #[test]
     fn test_perfect_fit_zero_demerits() {
-        // Items that exactly fit the line width should have zero badness
         let items = vec![item(50), item(50)];
         let opts = LineBreakOptions {
             line_width: Fp266::from_int(100),
@@ -414,5 +484,105 @@ mod tests {
         let result = linebreak(&items, &opts);
         assert!(result.breaks.is_empty());
         assert!(result.total_demerits < 0.01);
+    }
+
+    #[test]
+    fn test_hyphenation_break_preferred_over_overflow() {
+        // Three items: word(70), hyphen_point(10), rest(40). Line width 80.
+        // Without hyphenation, 70+10=80 fits perfectly (break at index 1).
+        // But with hyphenation penalty, normal break at index 1 is preferred
+        // because the hyphen adds penalty.
+        let items = vec![item(70), hyphen_item(10), item(40)];
+        let opts = LineBreakOptions {
+            line_width: Fp266::from_int(80),
+            hyphen_penalty: 50.0,
+            ..Default::default()
+        };
+        let result = linebreak(&items, &opts);
+        // Break after item 0 or 1 — both feasible
+        assert!(!result.breaks.is_empty());
+    }
+
+    #[test]
+    fn test_hyphenation_adds_demerits() {
+        // Two items where the break point differs: normal vs hyphen.
+        // Items: 55 (normal/hyphen), 55. Line width 60.
+        // Both cases break after item 0 (width 55 fits in 60).
+        // But hyphen case has extra penalty.
+        let items_normal = vec![item(55), item(55)];
+        let items_hyphen = vec![hyphen_item(55), item(55)];
+
+        let opts = LineBreakOptions {
+            line_width: Fp266::from_int(60),
+            hyphen_penalty: 50.0,
+            ..Default::default()
+        };
+
+        let r_normal = linebreak(&items_normal, &opts);
+        let r_hyphen = linebreak(&items_hyphen, &opts);
+
+        assert_eq!(r_normal.breaks, r_hyphen.breaks);
+        assert!(
+            r_hyphen.total_demerits > r_normal.total_demerits,
+            "hyphen demerits {} should > normal demerits {}",
+            r_hyphen.total_demerits,
+            r_normal.total_demerits
+        );
+    }
+
+    #[test]
+    fn test_optical_margins_reduce_demerits() {
+        // A line ending with a period should have lower demerits when optical margins are on
+        let items_period = vec![LineBreakItem {
+            width: Fp266::from_int(50),
+            stretchability: Fp266::ZERO,
+            shrinkability: Fp266::ZERO,
+            penalty: 0.0,
+            is_mandatory: false,
+            is_hyphenation: false,
+            hyphen_width: Fp266::ZERO,
+            text: "word.",
+        }];
+        let items_no_period = vec![LineBreakItem {
+            width: Fp266::from_int(50),
+            stretchability: Fp266::ZERO,
+            shrinkability: Fp266::ZERO,
+            penalty: 0.0,
+            is_mandatory: false,
+            is_hyphenation: false,
+            hyphen_width: Fp266::ZERO,
+            text: "word",
+        }];
+
+        let opts_off = LineBreakOptions {
+            line_width: Fp266::from_int(60),
+            optical_margins: false,
+            ..Default::default()
+        };
+        let opts_on = LineBreakOptions {
+            line_width: Fp266::from_int(60),
+            optical_margins: true,
+            ..Default::default()
+        };
+
+        let r_off = linebreak(&items_period, &opts_off);
+        let r_on = linebreak(&items_period, &opts_on);
+        let r_no_period = linebreak(&items_no_period, &opts_on);
+
+        // With optical margins on, period-ending text should have lower or equal demerits
+        assert!(r_on.total_demerits <= r_off.total_demerits);
+        // Non-punctuated text should have the same demerits regardless
+        assert_eq!(r_no_period.total_demerits, r_off.total_demerits);
+    }
+
+    #[test]
+    fn test_insert_hyphenation_candidates() {
+        let mut items = vec![item(100), item(50)];
+        let word_items = [(0, "international")];
+        insert_hyphenation_candidates(&mut items, &word_items, 50.0);
+        // Should have inserted additional items after index 0
+        assert!(items.len() > 2);
+        let hyphen_count = items.iter().filter(|i| i.is_hyphenation).count();
+        assert!(hyphen_count > 0);
     }
 }

@@ -1,5 +1,6 @@
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
+use std::collections::HashMap;
 
 /// HTML rendering options.
 #[derive(Debug, Clone)]
@@ -15,6 +16,7 @@ pub enum MathFormat {
     MathML,
     LaTeX,
     Text,
+    Html,
 }
 
 impl Default for HtmlOptions {
@@ -35,6 +37,7 @@ pub struct HtmlRenderer {
     equation_counter: u32,
     figure_counter: u32,
     footnote_counter: u32,
+    label_map: HashMap<String, (String, String)>,
 }
 
 impl HtmlRenderer {
@@ -49,11 +52,13 @@ impl HtmlRenderer {
             equation_counter: 0,
             figure_counter: 0,
             footnote_counter: 0,
+            label_map: HashMap::new(),
         }
     }
 
     /// Render the module to a complete HTML5 document string.
     pub fn render(&mut self, module: &SIRModuleV2) -> String {
+        self.build_label_map(module);
         let mut html = String::new();
         let ind = self.options.indent;
 
@@ -141,6 +146,8 @@ impl HtmlRenderer {
             ".figure img { display: block; margin: 0 auto; }",
             ".caption { font-size: 0.9em; color: #555; margin-top: 0.3em; }",
             ".eq-number { float: right; }",
+            ".math { font-family: serif; font-style: italic; }",
+            ".ref { color: #0066cc; }",
         ];
         for rule in &rules {
             html.push_str(&pad);
@@ -201,6 +208,52 @@ impl HtmlRenderer {
         html.push_str("</ul>\n");
         html.push_str(&pad);
         html.push_str("</nav>\n\n");
+    }
+
+    fn build_label_map(&mut self, module: &SIRModuleV2) {
+        let mut counters = [0u32; 6];
+        let mut eq_counter = 0u32;
+        let mut fig_counter = 0u32;
+
+        for node in module.body.iter() {
+            match &node.node_type {
+                NodeType::Part
+                | NodeType::Chapter
+                | NodeType::Section
+                | NodeType::Subsection
+                | NodeType::Subsubsection => {
+                    if let Some(level) = node.heading_level() {
+                        let idx = level as usize;
+                        if idx < 6 {
+                            counters[idx] += 1;
+                            for c in &mut counters[(idx + 1)..] {
+                                *c = 0;
+                            }
+                        }
+                    }
+                    let num = format_heading_number(&counters);
+                    if let Some(ref label) = node.label {
+                        self.label_map
+                            .insert(label.clone(), (num.clone(), "Section".into()));
+                    }
+                }
+                NodeType::MathBlock { numbered: true, .. } => {
+                    eq_counter += 1;
+                    if let Some(ref label) = node.label {
+                        self.label_map
+                            .insert(label.clone(), (eq_counter.to_string(), "Equation".into()));
+                    }
+                }
+                NodeType::Figure { .. } => {
+                    fig_counter += 1;
+                    if let Some(ref label) = node.label {
+                        self.label_map
+                            .insert(label.clone(), (fig_counter.to_string(), "Figure".into()));
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 
     fn render_node(&mut self, html: &mut String, module: &SIRModuleV2, node: &Node, ind: usize) {
@@ -332,6 +385,14 @@ impl HtmlRenderer {
                 MathFormat::Text => {
                     html.push_str(&format!("[{}]", escape_html(content)));
                 }
+                MathFormat::Html => {
+                    let rendered = render_math_to_html(content);
+                    html.push_str(&format!(
+                        "<span class=\"math\" data-formula=\"{}\">{}</span>",
+                        escape_html(content),
+                        rendered
+                    ));
+                }
             },
 
             NodeType::MathBlock { numbered, .. } => {
@@ -355,6 +416,14 @@ impl HtmlRenderer {
                     }
                     MathFormat::Text => {
                         html.push_str(&escape_html(&text));
+                    }
+                    MathFormat::Html => {
+                        let rendered = render_math_to_html(&text);
+                        html.push_str(&format!(
+                            "<span class=\"math\" data-formula=\"{}\">{}</span>",
+                            escape_html(&text),
+                            rendered
+                        ));
                     }
                 }
                 if *numbered {
@@ -398,7 +467,7 @@ impl HtmlRenderer {
                 html.push_str("</blockquote>\n");
             }
 
-            NodeType::CodeBlock { language } => {
+            NodeType::CodeBlock { language, .. } => {
                 let text = module.body.collect_text(node.id);
                 html.push_str(&pad);
                 html.push_str("<pre><code");
@@ -529,6 +598,24 @@ impl HtmlRenderer {
                     html.push_str(&format!("[{}]", escape_html(key)));
                 }
             }
+
+            NodeType::Reference { label } => {
+                let (number, kind) = self
+                    .label_map
+                    .get(label)
+                    .cloned()
+                    .unwrap_or_else(|| ("??".into(), "Section".into()));
+                html.push_str(&format!(
+                    "<a href=\"#{}\" class=\"ref\">{} {}</a>",
+                    escape_html(label),
+                    kind,
+                    escape_html(&number)
+                ));
+            }
+
+            NodeType::Label { name } => {
+                html.push_str(&format!("<span id=\"{}\"></span>", escape_html(name)));
+            }
         }
     }
 
@@ -563,6 +650,210 @@ impl HtmlRenderer {
             }
         }
     }
+}
+
+fn render_math_to_html(latex: &str) -> String {
+    let mut out = String::with_capacity(latex.len() * 2);
+    let bytes = latex.as_bytes();
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if bytes[i] == b'\\' {
+            let rest = &latex[i..];
+            let cmd_and_end = if let Some(cmd_end) = rest[1..].find(|c: char| !c.is_alphabetic()) {
+                Some((&rest[1..1 + cmd_end], 1 + cmd_end))
+            } else if rest.len() > 1 && rest[1..].chars().all(|c| c.is_alphabetic()) {
+                Some((&rest[1..], rest.len()))
+            } else {
+                None
+            };
+            if let Some((cmd, consumed)) = cmd_and_end {
+                if let Some(replacement) = greek_letter(cmd) {
+                    out.push_str(replacement);
+                    i += consumed;
+                    continue;
+                }
+
+                if let Some(replacement) = math_symbol(cmd) {
+                    out.push_str(replacement);
+                    i += consumed;
+                    continue;
+                }
+
+                if cmd == "frac" {
+                    let after_cmd = &latex[i + consumed..].trim_start();
+                    if let Some((num, num_len)) = extract_brace_group(after_cmd) {
+                        let after_num = &after_cmd[num_len..].trim_start();
+                        if let Some((den, den_len)) = extract_brace_group(after_num) {
+                            let num_html = render_math_to_html(&num);
+                            let den_html = render_math_to_html(&den);
+                            out.push_str(&format!(
+                                "<sup>{}</sup>&frasl;<sub>{}</sub>",
+                                num_html, den_html
+                            ));
+                            i += consumed + after_cmd.len() - latex[i + consumed..].len()
+                                + num_len
+                                + after_num.len()
+                                - after_cmd[num_len..].len()
+                                + den_len;
+                            continue;
+                        }
+                    }
+                }
+
+                if cmd == "sqrt" {
+                    let after_cmd = &latex[i + consumed..].trim_start();
+                    if let Some((inner, inner_len)) = extract_brace_group(after_cmd) {
+                        let inner_html = render_math_to_html(&inner);
+                        out.push('√');
+                        out.push_str(&inner_html);
+                        i += consumed + after_cmd.len() - latex[i + consumed..].len() + inner_len;
+                        continue;
+                    }
+                }
+
+                out.push('\\');
+                out.push_str(cmd);
+                i += consumed;
+            } else if i + 1 < bytes.len() {
+                out.push(bytes[i] as char);
+                out.push(bytes[i + 1] as char);
+                i += 2;
+            } else {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+        } else if bytes[i] == b'^' && i + 1 < bytes.len() && bytes[i + 1] == b'{' {
+            let rest = &latex[i + 1..];
+            if let Some((inner, len)) = extract_brace_group(rest) {
+                let inner_html = render_math_to_html(&inner);
+                out.push_str(&format!("<sup>{}</sup>", inner_html));
+                i += 1 + len;
+            } else {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+        } else if bytes[i] == b'_' && i + 1 < bytes.len() && bytes[i + 1] == b'{' {
+            let rest = &latex[i + 1..];
+            if let Some((inner, len)) = extract_brace_group(rest) {
+                let inner_html = render_math_to_html(&inner);
+                out.push_str(&format!("<sub>{}</sub>", inner_html));
+                i += 1 + len;
+            } else {
+                out.push(bytes[i] as char);
+                i += 1;
+            }
+        } else {
+            out.push(bytes[i] as char);
+            i += 1;
+        }
+    }
+
+    out
+}
+
+fn greek_letter(cmd: &str) -> Option<&'static str> {
+    match cmd {
+        "alpha" => Some("α"),
+        "beta" => Some("β"),
+        "gamma" => Some("γ"),
+        "delta" => Some("δ"),
+        "epsilon" => Some("ε"),
+        "varepsilon" => Some("ε"),
+        "zeta" => Some("ζ"),
+        "eta" => Some("η"),
+        "theta" => Some("θ"),
+        "vartheta" => Some("ϑ"),
+        "iota" => Some("ι"),
+        "kappa" => Some("κ"),
+        "lambda" => Some("λ"),
+        "mu" => Some("μ"),
+        "nu" => Some("ν"),
+        "xi" => Some("ξ"),
+        "pi" => Some("π"),
+        "rho" => Some("ρ"),
+        "sigma" => Some("σ"),
+        "tau" => Some("τ"),
+        "upsilon" => Some("υ"),
+        "phi" => Some("φ"),
+        "varphi" => Some("ϕ"),
+        "chi" => Some("χ"),
+        "psi" => Some("ψ"),
+        "omega" => Some("ω"),
+        "Gamma" => Some("Γ"),
+        "Delta" => Some("Δ"),
+        "Theta" => Some("Θ"),
+        "Lambda" => Some("Λ"),
+        "Xi" => Some("Ξ"),
+        "Pi" => Some("Π"),
+        "Sigma" => Some("Σ"),
+        "Upsilon" => Some("Υ"),
+        "Phi" => Some("Φ"),
+        "Psi" => Some("Ψ"),
+        "Omega" => Some("Ω"),
+        _ => None,
+    }
+}
+
+fn math_symbol(cmd: &str) -> Option<&'static str> {
+    match cmd {
+        "sum" => Some("∑"),
+        "prod" => Some("∏"),
+        "int" => Some("∫"),
+        "cdot" => Some("·"),
+        "times" => Some("×"),
+        "pm" => Some("±"),
+        "leq" | "le" => Some("≤"),
+        "geq" | "ge" => Some("≥"),
+        "neq" | "ne" => Some("≠"),
+        "approx" => Some("≈"),
+        "infty" => Some("∞"),
+        "partial" => Some("∂"),
+        "nabla" => Some("∇"),
+        "rightarrow" | "to" => Some("→"),
+        "leftarrow" => Some("←"),
+        "Rightarrow" => Some("⇒"),
+        "Leftarrow" => Some("⇐"),
+        "in" => Some("∈"),
+        "notin" => Some("∉"),
+        "forall" => Some("∀"),
+        "exists" => Some("∃"),
+        "hbar" => Some("ℏ"),
+        "ell" => Some("ℓ"),
+        "Re" => Some("ℜ"),
+        "Im" => Some("ℑ"),
+        "ldots" => Some("…"),
+        "cdots" => Some("⋯"),
+        _ => None,
+    }
+}
+
+fn extract_brace_group(s: &str) -> Option<(String, usize)> {
+    let s = s.trim_start();
+    if !s.starts_with('{') {
+        return None;
+    }
+    let mut depth = 0usize;
+    let mut end = 0usize;
+    for (idx, c) in s.char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    end = idx;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 || end == 0 {
+        return None;
+    }
+    let consumed = s[..=end].len();
+    let inner = s[1..end].to_string();
+    Some((inner, consumed))
 }
 
 fn escape_html(s: &str) -> String {
@@ -847,6 +1138,7 @@ mod tests {
                 1,
                 NodeType::CodeBlock {
                     language: Some("rust".into()),
+                    content: String::new(),
                 },
             )
             .with_parent(0),
@@ -905,6 +1197,9 @@ mod tests {
                 NodeType::Table {
                     col_specs: vec![],
                     num_cols: 2,
+                    caption: None,
+                    column_widths: vec![],
+                    header_row: false,
                 },
             )
             .with_parent(0),
@@ -1091,6 +1386,7 @@ mod tests {
                     alt: "A photo".into(),
                     width: None,
                     height: None,
+                    placement: FloatPlacement::Here,
                 },
             )
             .with_parent(1),
@@ -1125,6 +1421,7 @@ mod tests {
                     alt: "Diagram".into(),
                     width: None,
                     height: None,
+                    placement: FloatPlacement::Here,
                 },
             )
             .with_parent(1),
@@ -1413,6 +1710,9 @@ mod tests {
                 NodeType::Table {
                     col_specs: vec![],
                     num_cols: 1,
+                    caption: None,
+                    column_widths: vec![],
+                    header_row: false,
                 },
             )
             .with_parent(0),
@@ -1476,8 +1776,16 @@ mod tests {
     fn test_code_block_no_language() {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
-        m.body
-            .push(Node::new(1, NodeType::CodeBlock { language: None }).with_parent(0));
+        m.body.push(
+            Node::new(
+                1,
+                NodeType::CodeBlock {
+                    language: None,
+                    content: String::new(),
+                },
+            )
+            .with_parent(0),
+        );
         m.body.push(
             Node::new(
                 2,
@@ -1518,5 +1826,226 @@ mod tests {
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("inside"));
         assert!(!html.contains("<group>"));
+    }
+
+    #[test]
+    fn test_math_html_superscript() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::MathInline {
+                    content: "x^{2}".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let html = HtmlRenderer::with_options(HtmlOptions {
+            math_format: MathFormat::Html,
+            ..Default::default()
+        })
+        .render(&m);
+        assert!(html.contains("<span class=\"math\""));
+        assert!(html.contains("data-formula=\"x^{2}\""));
+        assert!(html.contains("<sup>2</sup>"));
+    }
+
+    #[test]
+    fn test_math_html_subscript() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::MathInline {
+                    content: "a_{i}".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let html = HtmlRenderer::with_options(HtmlOptions {
+            math_format: MathFormat::Html,
+            ..Default::default()
+        })
+        .render(&m);
+        assert!(html.contains("<sub>i</sub>"));
+    }
+
+    #[test]
+    fn test_math_html_fraction() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::MathInline {
+                    content: "\\frac{1}{2}".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let html = HtmlRenderer::with_options(HtmlOptions {
+            math_format: MathFormat::Html,
+            ..Default::default()
+        })
+        .render(&m);
+        assert!(html.contains("<sup>1</sup>"));
+        assert!(html.contains("<sub>2</sub>"));
+        assert!(html.contains("&frasl;"));
+    }
+
+    #[test]
+    fn test_math_html_greek() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::MathInline {
+                    content: "\\alpha + \\beta = \\gamma".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let html = HtmlRenderer::with_options(HtmlOptions {
+            math_format: MathFormat::Html,
+            ..Default::default()
+        })
+        .render(&m);
+        assert!(html.contains("α"));
+        assert!(html.contains("β"));
+        assert!(html.contains("γ"));
+    }
+
+    #[test]
+    fn test_reference_html() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body.push(
+            Node::new(1, NodeType::Section)
+                .with_parent(0)
+                .with_label("sec:intro"),
+        );
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Introduction".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body
+            .push(Node::new(3, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Reference {
+                    label: "sec:intro".into(),
+                },
+            )
+            .with_parent(3),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(0).unwrap().add_child(3);
+        m.body.get_mut(1).unwrap().add_child(2);
+        m.body.get_mut(3).unwrap().add_child(4);
+
+        let html = HtmlRenderer::new().render(&m);
+        assert!(html.contains("<a href=\"#sec:intro\" class=\"ref\">"));
+        assert!(html.contains("Section 1"));
+    }
+
+    #[test]
+    fn test_reference_unresolved() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Reference {
+                    label: "nonexistent".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let html = HtmlRenderer::new().render(&m);
+        assert!(html.contains("Section ??"));
+    }
+
+    #[test]
+    fn test_label_html() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Label {
+                    name: "eq:important".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let html = HtmlRenderer::new().render(&m);
+        assert!(html.contains("<span id=\"eq:important\"></span>"));
+    }
+
+    #[test]
+    fn test_math_html_combined() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::MathInline {
+                    content: "e^{i\\pi}+1=0".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.get_mut(0).unwrap().add_child(1);
+        m.body.get_mut(1).unwrap().add_child(2);
+
+        let html = HtmlRenderer::with_options(HtmlOptions {
+            math_format: MathFormat::Html,
+            ..Default::default()
+        })
+        .render(&m);
+        assert!(html.contains("<span class=\"math\""));
+        assert!(html.contains("<sup>iπ</sup>"));
+        assert!(html.contains("+1=0"));
     }
 }
