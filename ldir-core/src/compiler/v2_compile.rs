@@ -2,6 +2,7 @@
 #![warn(clippy::unwrap_used, clippy::expect_used)]
 #![allow(dead_code)]
 
+use indexmap::IndexMap;
 use std::collections::HashMap;
 
 use bumpalo::collections::Vec as BumpVec;
@@ -27,13 +28,14 @@ use crate::layout::linebreak::cjk::{insert_cjk_breaks, is_cjk_text};
 use crate::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
 
 fn to_superscript(n: usize) -> String {
-    const SUPERSCRIPTS: [char; 10] = [
+    const SUPERSCRIPTS: &[char] = &[
         '\u{2070}', '\u{00B9}', '\u{00B2}', '\u{00B3}', '\u{2074}', '\u{2075}', '\u{2076}',
         '\u{2077}', '\u{2078}', '\u{2079}',
     ];
     n.to_string()
-        .chars()
-        .map(|d| SUPERSCRIPTS[(d as usize) - ('0' as usize)])
+        .as_bytes()
+        .iter()
+        .map(|&d| SUPERSCRIPTS[(d - b'0') as usize])
         .collect()
 }
 
@@ -49,7 +51,7 @@ pub fn compile_v2_document(module: &SIRModuleV2, ctx: &mut CompileContext) -> Re
     let mut gir_doc = GIRDocument::with_capacity(1);
     let mut page = ctx.new_page();
     let mut eq_counter: u32 = 0;
-    let mut section_counters: HashMap<u8, u32> = HashMap::new();
+    let mut section_counters: IndexMap<u8, u32> = IndexMap::new();
     let mut section_number: Vec<u32> = Vec::new();
     let mut footnotes: Vec<(usize, String)> = Vec::new();
     let mut figure_counter: usize = 0;
@@ -94,10 +96,10 @@ pub fn compile_v2_document_with_bib(
     let mut gir_doc = GIRDocument::with_capacity(1);
     let mut page = ctx.new_page();
     let mut eq_counter: u32 = 0;
-    let mut section_counters: HashMap<u8, u32> = HashMap::new();
+    let mut section_counters: IndexMap<u8, u32> = IndexMap::new();
     let mut section_number: Vec<u32> = Vec::new();
     let mut cite_counter: u32 = 0;
-    let mut cite_numbers: HashMap<String, u32> = HashMap::new();
+    let mut cite_numbers: IndexMap<String, u32> = IndexMap::new();
     let mut footnotes: Vec<(usize, String)> = Vec::new();
     let mut figure_counter: usize = 0;
 
@@ -214,10 +216,10 @@ fn compile_v2_node(
     page: &mut GIRPage,
     ctx: &mut CompileContext,
     gir_doc: &mut GIRDocument,
-    labels: &mut HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &mut IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
     eq_counter: &mut u32,
-    section_counters: &mut HashMap<u8, u32>,
+    section_counters: &mut IndexMap<u8, u32>,
     section_number: &mut Vec<u32>,
     footnotes: &mut Vec<(usize, String)>,
     figure_counter: &mut usize,
@@ -740,14 +742,14 @@ fn compile_v2_node_with_bib(
     page: &mut GIRPage,
     ctx: &mut CompileContext,
     gir_doc: &mut GIRDocument,
-    labels: &mut HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &mut IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
     eq_counter: &mut u32,
-    section_counters: &mut HashMap<u8, u32>,
+    section_counters: &mut IndexMap<u8, u32>,
     section_number: &mut Vec<u32>,
     bibliography: &HashMap<String, BibEntry>,
     cite_counter: &mut u32,
-    cite_numbers: &mut HashMap<String, u32>,
+    cite_numbers: &mut IndexMap<String, u32>,
     footnotes: &mut Vec<(usize, String)>,
     figure_counter: &mut usize,
 ) -> Result<()> {
@@ -1328,10 +1330,10 @@ fn compile_children(
         Some(n) => n,
         None => return Ok(()),
     };
-    let mut labels = HashMap::new();
-    let refs_map = HashMap::new();
+    let mut labels = IndexMap::new();
+    let refs_map = IndexMap::new();
     let mut eq_counter: u32 = 0;
-    let mut section_counters: HashMap<u8, u32> = HashMap::new();
+    let mut section_counters: IndexMap<u8, u32> = IndexMap::new();
     let mut section_number: Vec<u32> = Vec::new();
     let mut footnotes: Vec<(usize, String)> = Vec::new();
     let mut figure_counter: usize = 0;
@@ -1361,10 +1363,10 @@ fn compile_children_with_refs(
     page: &mut GIRPage,
     ctx: &mut CompileContext,
     gir_doc: &mut GIRDocument,
-    labels: &mut HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &mut IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
     eq_counter: &mut u32,
-    section_counters: &mut HashMap<u8, u32>,
+    section_counters: &mut IndexMap<u8, u32>,
     section_number: &mut Vec<u32>,
     footnotes: &mut Vec<(usize, String)>,
     figure_counter: &mut usize,
@@ -1399,14 +1401,14 @@ fn compile_children_with_bib(
     page: &mut GIRPage,
     ctx: &mut CompileContext,
     gir_doc: &mut GIRDocument,
-    labels: &mut HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &mut IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
     eq_counter: &mut u32,
-    section_counters: &mut HashMap<u8, u32>,
+    section_counters: &mut IndexMap<u8, u32>,
     section_number: &mut Vec<u32>,
     bibliography: &HashMap<String, BibEntry>,
     cite_counter: &mut u32,
-    cite_numbers: &mut HashMap<String, u32>,
+    cite_numbers: &mut IndexMap<String, u32>,
     footnotes: &mut Vec<(usize, String)>,
     figure_counter: &mut usize,
 ) -> Result<()> {
@@ -1436,8 +1438,8 @@ fn compile_children_with_bib(
     Ok(())
 }
 
-fn collect_v2_labels(module: &SIRModuleV2) -> HashMap<String, String> {
-    let mut labels = HashMap::new();
+fn collect_v2_labels(module: &SIRModuleV2) -> IndexMap<String, String> {
+    let mut labels = IndexMap::new();
 
     for node in module.body.iter() {
         if let Some(label) = &node.label {
@@ -1487,9 +1489,9 @@ fn collect_v2_labels(module: &SIRModuleV2) -> HashMap<String, String> {
 
 fn collect_v2_refs(
     module: &SIRModuleV2,
-    labels: &HashMap<String, String>,
-) -> HashMap<String, String> {
-    let mut refs_map = HashMap::new();
+    labels: &IndexMap<String, String>,
+) -> IndexMap<String, String> {
+    let mut refs_map = IndexMap::new();
 
     for xref in &module.annotations.refs {
         if let Some(number) = labels.get(&xref.label) {
@@ -1502,19 +1504,19 @@ fn collect_v2_refs(
 
 fn resolve_v2_references(
     text: &str,
-    labels: &HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
 ) -> String {
-    let mut numbers = HashMap::new();
+    let mut numbers = IndexMap::new();
     for (k, v) in labels.iter().chain(refs_map.iter()) {
         numbers.entry(k.clone()).or_insert_with(|| v.clone());
     }
-    cross_ref::resolve_text_references(text, &numbers, &HashMap::new())
+    cross_ref::resolve_text_references(text, &numbers, &IndexMap::new())
 }
 
 fn increment_section_counter(
     level: u8,
-    section_counters: &mut HashMap<u8, u32>,
+    section_counters: &mut IndexMap<u8, u32>,
     section_number: &mut Vec<u32>,
 ) {
     *section_counters.entry(level).or_insert(0) += 1;
@@ -1549,8 +1551,8 @@ fn emit_v2_heading_with_number(
     let saved_font_size = ctx.font_size;
     ctx.font_size = Fp266::from_int(font_size_pt);
 
-    let empty_labels = HashMap::new();
-    let empty_refs = HashMap::new();
+    let empty_labels = IndexMap::new();
+    let empty_refs = IndexMap::new();
     let mut runs = collect_styled_runs(
         node_id,
         module,
@@ -1578,7 +1580,7 @@ fn emit_v2_heading_with_number(
 fn emit_bibliography_page(
     _module: &SIRModuleV2,
     bibliography: &HashMap<String, BibEntry>,
-    cite_numbers: &HashMap<String, u32>,
+    cite_numbers: &IndexMap<String, u32>,
     ctx: &mut CompileContext,
     page: &mut GIRPage,
     gir_doc: &mut GIRDocument,
@@ -1627,8 +1629,8 @@ fn emit_v2_heading(
     let saved_font_size = ctx.font_size;
     ctx.font_size = Fp266::from_int(font_size_pt);
 
-    let empty_labels = HashMap::new();
-    let empty_refs = HashMap::new();
+    let empty_labels = IndexMap::new();
+    let empty_refs = IndexMap::new();
     let runs = collect_styled_runs(
         node_id,
         module,
@@ -1654,8 +1656,8 @@ fn collect_styled_runs(
     node_id: u32,
     module: &SIRModuleV2,
     style_modifier: StyleModifier,
-    labels: &HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
 ) -> Vec<(String, StyleModifier)> {
     let node = match module.body.get(node_id) {
         Some(n) => n,
@@ -1966,8 +1968,8 @@ fn emit_v2_paragraph(
     page: &mut GIRPage,
     ctx: &mut CompileContext,
     gir_doc: &mut GIRDocument,
-    labels: &HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
 ) -> Result<()> {
     let runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, labels, refs_map);
     if runs.iter().all(|(t, _)| t.trim().is_empty()) {
@@ -2017,11 +2019,11 @@ fn emit_v2_paragraph_with_bib(
     page: &mut GIRPage,
     ctx: &mut CompileContext,
     gir_doc: &mut GIRDocument,
-    labels: &HashMap<String, String>,
-    refs_map: &HashMap<String, String>,
+    labels: &IndexMap<String, String>,
+    refs_map: &IndexMap<String, String>,
     bibliography: &HashMap<String, BibEntry>,
     cite_counter: &mut u32,
-    cite_numbers: &mut HashMap<String, u32>,
+    cite_numbers: &mut IndexMap<String, u32>,
 ) -> Result<()> {
     let runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, labels, refs_map);
     if runs.iter().all(|(t, _)| t.trim().is_empty()) {
@@ -2263,7 +2265,7 @@ fn emit_v2_math_block(
         emit_helpers::emit_move_xy(page, num_x, ctx.y);
         let display_num = eq_number.unwrap_or("1");
         let paren_num = format!("({})", display_num);
-        for ch in paren_num.chars() {
+        for &ch in paren_num.as_bytes() {
             page.push(GIRCommand::new_put_glyph(ch as i32, 7 * 64));
         }
     }
@@ -2464,8 +2466,8 @@ fn compile_v2_table_improved(
             let col_width_fp = Fp266::from_int((col_widths_pt[col_idx] * 64.0) as i32);
             let padding_fp = Fp266::from_frac(3, 1);
 
-            let text_width_chars = trimmed.chars().count() as f64;
-            let text_width_fp = text_width_chars * 7.0 * 64.0;
+            let text_width_bytes = trimmed.len();
+            let text_width_fp = text_width_bytes as f64 * 7.0 * 64.0;
 
             let text_x = match col_aligns[col_idx] {
                 ColumnAlign::Right => {
@@ -3446,9 +3448,9 @@ mod tests {
 
     #[test]
     fn test_resolve_v2_references_ref() {
-        let mut labels = HashMap::new();
+        let mut labels = IndexMap::new();
         labels.insert("sec:intro".to_string(), "1".to_string());
-        let refs_map = HashMap::new();
+        let refs_map = IndexMap::new();
 
         let text = r"See \ref{sec:intro} for details.";
         let resolved = resolve_v2_references(text, &labels, &refs_map);
@@ -3457,9 +3459,9 @@ mod tests {
 
     #[test]
     fn test_resolve_v2_references_eqref() {
-        let mut labels = HashMap::new();
+        let mut labels = IndexMap::new();
         labels.insert("eq:euler".to_string(), "3".to_string());
-        let refs_map = HashMap::new();
+        let refs_map = IndexMap::new();
 
         let text = r"By \eqref{eq:euler}, we know...";
         let resolved = resolve_v2_references(text, &labels, &refs_map);
@@ -3468,8 +3470,8 @@ mod tests {
 
     #[test]
     fn test_resolve_v2_references_unknown() {
-        let labels = HashMap::new();
-        let refs_map = HashMap::new();
+        let labels = IndexMap::new();
+        let refs_map = IndexMap::new();
 
         let text = r"See \ref{missing} for details.";
         let resolved = resolve_v2_references(text, &labels, &refs_map);
@@ -3478,9 +3480,9 @@ mod tests {
 
     #[test]
     fn test_resolve_v2_references_typst_style() {
-        let mut labels = HashMap::new();
+        let mut labels = IndexMap::new();
         labels.insert("sec:results".to_string(), "2.3".to_string());
-        let refs_map = HashMap::new();
+        let refs_map = IndexMap::new();
 
         let text = "As shown in @sec:results, the results are clear.";
         let resolved = resolve_v2_references(text, &labels, &refs_map);
@@ -3489,9 +3491,9 @@ mod tests {
 
     #[test]
     fn test_resolve_v2_references_autoref() {
-        let mut labels = HashMap::new();
+        let mut labels = IndexMap::new();
         labels.insert("sec:methods".to_string(), "2".to_string());
-        let refs_map = HashMap::new();
+        let refs_map = IndexMap::new();
 
         let text = r"See \autoref{sec:methods}.";
         let resolved = resolve_v2_references(text, &labels, &refs_map);

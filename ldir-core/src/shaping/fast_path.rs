@@ -20,6 +20,7 @@ const MONO_ADVANCE_RATIO_NUM: i32 = 3;
 const MONO_ADVANCE_RATIO_DEN: i32 = 5;
 
 /// Check whether a string is pure ASCII (all bytes <= 0x7F).
+#[inline]
 fn is_ascii_str(text: &str) -> bool {
     text.as_bytes().iter().all(|&b| b <= 0x7F)
 }
@@ -27,6 +28,7 @@ fn is_ascii_str(text: &str) -> bool {
 /// Compute the monospace advance for a single character at the given font size.
 ///
 /// `advance = font_size * 3/5` (0.6 ratio).
+#[inline]
 pub fn mono_advance(font_size: Fp266) -> Fp266 {
     (font_size * MONO_ADVANCE_RATIO_NUM).div(Fp266::from_int(MONO_ADVANCE_RATIO_DEN))
 }

@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::annotations::LabelCategory;
 use ldir_ir::sir::v2::nodes::NodeType;
@@ -22,7 +21,7 @@ pub struct ResolvedLabel {
 
 pub fn collect_labels(module: &SIRModuleV2) -> Vec<ResolvedLabel> {
     let mut labels = Vec::new();
-    let mut section_counters: HashMap<u8, u32> = HashMap::new();
+    let mut section_counters: IndexMap<u8, u32> = IndexMap::new();
     let mut section_number: Vec<u32> = Vec::new();
     let mut eq_counter: u32 = 0;
     let mut fig_counter: u32 = 0;
@@ -67,7 +66,7 @@ fn collect_labels_recursive(
     node_id: u32,
     module: &SIRModuleV2,
     labels: &mut Vec<ResolvedLabel>,
-    section_counters: &mut HashMap<u8, u32>,
+    section_counters: &mut IndexMap<u8, u32>,
     section_number: &mut Vec<u32>,
     eq_counter: &mut u32,
     fig_counter: &mut u32,
@@ -172,7 +171,7 @@ fn collect_labels_recursive(
 
 fn increment_section_counter(
     level: u8,
-    section_counters: &mut HashMap<u8, u32>,
+    section_counters: &mut IndexMap<u8, u32>,
     section_number: &mut Vec<u32>,
 ) {
     *section_counters.entry(level).or_insert(0) += 1;
@@ -194,7 +193,7 @@ fn section_number_string(section_number: &[u32]) -> String {
         .join(".")
 }
 
-pub fn resolve_references(labels: &[ResolvedLabel]) -> HashMap<String, String> {
+pub fn resolve_references(labels: &[ResolvedLabel]) -> IndexMap<String, String> {
     labels
         .iter()
         .filter(|rl| !rl.number.is_empty())
@@ -202,7 +201,7 @@ pub fn resolve_references(labels: &[ResolvedLabel]) -> HashMap<String, String> {
         .collect()
 }
 
-pub fn resolve_kind_map(labels: &[ResolvedLabel]) -> HashMap<String, LabelKind> {
+pub fn resolve_kind_map(labels: &[ResolvedLabel]) -> IndexMap<String, LabelKind> {
     labels
         .iter()
         .map(|rl| (rl.label.clone(), rl.kind.clone()))
@@ -211,8 +210,8 @@ pub fn resolve_kind_map(labels: &[ResolvedLabel]) -> HashMap<String, LabelKind> 
 
 pub fn resolve_text_references(
     text: &str,
-    numbers: &HashMap<String, String>,
-    kinds: &HashMap<String, LabelKind>,
+    numbers: &IndexMap<String, String>,
+    kinds: &IndexMap<String, LabelKind>,
 ) -> String {
     let mut result = String::with_capacity(text.len());
     let bytes = text.as_bytes();
@@ -522,9 +521,9 @@ mod tests {
 
     #[test]
     fn test_resolve_text_references_ref() {
-        let mut numbers = HashMap::new();
+        let mut numbers = IndexMap::new();
         numbers.insert("sec:intro".to_string(), "1".to_string());
-        let kinds = HashMap::new();
+        let kinds = IndexMap::new();
 
         let text = r"See \ref{sec:intro} for details.";
         let resolved = resolve_text_references(text, &numbers, &kinds);
@@ -533,9 +532,9 @@ mod tests {
 
     #[test]
     fn test_resolve_text_references_eqref() {
-        let mut numbers = HashMap::new();
+        let mut numbers = IndexMap::new();
         numbers.insert("eq:euler".to_string(), "3".to_string());
-        let kinds = HashMap::new();
+        let kinds = IndexMap::new();
 
         let text = r"By \eqref{eq:euler}, we know...";
         let resolved = resolve_text_references(text, &numbers, &kinds);
@@ -544,9 +543,9 @@ mod tests {
 
     #[test]
     fn test_resolve_text_references_autoref_with_kind() {
-        let mut numbers = HashMap::new();
+        let mut numbers = IndexMap::new();
         numbers.insert("fig:diagram".to_string(), "2".to_string());
-        let mut kinds = HashMap::new();
+        let mut kinds = IndexMap::new();
         kinds.insert("fig:diagram".to_string(), LabelKind::Figure);
 
         let text = r"See \autoref{fig:diagram}.";
@@ -556,9 +555,9 @@ mod tests {
 
     #[test]
     fn test_resolve_text_references_autoref_prefix_inference() {
-        let mut numbers = HashMap::new();
+        let mut numbers = IndexMap::new();
         numbers.insert("tab:data".to_string(), "1".to_string());
-        let kinds = HashMap::new();
+        let kinds = IndexMap::new();
 
         let text = r"See \autoref{tab:data}.";
         let resolved = resolve_text_references(text, &numbers, &kinds);
@@ -567,8 +566,8 @@ mod tests {
 
     #[test]
     fn test_resolve_text_references_unknown_label() {
-        let numbers = HashMap::new();
-        let kinds = HashMap::new();
+        let numbers = IndexMap::new();
+        let kinds = IndexMap::new();
 
         let text = r"See \ref{missing} for details.";
         let resolved = resolve_text_references(text, &numbers, &kinds);
@@ -577,9 +576,9 @@ mod tests {
 
     #[test]
     fn test_resolve_text_references_typst_style() {
-        let mut numbers = HashMap::new();
+        let mut numbers = IndexMap::new();
         numbers.insert("sec:results".to_string(), "2.3".to_string());
-        let kinds = HashMap::new();
+        let kinds = IndexMap::new();
 
         let text = "As shown in @sec:results, the results are clear.";
         let resolved = resolve_text_references(text, &numbers, &kinds);
@@ -588,11 +587,11 @@ mod tests {
 
     #[test]
     fn test_resolve_text_references_mixed() {
-        let mut numbers = HashMap::new();
+        let mut numbers = IndexMap::new();
         numbers.insert("sec:intro".to_string(), "1".to_string());
         numbers.insert("eq:einstein".to_string(), "1".to_string());
         numbers.insert("fig:diagram".to_string(), "2".to_string());
-        let mut kinds = HashMap::new();
+        let mut kinds = IndexMap::new();
         kinds.insert("sec:intro".to_string(), LabelKind::Section { level: 2 });
         kinds.insert("eq:einstein".to_string(), LabelKind::Equation);
         kinds.insert("fig:diagram".to_string(), LabelKind::Figure);

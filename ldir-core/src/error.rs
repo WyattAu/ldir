@@ -150,6 +150,7 @@ impl fmt::Display for LdirError {
 impl std::error::Error for LdirError {}
 
 impl From<ParseErrorKind> for LdirError {
+    #[cold]
     fn from(kind: ParseErrorKind) -> Self {
         Self {
             kind: ErrorKind::Parse(kind),
@@ -160,6 +161,7 @@ impl From<ParseErrorKind> for LdirError {
 }
 
 impl From<ValidationErrorKind> for LdirError {
+    #[cold]
     fn from(kind: ValidationErrorKind) -> Self {
         Self {
             kind: ErrorKind::Validation(kind),
@@ -170,6 +172,7 @@ impl From<ValidationErrorKind> for LdirError {
 }
 
 impl From<CompileErrorKind> for LdirError {
+    #[cold]
     fn from(kind: CompileErrorKind) -> Self {
         Self {
             kind: ErrorKind::Compile(kind),
@@ -180,6 +183,7 @@ impl From<CompileErrorKind> for LdirError {
 }
 
 impl From<EmitErrorKind> for LdirError {
+    #[cold]
     fn from(kind: EmitErrorKind) -> Self {
         Self {
             kind: ErrorKind::Emit(kind),

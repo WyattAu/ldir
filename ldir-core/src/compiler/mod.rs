@@ -34,7 +34,7 @@ pub mod v1_to_v2;
 #[allow(missing_docs)]
 pub mod v2_compile;
 
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -819,7 +819,7 @@ fn emit_paragraph_inline(
 }
 
 /// Resolve `\ref{key}` and `\eqref{key}` placeholders in text.
-fn resolve_references(text: &str, labels: &HashMap<String, String>) -> String {
+fn resolve_references(text: &str, labels: &IndexMap<String, String>) -> String {
     let mut result = text.to_string();
     for (key, number) in labels {
         let ref_pattern = format!("\\ref{{{}}}", key);
@@ -850,10 +850,10 @@ fn strip_label(text: &str) -> String {
 
 /// Collect all `\label{key}` entries and section/equation numbers from the S-IR tree.
 ///
-/// Returns a HashMap of label_key → display_number.
-fn collect_labels(tree: &InstructionTree, doc: &SIRDocument) -> HashMap<String, String> {
-    let mut labels: HashMap<String, String> = HashMap::new();
-    let mut section_counters: HashMap<u32, u32> = HashMap::new();
+/// Returns a IndexMap of label_key → display_number.
+fn collect_labels(tree: &InstructionTree, doc: &SIRDocument) -> IndexMap<String, String> {
+    let mut labels: IndexMap<String, String> = IndexMap::new();
+    let mut section_counters: IndexMap<u32, u32> = IndexMap::new();
     let mut equation_counter: u32 = 0;
 
     collect_labels_recursive(
@@ -873,8 +873,8 @@ fn collect_labels_recursive(
     tree: &InstructionTree,
     node_idx: usize,
     doc: &SIRDocument,
-    labels: &mut HashMap<String, String>,
-    section_counters: &mut HashMap<u32, u32>,
+    labels: &mut IndexMap<String, String>,
+    section_counters: &mut IndexMap<u32, u32>,
     equation_counter: &mut u32,
     current_number: &mut Vec<u32>,
 ) {
@@ -988,7 +988,7 @@ fn compile_node(
     ctx: &mut CompileContext,
     gir_doc: &mut GIRDocument,
     base_dir: Option<&Path>,
-    labels: &HashMap<String, String>,
+    labels: &IndexMap<String, String>,
     equation_counter: &mut u32,
     fn_state: &mut FootnoteState,
 ) -> Result<()> {
@@ -2238,7 +2238,7 @@ mod tests {
 
     #[test]
     fn test_resolve_references() {
-        let mut labels = HashMap::new();
+        let mut labels = IndexMap::new();
         labels.insert("sec:first".to_string(), "1".to_string());
         labels.insert("eq:pyth".to_string(), "2".to_string());
 

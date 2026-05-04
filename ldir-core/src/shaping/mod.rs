@@ -194,6 +194,7 @@ fn font_data_hash(font_data: &[u8]) -> u32 {
 ///
 /// Uses the cache to avoid re-shaping identical (text, font_id, font_size) triples.
 /// Falls back to uncached shaping when font_data is not available.
+#[inline]
 pub fn shape_text_cached(
     cache: &ThreadSafeShapeCache,
     font_data: &[u8],
@@ -214,6 +215,7 @@ pub fn shape_text_cached(
 ///
 /// Computes a font_id from font_data bytes so the same font data always
 /// produces the same cache key, regardless of the logical font_id.
+#[inline]
 pub fn shape_text_cached_auto_font(
     cache: &ThreadSafeShapeCache,
     font_data: &[u8],

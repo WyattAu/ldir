@@ -7,6 +7,7 @@
 
 #![allow(dead_code)]
 
+use indexmap::IndexMap;
 use std::collections::HashMap;
 
 use ldir_ir::fp266::Fp266 as LirFp;
@@ -98,7 +99,7 @@ struct LirCompiler<'a> {
     cursor_x: Fp266,
     cursor_y: Fp266,
     section_number: Vec<u32>,
-    section_counters: HashMap<u8, u32>,
+    section_counters: IndexMap<u8, u32>,
     heading_entries: Vec<(u8, String, String)>,
     pending_footnotes: Vec<(u32, String)>,
     footnote_counter: u32,
@@ -107,7 +108,7 @@ struct LirCompiler<'a> {
     style_table: LIRStyleTable,
     bibliography: Option<&'a HashMap<String, BibEntry>>,
     cite_counter: u32,
-    cite_numbers: HashMap<String, u32>,
+    cite_numbers: IndexMap<String, u32>,
     bib_style: &'static str,
 }
 
@@ -139,7 +140,7 @@ impl<'a> LirCompiler<'a> {
             cursor_x: ctx.margin_left,
             cursor_y: ctx.margin_top,
             section_number: Vec::new(),
-            section_counters: HashMap::new(),
+            section_counters: IndexMap::new(),
             heading_entries: Vec::new(),
             pending_footnotes: Vec::new(),
             footnote_counter: 0,
@@ -148,7 +149,7 @@ impl<'a> LirCompiler<'a> {
             style_table,
             bibliography,
             cite_counter: 0,
-            cite_numbers: HashMap::new(),
+            cite_numbers: IndexMap::new(),
             bib_style,
         }
     }

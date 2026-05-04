@@ -57,10 +57,12 @@ pub enum BidiClass {
 }
 
 /// Strong types for neutral resolution.
+#[inline]
 fn is_strong(bc: BidiClass) -> bool {
     matches!(bc, BidiClass::L | BidiClass::R | BidiClass::AL)
 }
 
+#[inline]
 fn is_weak(bc: BidiClass) -> bool {
     matches!(
         bc,
@@ -74,6 +76,7 @@ fn is_weak(bc: BidiClass) -> bool {
     )
 }
 
+#[inline]
 fn is_neutral(bc: BidiClass) -> bool {
     matches!(
         bc,
@@ -138,6 +141,7 @@ fn bracket_close_pair(ch: char) -> Option<char> {
     }
 }
 
+#[inline]
 fn strong_direction(bc: BidiClass) -> Option<BidiClass> {
     match bc {
         BidiClass::L => Some(BidiClass::L),
@@ -148,7 +152,7 @@ fn strong_direction(bc: BidiClass) -> Option<BidiClass> {
     }
 }
 
-/// Classify a character's bidirectional class per UAX#9 Table 3.
+#[inline]
 pub fn bidi_class(ch: char) -> BidiClass {
     match ch {
         // Explicit directional controls

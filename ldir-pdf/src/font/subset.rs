@@ -198,6 +198,7 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
     assemble_font(tables)
 }
 
+#[inline]
 fn get_glyph_range(
     loca: &[u8],
     glyf: &[u8],

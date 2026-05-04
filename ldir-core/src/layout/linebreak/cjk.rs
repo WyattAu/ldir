@@ -11,6 +11,7 @@ use crate::fp266::Fp266;
 
 use super::types::LineBreakItem;
 
+#[inline]
 pub fn is_cjk_char(ch: char) -> bool {
     matches!(
         ch,
@@ -29,6 +30,7 @@ pub fn is_cjk_text(text: &str) -> bool {
     text.chars().any(is_cjk_char)
 }
 
+#[inline]
 pub fn is_prohibited_at_line_start(ch: char) -> bool {
     matches!(
         ch,
@@ -57,6 +59,7 @@ pub fn is_prohibited_at_line_start(ch: char) -> bool {
     )
 }
 
+#[inline]
 pub fn is_prohibited_at_line_end(ch: char) -> bool {
     matches!(ch, '（' | '【' | '「' | '『' | '《' | '(' | '[' | '{')
 }
