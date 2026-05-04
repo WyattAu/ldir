@@ -25,10 +25,10 @@ fn extract_document_xml(data: &[u8]) -> String {
     let cursor = Cursor::new(data);
     if let Ok(archive) = SimpleZip::new(cursor) {
         for entry in &archive.entries {
-            if entry.name == "word/document.xml" {
-                if let Some(raw) = archive.read_entry(entry) {
-                    return String::from_utf8_lossy(&raw).to_string();
-                }
+            if entry.name == "word/document.xml"
+                && let Some(raw) = archive.read_entry(entry)
+            {
+                return String::from_utf8_lossy(&raw).to_string();
             }
         }
     }
@@ -642,10 +642,10 @@ fn collect_run_text(p: &XmlNode) -> String {
 }
 
 fn collect_run_text_recursive(node: &XmlNode, text: &mut String) {
-    if let Some(ref t) = node.text {
-        if node.tag == "t" {
-            text.push_str(t);
-        }
+    if let Some(ref t) = node.text
+        && node.tag == "t"
+    {
+        text.push_str(t);
     }
     for child in &node.children {
         collect_run_text_recursive(child, text);
@@ -698,18 +698,18 @@ fn convert_runs(p: &XmlNode) -> Vec<NodeType> {
         } else if child.tag == "hyperlink" {
             let url = xml_attr(&child.attrs, "anchor").or_else(|| xml_attr(&child.attrs, "id"));
             let text = collect_run_text(child);
-            if let Some(ref url_str) = url {
-                if !url_str.is_empty() {
-                    nodes.push(NodeType::Link {
-                        url: url_str.clone(),
-                        title: if text.is_empty() {
-                            None
-                        } else {
-                            Some(text.clone())
-                        },
-                    });
-                    continue;
-                }
+            if let Some(ref url_str) = url
+                && !url_str.is_empty()
+            {
+                nodes.push(NodeType::Link {
+                    url: url_str.clone(),
+                    title: if text.is_empty() {
+                        None
+                    } else {
+                        Some(text.clone())
+                    },
+                });
+                continue;
             }
             if !text.is_empty() {
                 nodes.push(NodeType::Text { content: text });
@@ -722,10 +722,10 @@ fn convert_runs(p: &XmlNode) -> Vec<NodeType> {
 fn collect_run_text_of(r: &XmlNode) -> String {
     let mut text = String::new();
     for child in &r.children {
-        if child.tag == "t" {
-            if let Some(ref t) = child.text {
-                text.push_str(t);
-            }
+        if child.tag == "t"
+            && let Some(ref t) = child.text
+        {
+            text.push_str(t);
         }
     }
     text

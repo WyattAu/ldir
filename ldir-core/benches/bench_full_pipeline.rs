@@ -428,10 +428,12 @@ fn bench_interner(c: &mut Criterion) {
         b.iter(|| {
             let mut interner = StringInterner::new();
             for i in 0..1000 {
+                let owned;
                 let s = if i % 5 == 0 {
                     repeated[i as usize % repeated.len()]
                 } else {
-                    black_box(&format!("unique_text_{}", i) as &str)
+                    owned = format!("unique_text_{}", i);
+                    &owned as &str
                 };
                 black_box(interner.intern(s));
             }

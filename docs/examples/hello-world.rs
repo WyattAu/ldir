@@ -8,22 +8,23 @@
 use ldir_core::compiler::compile_sir;
 use ldir_core::emitter::emit_gir;
 use ldir_core::validator::validate_sir;
-use ldir_ir::sir::{ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
+use ldir_ir::sir::{BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
 
 fn main() {
     // 1. Create S-IR instructions
     let mut doc = SIRDocument::new();
 
     // Root document node (parent = ROOT_SENTINEL)
-    doc.push(SIRInstruction::new(
-        SIROpcode::PushBlock,
-        0,
-        ROOT_SENTINEL,
-        0,
-    ));
+    doc.push_with_payload(
+        SIRInstruction::new(SIROpcode::PushBlock, 0, ROOT_SENTINEL, 0),
+        &[BlockType::Document as u8],
+    );
 
     // Text content directly under the document root
-    doc.push(SIRInstruction::new(SIROpcode::SetContent, 1, 0, 0));
+    doc.push_with_payload(
+        SIRInstruction::new(SIROpcode::SetContent, 1, 0, 0),
+        b"Hello, World!\x00",
+    );
 
     // 2. Validate the S-IR document
     validate_sir(&doc).expect("S-IR document should be well-formed");

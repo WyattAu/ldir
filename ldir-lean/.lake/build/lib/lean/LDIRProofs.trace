@@ -1,9 +1,9 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["6e891b1fe844afaa.olean"],
-  "i": "97e594ab8a10fd36.ilean",
-  "c": "52723588e67861e8.c"},
+ {"o": ["4042706b4b288aac.olean"],
+  "i": "ab7630a8bdd00e00.ilean",
+  "c": "f7afe5161b3ac3d2.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/Cli/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/batteries/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/Qq/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/aesop/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/proofwidgets/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/importGraph/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/plausible/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/mathlib/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/lib/lean /home/wyatt/.elan/toolchains/leanprover--lean4---v4.29.0/bin/lean /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/LDIRProofs.lean -o /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/lib/lean/LDIRProofs.olean -i /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/lib/lean/LDIRProofs.ilean -c /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/ir/LDIRProofs.c --setup /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/ir/LDIRProofs.setup.json --json",
@@ -17,7 +17,11 @@
        [["LDIRProofs.proof_ir_wellformedness transitive imports (legacy)",
          "00000000000006bb"],
         ["LDIRProofs.proof_ir_wellformedness:importAllArts",
-         "bf4a8bb7c694769d"]]]]],
+         "bf4a8bb7c694769d"],
+        ["LDIRProofs.ProofLayoutProperties transitive imports (legacy)",
+         "833ab8d428d0b4ba"],
+        ["LDIRProofs.ProofLayoutProperties:importAllArts",
+         "bc4107345ba4bef6"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -26,10 +30,10 @@
   ["Lean 4.29.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740",
    "60bb08ef22408c8a"],
   ["/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/LDIRProofs.lean",
-   "844fdad8a1ab20d2"],
+   "12d33bf63d3b0f79"],
   ["options", [["-DautoImplicit=false", "4a85acb881fd49d0"]]],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: LDIRProofs", "35a7ae28e6c5c80b"],
   ["Package.id?: (some LDIRProofs)", "28e6e8b171463516"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "559a475d32615f98"}
+ "depHash": "cb3155354006fccb"}

@@ -9,30 +9,34 @@ use ldir_core::compiler::compile_sir;
 use ldir_core::emitter::emit_gir;
 use ldir_core::validator::validate_sir;
 use ldir_ir::gir::{GIROpcode, GIRStyle, StyleTable};
-use ldir_ir::sir::{ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
+use ldir_ir::sir::{BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode};
 
 fn main() {
     let mut doc = SIRDocument::new();
 
     // Root document node
-    doc.push(SIRInstruction::new(
-        SIROpcode::PushBlock,
-        0,
-        ROOT_SENTINEL,
-        0,
-    ));
+    doc.push_with_payload(
+        SIRInstruction::new(SIROpcode::PushBlock, 0, ROOT_SENTINEL, 0),
+        &[BlockType::Document as u8],
+    );
 
     // Apply heading style (24pt, font ID 1)
     doc.push(SIRInstruction::new(SIROpcode::ApplyStyle, 1, 0, 0));
 
     // Heading content
-    doc.push(SIRInstruction::new(SIROpcode::SetContent, 2, 0, 0));
+    doc.push_with_payload(
+        SIRInstruction::new(SIROpcode::SetContent, 2, 0, 0),
+        b"Custom Style Example\x00",
+    );
 
     // Apply body style (12pt, font ID 0, dark gray)
     doc.push(SIRInstruction::new(SIROpcode::ApplyStyle, 3, 0, 0));
 
     // Body content
-    doc.push(SIRInstruction::new(SIROpcode::SetContent, 4, 0, 0));
+    doc.push_with_payload(
+        SIRInstruction::new(SIROpcode::SetContent, 4, 0, 0),
+        b"This demonstrates custom font sizes and colors.\x00",
+    );
 
     validate_sir(&doc).expect("well-formed S-IR");
     let gir = compile_sir(&doc).expect("compilation succeeds");

@@ -74,7 +74,7 @@
 pub mod compiler;
 
 pub(crate) mod ecs;
-pub(crate) mod interner;
+pub mod interner;
 
 /// G-IR binary emitter and parser (IF-EMIT-001).
 pub mod emitter;

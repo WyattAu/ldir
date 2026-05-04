@@ -179,7 +179,7 @@ impl FontFace {
                             && mapped_gid == gid
                             && result.is_none()
                         {
-                            result = Some(unsafe { char::from_u32_unchecked(ch) });
+                            result = char::from_u32(ch);
                         }
                     });
                     if result.is_some() {
