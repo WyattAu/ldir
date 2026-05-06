@@ -8,6 +8,7 @@
 
 use ldir_ir::gir::{GIRDocument, GIROpcode, ImageFormat};
 
+use crate::conformance::PdfConformance;
 use crate::font::FontFace;
 use crate::writer::{PdfDocumentBuilder, PdfImage, PdfImageFormat};
 
@@ -31,6 +32,8 @@ pub struct PdfOptions {
     pub footer_right: Option<String>,
     /// Suppress header on the first page.
     pub suppress_first_header: bool,
+    /// PDF/A conformance level.
+    pub conformance: PdfConformance,
 }
 
 impl Default for PdfOptions {
@@ -45,6 +48,7 @@ impl Default for PdfOptions {
             footer_left: None,
             footer_right: None,
             suppress_first_header: true,
+            conformance: PdfConformance::default(),
         }
     }
 }
@@ -122,6 +126,7 @@ pub fn gir_to_pdf_with_fonts_and_options(
     if let Some(ref creator) = options.creator {
         builder.set_creator(creator);
     }
+    builder.set_conformance(options.conformance);
 
     let has_embedded_fonts = !fonts.is_empty();
     for face in fonts {

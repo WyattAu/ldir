@@ -4,7 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR EPUB backend — converts S-IR v2 to EPUB 3"
+repository.workspace = true
+readme = "README.md"
+keywords = ["epub", "ebook", "document", "output", "typesetting"]
+categories = ["text-processing"]
 
 [dependencies]
-ldir-ir = { path = "../ldir-ir" }
-ldir-html = { path = "../ldir-html" }
+ldir-ir = { workspace = true }
+ldir-html = { workspace = true }

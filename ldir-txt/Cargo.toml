@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR plain text backend — converts S-IR v2 to plain text"
+repository.workspace = true
+readme = "README.md"
+keywords = ["text", "plain-text", "document", "output", "typesetting"]
+categories = ["text-processing"]
 
 [dependencies]
-ldir-ir = { path = "../ldir-ir" }
+ldir-ir = { workspace = true }

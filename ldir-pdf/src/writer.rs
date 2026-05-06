@@ -8,6 +8,8 @@
 use pdf_writer::types::{AnnotationType, CidFontType, FontFlags, SystemInfo, UnicodeCmap};
 use pdf_writer::{Content, Filter, Name, Pdf, Rect, Ref, Str, TextStr};
 
+use crate::color::{IccProfile, icc_alternate_name};
+use crate::conformance::PdfConformance;
 use crate::font::FontFace;
 use crate::structure::StructureNode;
 
@@ -97,6 +99,8 @@ pub struct PdfDocumentBuilder {
     images: Vec<PdfImage>,
     structure_tree: Vec<StructureNode>,
     tagged: bool,
+    icc_profile: Option<IccProfile>,
+    conformance: PdfConformance,
 }
 
 impl PdfDocumentBuilder {
@@ -116,6 +120,8 @@ impl PdfDocumentBuilder {
             images: Vec::new(),
             structure_tree: Vec::new(),
             tagged: false,
+            icc_profile: None,
+            conformance: PdfConformance::default(),
         }
     }
 
@@ -152,9 +158,21 @@ impl PdfDocumentBuilder {
         self.tagged = tagged;
     }
 
+    pub fn set_conformance(&mut self, conformance: PdfConformance) {
+        self.conformance = conformance;
+    }
+
     /// Set the image data table for embedding in the PDF.
     pub fn set_images(&mut self, images: Vec<PdfImage>) {
         self.images = images;
+    }
+
+    /// Set an ICC color profile for the document output.
+    ///
+    /// The profile will be embedded in the PDF and referenced from the
+    /// catalog's OutputIntent and default color space.
+    pub fn set_icc_profile(&mut self, profile: IccProfile) {
+        self.icc_profile = Some(profile);
     }
 
     /// Add a new page and return its index.
@@ -331,6 +349,11 @@ impl PdfDocumentBuilder {
     pub fn build(&mut self) -> Vec<u8> {
         let mut pdf = Pdf::new();
 
+        match self.conformance {
+            PdfConformance::PdfA4 => pdf.set_version(2, 0),
+            PdfConformance::PdfA2b | PdfConformance::PdfA3b => pdf.set_version(1, 7),
+        }
+
         let catalog_id = Ref::new(1);
         let pages_id = Ref::new(2);
         let mut next_id: i32 = 3;
@@ -376,6 +399,26 @@ impl PdfDocumentBuilder {
             None
         };
 
+        // Pre-allocate ICC-related IDs
+        let icc_stream_id = if self.icc_profile.is_some() {
+            let id = Ref::new(next_id);
+            next_id += 1;
+            Some(id)
+        } else {
+            None
+        };
+        let intent_id = if self.icc_profile.is_some() {
+            let id = Ref::new(next_id);
+            next_id += 1;
+            Some(id)
+        } else {
+            None
+        };
+
+        // Pre-allocate XMP metadata ID (before writing catalog so we can reference it)
+        let xmp_metadata_id = Ref::new(next_id);
+        next_id += 1;
+
         // Write catalog (must be written before other objects that need the pdf ref)
         {
             let mut catalog = pdf.catalog(catalog_id);
@@ -387,6 +430,12 @@ impl PdfDocumentBuilder {
                     catalog.pair(Name(b"StructTreeRoot"), *root_id);
                     catalog.pair(Name(b"ParentTree"), *parent_tree_id);
                 }
+            }
+            if let Some(intent_id) = intent_id {
+                catalog
+                    .insert(Name(b"OutputIntents"))
+                    .array()
+                    .item(intent_id);
             }
         }
 
@@ -566,6 +615,15 @@ impl PdfDocumentBuilder {
             if !page_link_ids[i].is_empty() {
                 page.annotations(page_link_ids[i].iter().copied());
             }
+
+            // Add ICC-based color space to page resources
+            if let Some(icc_ref) = icc_stream_id {
+                let mut resources = page.resources();
+                let mut cs = resources.color_spaces();
+                let mut arr = cs.insert(Name(b"ICCSB")).array();
+                arr.item(Name(b"ICCBased"));
+                arr.item(icc_ref);
+            }
         }
 
         // Write link annotation objects
@@ -663,6 +721,41 @@ impl PdfDocumentBuilder {
             }
         }
 
+        // ICC profile stream and OutputIntent
+        if let (Some(stream_id), Some(int_id)) = (icc_stream_id, intent_id) {
+            if let Some(profile) = &self.icc_profile {
+                let compressed = compress(&profile.data);
+                let alternate = icc_alternate_name(profile.color_space);
+                pdf.stream(stream_id, &compressed)
+                    .filter(Filter::FlateDecode)
+                    .pair(Name(b"N"), profile.components as i32)
+                    .pair(Name(b"Alternate"), Name(alternate));
+            }
+            {
+                let mut intent = pdf.indirect(int_id).dict();
+                intent.pair(Name(b"Type"), Name(b"OutputIntent"));
+                intent.pair(Name(b"S"), Name(b"GTS_PDFX"));
+                let condition_id = self
+                    .icc_profile
+                    .as_ref()
+                    .map(|p| p.name.as_str())
+                    .unwrap_or("sRGB");
+                intent.pair(Name(b"OutputConditionIdentifier"), TextStr(condition_id));
+                intent.pair(Name(b"DestOutputProfile"), stream_id);
+            }
+        }
+
+        // XMP metadata stream (PDF/A requirement)
+        {
+            let xmp_bytes =
+                crate::xmp::generate_pdfa_xmp(self.conformance, &self.title, &self.author);
+            let compressed = compress(&xmp_bytes);
+            pdf.stream(xmp_metadata_id, &compressed)
+                .filter(Filter::FlateDecode)
+                .pair(Name(b"Type"), Name(b"Metadata"))
+                .pair(Name(b"Subtype"), Name(b"XML"));
+        }
+
         // Structure tree (PDF/UA)
         if let Some((all_nodes, node_start, root_id, parent_tree_id)) = struct_tree_info {
             write_structure_tree(
@@ -707,6 +800,29 @@ fn write_structure_tree(
 
         if let Some(ref alt) = node.alt_text {
             elem.alt(TextStr(alt.as_str()));
+        }
+
+        if let Some(ref actual) = node.actual_text {
+            elem.actual_text(TextStr(actual.as_str()));
+        }
+
+        if let Some(ref expanded) = node.expanded_text {
+            elem.expanded(TextStr(expanded.as_str()));
+        }
+
+        if let Some(ref lang) = node.language {
+            elem.lang(TextStr(lang.as_str()));
+        }
+
+        if let Some(ref bbox) = node.bbox {
+            let bbox_val = format!(
+                "[{:.2} {:.2} {:.2} {:.2}]",
+                bbox.x,
+                bbox.y,
+                bbox.x + bbox.width,
+                bbox.y + bbox.height
+            );
+            elem.pair(Name(b"BBox"), Str(bbox_val.as_bytes()));
         }
 
         let page_idx = node.page.saturating_sub(1) as usize;
@@ -769,6 +885,9 @@ fn find_node_index(all_nodes: &[StructureNode], target: &StructureNode) -> Optio
             && n.page == target.page
             && n.mcid == target.mcid
             && n.alt_text == target.alt_text
+            && n.actual_text == target.actual_text
+            && n.language == target.language
+            && n.bbox == target.bbox
             && n.children.len() == target.children.len()
     })
 }
@@ -1214,5 +1333,277 @@ mod tests {
         assert!(!s.contains("/StructTreeRoot"));
         assert!(!s.contains("/Marked"));
         assert!(!s.contains("/Lang"));
+    }
+
+    #[test]
+    fn test_pdf_with_srgb_icc_profile() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_icc_profile(crate::color::IccProfile::srgb());
+        builder.add_page(612.0, 792.0);
+        builder.write_text(72.0, 720.0, "Color managed");
+        let bytes = builder.build();
+        assert!(bytes.starts_with(b"%PDF"));
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/OutputIntents"));
+        assert!(s.contains("/OutputIntent"));
+        assert!(s.contains("/GTS_PDFX"));
+        assert!(s.contains("/DestOutputProfile"));
+        assert!(s.contains("/ICCBased"));
+    }
+
+    #[test]
+    fn test_pdf_with_cmyk_icc_profile() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_icc_profile(crate::color::IccProfile::cmyk());
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/OutputIntents"));
+        assert!(s.contains("/Alternate /DeviceCMYK"));
+    }
+
+    #[test]
+    fn test_pdf_with_gray_icc_profile() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_icc_profile(crate::color::IccProfile::gray());
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/OutputIntents"));
+        assert!(s.contains("/Alternate /DeviceGray"));
+    }
+
+    #[test]
+    fn test_pdf_without_icc_profile_no_output_intents() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(!s.contains("/OutputIntents"));
+        assert!(!s.contains("/ICCBased"));
+    }
+
+    #[test]
+    fn test_icc_profile_srgb_components() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_icc_profile(crate::color::IccProfile::srgb());
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/N 3"));
+    }
+
+    #[test]
+    fn test_headings_produce_h1_h6_structure() {
+        use crate::structure::{HeadingLevel, heading};
+
+        let mut doc = StructureNode::with_children(
+            StructureType::Document,
+            vec![
+                heading(1, "Title", 1, 0),
+                heading(2, "Chapter", 1, 1),
+                heading(3, "Section", 1, 2),
+            ],
+        );
+        doc.assign_reading_order();
+
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![doc]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/S /H1"));
+        assert!(s.contains("/S /H2"));
+        assert!(s.contains("/S /H3"));
+        assert!(s.contains("/ActualText"));
+        assert!(s.contains("Title"));
+    }
+
+    #[test]
+    fn test_table_produces_tr_th_td_nesting() {
+        use crate::structure::table_with_header;
+
+        let table = table_with_header(vec!["Name", "Value"], vec![vec!["foo", "1"]], 1, 0);
+
+        let mut doc = StructureNode::with_children(StructureType::Document, vec![table]);
+        doc.assign_reading_order();
+
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![doc]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/S /Table"));
+        assert!(s.contains("/S /TR"));
+        assert!(s.contains("/S /TH"));
+        assert!(s.contains("/S /TD"));
+        assert!(s.contains("/S /THead"));
+        assert!(s.contains("/S /TBody"));
+        assert!(s.contains("Name"));
+        assert!(s.contains("foo"));
+    }
+
+    #[test]
+    fn test_images_include_alt_text_in_structure_tree() {
+        use crate::structure::figure_with_caption;
+
+        let fig = figure_with_caption("Sunset photo", "Figure 1: Sunset", 1, 0, 1);
+        let mut doc = StructureNode::with_children(StructureType::Document, vec![fig]);
+        doc.assign_reading_order();
+
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![doc]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/Alt (Sunset photo)"));
+        assert!(s.contains("/S /Caption"));
+        assert!(s.contains("Figure 1: Sunset"));
+    }
+
+    #[test]
+    fn test_reading_order_is_sequential() {
+        use crate::structure::{heading, paragraph};
+
+        let mut doc = StructureNode::with_children(
+            StructureType::Document,
+            vec![
+                heading(1, "Title", 1, 0),
+                paragraph("Para 1", 1, 1),
+                paragraph("Para 2", 1, 2),
+            ],
+        );
+        let count = doc.assign_reading_order();
+        assert_eq!(count, 3);
+        assert_eq!(doc.children[0].reading_order, 0);
+        assert_eq!(doc.children[1].reading_order, 1);
+        assert_eq!(doc.children[2].reading_order, 2);
+    }
+
+    #[test]
+    fn test_language_span_in_pdf() {
+        use crate::structure::language_span_node;
+
+        let span = language_span_node("Bonjour", "fr", 1, 0);
+        let mut doc = StructureNode::with_children(StructureType::Document, vec![span]);
+        doc.assign_reading_order();
+
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![doc]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/S /Span"));
+        assert!(s.contains("/Lang (fr)"));
+        assert!(s.contains("/ActualText"));
+        assert!(s.contains("Bonjour"));
+    }
+
+    #[test]
+    fn test_actual_text_and_expanded_text_in_pdf() {
+        let node = StructureNode::new(StructureType::Span, 1, 0)
+            .with_actual_text("PDF")
+            .with_expanded_text("Portable Document Format");
+        let mut doc = StructureNode::with_children(StructureType::Document, vec![node]);
+        doc.assign_reading_order();
+
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![doc]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/ActualText (PDF)"));
+        assert!(s.contains("/E (Portable Document Format)"));
+    }
+
+    #[test]
+    fn test_footnote_ref_and_body_in_pdf() {
+        use crate::structure::footnote_pair;
+
+        let (ref_node, body_node) = footnote_pair("[1]", "Footnote text", 1, 0, 1);
+        let mut doc =
+            StructureNode::with_children(StructureType::Document, vec![ref_node, body_node]);
+        doc.assign_reading_order();
+
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![doc]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/S /Reference"));
+        assert!(s.contains("[1]"));
+        assert!(s.contains("Footnote text"));
+    }
+
+    #[test]
+    fn test_list_item_with_label_and_body_in_pdf() {
+        use crate::structure::list_item;
+
+        let li = list_item("1.", "First item", 1, 0, 1);
+        let mut doc = StructureNode::with_children(StructureType::Document, vec![li]);
+        doc.assign_reading_order();
+
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_tagged(true);
+        builder.add_page(612.0, 792.0);
+        builder.set_structure_tree(vec![doc]);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/S /LI"));
+        assert!(s.contains("/S /Lbl"));
+        assert!(s.contains("/S /LBody"));
+        assert!(s.contains("1."));
+        assert!(s.contains("First item"));
+    }
+
+    #[test]
+    fn test_pdfa2b_version_header() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_conformance(PdfConformance::PdfA2b);
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("%PDF-1.7"));
+    }
+
+    #[test]
+    fn test_pdfa4_version_header() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_conformance(PdfConformance::PdfA4);
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("%PDF-2.0"));
+    }
+
+    #[test]
+    fn test_pdfa2b_xmp_metadata() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.set_conformance(PdfConformance::PdfA2b);
+        builder.set_title("Test");
+        builder.set_author("Author");
+        builder.add_page(612.0, 792.0);
+        let bytes = builder.build();
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("/Type /Metadata"));
+        assert!(s.contains("/Subtype /XML"));
+    }
+
+    #[test]
+    fn test_default_conformance_is_pdfa4() {
+        let builder = PdfDocumentBuilder::new();
+        let bytes = {
+            let mut b = builder;
+            b.add_page(612.0, 792.0);
+            b.build()
+        };
+        let s = String::from_utf8_lossy(&bytes);
+        assert!(s.contains("%PDF-2.0"));
     }
 }

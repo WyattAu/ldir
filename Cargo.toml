@@ -26,6 +26,7 @@ members = [
     "ldir-link",
     "ldir-lsp",
     "tests",
+    "ldir-core/fuzz",
 ]
 
 [workspace.package]
@@ -45,6 +46,15 @@ ldir-md = { path = "ldir-md", version = "0.1.0" }
 ldir-pdf = { path = "ldir-pdf", version = "0.1.0" }
 ldir-vello = { path = "ldir-vello", version = "0.1.0" }
 ldir-wasm = { path = "ldir-wasm", version = "0.1.0" }
+ldir-html = { path = "ldir-html", version = "0.1.0" }
+ldir-txt = { path = "ldir-txt", version = "0.1.0" }
+ldir-epub = { path = "ldir-epub", version = "0.1.0" }
+ldir-docx = { path = "ldir-docx", version = "0.1.0" }
+ldir-typst = { path = "ldir-typst", version = "0.1.0" }
+ldir-adoc = { path = "ldir-adoc", version = "0.1.0" }
+ldir-org = { path = "ldir-org", version = "0.1.0" }
+ldir-html-reader = { path = "ldir-html-reader", version = "0.1.0" }
+ldir-docx-reader = { path = "ldir-docx-reader", version = "0.1.0" }
 
 # Serialization (REQ-2.3)
 rkyv = { version = "0.8", features = ["bytecheck"] }

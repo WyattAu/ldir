@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR compiler CLI: compile documents to PDF and other formats"
+repository.workspace = true
+readme = "README.md"
+keywords = ["compiler", "cli", "document", "typesetting", "pdf"]
+categories = ["compilers", "command-line-utilities"]
 
 [dependencies]
 ldir-core = { workspace = true }
@@ -11,15 +15,15 @@ ldir-ir = { workspace = true }
 ldir-tex = { workspace = true }
 ldir-md = { workspace = true }
 ldir-pdf = { workspace = true }
-ldir-html = { path = "../ldir-html" }
-ldir-epub = { path = "../ldir-epub" }
-ldir-txt = { path = "../ldir-txt" }
-ldir-docx = { path = "../ldir-docx" }
-ldir-typst = { path = "../ldir-typst" }
-ldir-html-reader = { path = "../ldir-html-reader" }
-ldir-adoc = { path = "../ldir-adoc" }
-ldir-org = { path = "../ldir-org" }
-ldir-docx-reader = { path = "../ldir-docx-reader" }
+ldir-html = { workspace = true }
+ldir-epub = { workspace = true }
+ldir-txt = { workspace = true }
+ldir-docx = { workspace = true }
+ldir-typst = { workspace = true }
+ldir-html-reader = { workspace = true }
+ldir-adoc = { workspace = true }
+ldir-org = { workspace = true }
+ldir-docx-reader = { workspace = true }
 anyhow = { workspace = true }
 clap = { version = "4", features = ["derive"] }
 ttf-parser = { workspace = true }

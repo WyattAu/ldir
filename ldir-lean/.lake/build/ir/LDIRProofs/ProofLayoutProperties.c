@@ -135,6 +135,15 @@ LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_recompile___redArg(lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_recompile___redArg___boxed(lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_recompile(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_recompile___boxed(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_demeritsBetween(lean_object*, lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_demeritsBetween___boxed(lean_object*, lean_object*, lean_object*);
+lean_object* lean_int_add(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_totalDemerits_spec__0(lean_object*, lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_totalDemerits_spec__0___boxed(lean_object*, lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_totalDemerits(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_totalDemerits___boxed(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_kp__findOptimalBreaks(lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_kp__findOptimalBreaks___boxed(lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_KPItem_ctorIdx(lean_object* x_1) {
 _start:
 {
@@ -997,6 +1006,95 @@ x_3 = lp_LDIRProofs_LDIR_recompile(x_1, x_2);
 lean_dec(x_2);
 lean_dec(x_1);
 return x_3;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_demeritsBetween(lean_object* x_1, lean_object* x_2, lean_object* x_3) {
+_start:
+{
+lean_object* x_4; 
+x_4 = lean_obj_once(&lp_LDIRProofs_LDIR_instReprKPItem_repr___closed__11, &lp_LDIRProofs_LDIR_instReprKPItem_repr___closed__11_once, _init_lp_LDIRProofs_LDIR_instReprKPItem_repr___closed__11);
+return x_4;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_demeritsBetween___boxed(lean_object* x_1, lean_object* x_2, lean_object* x_3) {
+_start:
+{
+lean_object* x_4; 
+x_4 = lp_LDIRProofs_LDIR_demeritsBetween(x_1, x_2, x_3);
+lean_dec(x_3);
+lean_dec(x_2);
+lean_dec(x_1);
+return x_4;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_totalDemerits_spec__0(lean_object* x_1, lean_object* x_2, lean_object* x_3) {
+_start:
+{
+if (lean_obj_tag(x_3) == 0)
+{
+return x_2;
+}
+else
+{
+lean_object* x_4; lean_object* x_5; lean_object* x_6; lean_object* x_7; lean_object* x_8; lean_object* x_9; 
+x_4 = lean_ctor_get(x_3, 0);
+x_5 = lean_ctor_get(x_3, 1);
+x_6 = lean_ctor_get(x_4, 0);
+x_7 = lean_ctor_get(x_4, 3);
+x_8 = lp_LDIRProofs_LDIR_demeritsBetween(x_1, x_6, x_7);
+x_9 = lean_int_add(x_2, x_8);
+lean_dec(x_8);
+lean_dec(x_2);
+x_2 = x_9;
+x_3 = x_5;
+goto _start;
+}
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_totalDemerits_spec__0___boxed(lean_object* x_1, lean_object* x_2, lean_object* x_3) {
+_start:
+{
+lean_object* x_4; 
+x_4 = lp_LDIRProofs_List_foldl___at___00LDIR_totalDemerits_spec__0(x_1, x_2, x_3);
+lean_dec(x_3);
+lean_dec(x_1);
+return x_4;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_totalDemerits(lean_object* x_1, lean_object* x_2) {
+_start:
+{
+lean_object* x_3; lean_object* x_4; 
+x_3 = lean_obj_once(&lp_LDIRProofs_LDIR_instReprKPItem_repr___closed__11, &lp_LDIRProofs_LDIR_instReprKPItem_repr___closed__11_once, _init_lp_LDIRProofs_LDIR_instReprKPItem_repr___closed__11);
+x_4 = lp_LDIRProofs_List_foldl___at___00LDIR_totalDemerits_spec__0(x_1, x_3, x_2);
+return x_4;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_totalDemerits___boxed(lean_object* x_1, lean_object* x_2) {
+_start:
+{
+lean_object* x_3; 
+x_3 = lp_LDIRProofs_LDIR_totalDemerits(x_1, x_2);
+lean_dec(x_2);
+lean_dec(x_1);
+return x_3;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_kp__findOptimalBreaks(lean_object* x_1) {
+_start:
+{
+lean_object* x_2; 
+x_2 = lean_box(0);
+return x_2;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_kp__findOptimalBreaks___boxed(lean_object* x_1) {
+_start:
+{
+lean_object* x_2; 
+x_2 = lp_LDIRProofs_LDIR_kp__findOptimalBreaks(x_1);
+lean_dec(x_1);
+return x_2;
 }
 }
 lean_object* initialize_Init(uint8_t builtin);

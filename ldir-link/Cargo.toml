@@ -4,12 +4,16 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR IR linker — merges multiple S-IR v2 modules into one"
+repository.workspace = true
+readme = "README.md"
+keywords = ["linker", "ir", "document", "cli"]
+categories = ["development-tools", "command-line-utilities"]
 
 [[bin]]
 name = "ldir-link"
 path = "src/main.rs"
 
 [dependencies]
-ldir-ir = { path = "../ldir-ir" }
+ldir-ir = { workspace = true }
 clap = { version = "4", features = ["derive"] }
 serde_json = "1"

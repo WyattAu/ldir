@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR IR types: S-IR and G-IR data structures with rkyv serialization"
+repository.workspace = true
+readme = "README.md"
+keywords = ["document", "intermediate-representation", "typesetting", "serialization"]
+categories = ["encoding", "text-processing"]
 
 [dependencies]
 rkyv = { workspace = true, features = ["bytecheck"] }

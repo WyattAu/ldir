@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR TeX input format parser"
+repository.workspace = true
+readme = "README.md"
+keywords = ["tex", "latex", "parser", "document", "input"]
+categories = ["text-processing"]
 
 [dependencies]
 ldir-ir = { workspace = true }

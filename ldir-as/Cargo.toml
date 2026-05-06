@@ -4,11 +4,15 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR IR assembler — converts .ldir text to binary S-IR"
+repository.workspace = true
+readme = "README.md"
+keywords = ["assembler", "ir", "document", "cli"]
+categories = ["development-tools", "command-line-utilities"]
 
 [[bin]]
 name = "ldir-as"
 path = "src/main.rs"
 
 [dependencies]
-ldir-ir = { path = "../ldir-ir" }
+ldir-ir = { workspace = true }
 clap = { version = "4", features = ["derive"] }

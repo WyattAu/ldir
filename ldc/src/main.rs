@@ -134,6 +134,10 @@ struct Cli {
     /// Use the L-IR layout pipeline (S-IR → L-IR → G-IR) instead of direct compilation.
     #[arg(long)]
     lir: bool,
+
+    /// PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b).
+    #[arg(long, value_name = "LEVEL", default_value = "4")]
+    pdfa_level: String,
 }
 
 const V2_FORMATS: &[&str] = &["html", "epub", "txt", "docx", "sir2", "ldir"];
@@ -544,6 +548,9 @@ fn emit_pdf(
     variant_fonts: &[(u32, Arc<Vec<u8>>)],
     output: &Path,
 ) -> Result<()> {
+    let conformance: ldir_pdf::conformance::PdfConformance =
+        cli.pdfa_level.parse().map_err(|e| anyhow::anyhow!("{e}"))?;
+
     let options = ldir_pdf::converter::PdfOptions {
         title: cli.title.clone(),
         author: cli.author.clone(),
@@ -552,6 +559,7 @@ fn emit_pdf(
         header_right: cli.header_right.clone(),
         footer_left: cli.footer_left.clone(),
         footer_right: cli.footer_right.clone(),
+        conformance,
         ..Default::default()
     };
 

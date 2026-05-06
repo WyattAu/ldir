@@ -4,7 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR DOCX reader — converts DOCX (.docx) to S-IR v2"
+repository.workspace = true
+readme = "README.md"
+keywords = ["docx", "word", "reader", "document", "input"]
+categories = ["text-processing"]
 
 [dependencies]
-ldir-ir = { path = "../ldir-ir" }
+ldir-ir = { workspace = true }
 flate2 = "1"

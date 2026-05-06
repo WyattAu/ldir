@@ -1,0 +1,30 @@
+[package]
+name = "ldir-core-fuzz"
+version = "0.0.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+ldir-core = { path = ".." }
+ldir-ir = { path = "../../ldir-ir" }
+libfuzzer-sys = { version = "0.4" }
+
+[[bin]]
+name = "fuzz_sir_parser"
+path = "fuzz_sir_parser.rs"
+
+[[bin]]
+name = "fuzz_sir_validator"
+path = "fuzz_sir_validator.rs"
+
+[[bin]]
+name = "fuzz_compiler"
+path = "fuzz_compiler.rs"
+
+[[bin]]
+name = "fuzz_lir_compile"
+path = "fuzz_lir_compile.rs"
+
+[[bin]]
+name = "fuzz_pdf_emit"
+path = "fuzz_pdf_emit.rs"

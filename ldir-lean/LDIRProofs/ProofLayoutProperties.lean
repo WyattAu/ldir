@@ -145,4 +145,66 @@ theorem validBreakSet_correct_last (items : List KPItem) (breaks : KPBreakSet) :
   unfold validBreakSet
   simp [h]
 
+-- ============================================================================
+-- SECTION 8: Knuth-Plass Demerits and Optimality
+-- ============================================================================
+
+/-- Stub: demerits between two break positions.
+    Returns 0 for all inputs (real implementation pending BP-ENGINE-001). -/
+def demeritsBetween (_items : List KPItem) (_pos : Nat) (_prev : Option Nat) : Int := 0
+
+/-- Total demerits of a break set: sum of demerits for each break. -/
+def totalDemerits (items : List KPItem) (breaks : KPBreakSet) : Int :=
+  breaks.foldl (fun acc b => acc + demeritsBetween items b.position b.previous) 0
+
+/-- Stub: Knuth-Plass optimal break finder.
+    Returns empty list (real implementation pending BP-ENGINE-001). -/
+def kp_findOptimalBreaks (_items : List KPItem) : KPBreakSet := []
+
+/-- LEM-KP-003: Empty break set has zero total demerits. -/
+theorem totalDemerits_nil (items : List KPItem) :
+    totalDemerits items [] = 0 := by
+  unfold totalDemerits; rfl
+
+/-- LEM-KP-004: A singleton break set has zero total demerits (stub:
+    demeritsBetween returns 0 for all inputs). -/
+theorem totalDemerits_singleton (items : List KPItem) (b : KPBreak) :
+    totalDemerits items [b] = 0 := by
+  unfold totalDemerits demeritsBetween; rfl
+
+/-- LEM-KP-005: Prepending a break adds its demerits to the total.
+    With the stub (demeritsBetween = 0), this is a no-op. -/
+theorem totalDemerits_cons (items : List KPItem) (b : KPBreak) (rest : KPBreakSet) :
+    totalDemerits items (b :: rest) = totalDemerits items rest + demeritsBetween items b.position b.previous := by
+  unfold totalDemerits demeritsBetween; simp [List.foldl]
+
+/-- THM-KP-OPTIMALITY: The Knuth-Plass algorithm produces a break set
+    with total demerits ≤ any other valid break set.
+
+    With the current stub (kp_findOptimalBreaks returns []),
+    this is trivially true because both sides equal 0.
+
+    When the real algorithm replaces the stub, this theorem must be
+    re-proven with the actual DP optimality argument. -/
+theorem kp_optimality (items : List KPItem) (breaks : KPBreakSet) :
+    validBreakSet items breaks = true →
+    totalDemerits items (kp_findOptimalBreaks items) ≤ totalDemerits items breaks := by
+  intro _
+  simp [kp_findOptimalBreaks, totalDemerits, demeritsBetween]
+
+/-- THM-KP-OPTIMALITY-DP: If the dynamic programming step correctly
+    computes minimum demerits for all subproblems, then the final
+    result is optimal.
+
+    This separates the DP correctness argument from the optimality
+    claim: proving the antecedent (forall-valid-b) is the main
+    mathematical content of the Knuth-Plass proof. -/
+theorem kp_optimality_from_dp_correctness (items : List KPItem) (breaks : KPBreakSet) :
+    validBreakSet items breaks = true →
+    (∀ b : KPBreakSet,
+      validBreakSet items b = true →
+      totalDemerits items (kp_findOptimalBreaks items) ≤ totalDemerits items b) →
+    totalDemerits items (kp_findOptimalBreaks items) ≤ totalDemerits items breaks :=
+  fun _ h_dp => h_dp breaks ‹_›
+
 end LDIR

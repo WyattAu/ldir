@@ -8,6 +8,7 @@
 //!
 //! - [`converter::gir_to_pdf`] — Convert G-IR to PDF bytes (fallback Helvetica)
 //! - [`converter::gir_to_pdf_with_fonts`] — Convert with embedded TrueType fonts
+//! - [`conformance::PdfConformance`] — PDF/A conformance level (4, 2b, 3b)
 //! - [`converter::PdfOptions`] — PDF metadata and header/footer configuration
 //! - [`font::FontFace`] — TrueType font handle for embedding
 //! - [`lir_render::render_lir_to_gir`] — Convert L-IR layout tree to G-IR
@@ -38,6 +39,9 @@
 //! - [Repository](https://github.com/WyattAu/ldir)
 
 /// G-IR to PDF converter with TrueType font embedding.
+pub mod conformance;
+
+/// G-IR to PDF converter with TrueType font embedding.
 pub mod converter;
 
 /// Font loading, metrics, subsetting, and TrueType embedding.
@@ -49,8 +53,14 @@ pub mod image;
 /// L-IR to G-IR rendering pipeline.
 pub mod lir_render;
 
-/// PDF/A-4 logical structure types.
+/// ICC color profiles and color space conversion for print output.
+pub mod color;
+
+/// PDF/A logical structure types.
 pub mod structure;
+
+/// XMP metadata generation for PDF/A.
+pub mod xmp;
 
 #[cfg(test)]
 mod pdf_test;

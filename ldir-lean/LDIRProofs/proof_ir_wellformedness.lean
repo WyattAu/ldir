@@ -10,6 +10,8 @@ predicates, and proves key properties:
   THM-WF-SIR-001: S-IR well-formedness is decidable
   THM-WF-GIR-001: G-IR well-formedness is decidable
   THM-COMPILE-TERMINATES-001: Compilation terminates for all well-formed S-IR
+  THM-COMPILE-CORRECTNESS-001: Compilation preserves semantic content
+  THM-COMPILE-COMPLETENESS-001: Non-empty content produces glyphs
 
 Verification target: IR well-formedness (foundational proof for LDIR)
 Lean4 version: 4.30.0-rc2
@@ -450,6 +452,71 @@ theorem compile_preserves_wellformedness (doc : SIRDocument) :
   simp [compile, wellFormedGIR, pageWellFormed]
   unfold stackBalanced stackBalancedAux
   rfl
+
+-- ============================================================================
+-- Semantic Content Definitions
+-- ============================================================================
+
+/-- The semantic content of an S-IR document: the ordered list of
+    (opcode, payload_text, parent_id) tuples extracted from each instruction.
+    Uses SIRDocumentWithPayload to access the payload table. -/
+def sirSemanticContent (doc : SIRDocumentWithPayload) : List (SIROpcode × String × EntityID) :=
+  doc.instructions.map fun instr =>
+    (instr.opcode,
+     ((doc.payload.data.drop instr.payload_offset).take 256).toString,
+     instr.parent_id)
+
+/-- The semantic content of a G-IR document: the ordered list of
+    (opcode, args) tuples across all pages, preserving page and
+    command ordering. -/
+def girSemanticContent (doc : GIRDocument) : List (GIROpcode × List Int) :=
+  doc.foldl (fun acc page =>
+    acc ++ page.map fun cmd =>
+      (cmd.opcode, (List.finRange GIR_COMMAND_ARGS).map fun i => cmd.args i)
+  ) []
+
+-- ============================================================================
+-- Compilation Correctness (Semantic Preservation)
+-- ============================================================================
+
+/-- THM-COMPILE-CORRECTNESS-001: Compilation preserves semantic content.
+
+    If a well-formed S-IR document contains a SetContent instruction,
+    then the compiled G-IR document must contain at least one PUT_GLYPH
+    command that represents the rendered text content.
+
+    NOTE: This theorem uses `sorry` because the current `compile` stub
+    returns `[[]]` (a single empty page with no commands), which does
+    not satisfy the semantic preservation property. This theorem must
+    be re-proven once the real S-IR → G-IR compilation function is
+    formalized. -/
+theorem compile_preserves_content (doc : SIRDocumentWithPayload) :
+    wellFormedSIRWithPayload doc = true →
+    ∀ instr ∈ doc.instructions,
+      instr.opcode = SIROpcode.setContent →
+      ∃ page ∈ compile doc.instructions,
+        ∃ cmd ∈ page,
+          cmd.opcode = GIROpcode.putGlyph := by
+  intro _h_wf _instr _h_mem _h_set
+  sorry
+
+/-- THM-COMPILE-COMPLETENESS-001: Content completeness lemma.
+
+    Every SetContent instruction with non-empty payload content produces
+    at least one PUT_GLYPH command in the compiled G-IR output.
+
+    NOTE: Like compile_preserves_content, this theorem uses `sorry`
+    pending the real compilation function. -/
+theorem compile_nonempty_content_produces_glyphs (doc : SIRDocumentWithPayload) :
+    wellFormedSIRWithPayload doc = true →
+    ∀ instr ∈ doc.instructions,
+      instr.opcode = SIROpcode.setContent →
+      (doc.payload.data.drop instr.payload_offset).take 256 ≠ "" →
+      ∃ page ∈ compile doc.instructions,
+        ∃ cmd ∈ page,
+          cmd.opcode = GIROpcode.putGlyph := by
+  intro _h_wf _instr _h_mem _h_set _h_nonempty
+  sorry
 
 -- ============================================================================
 -- Stack Balance Lemmas

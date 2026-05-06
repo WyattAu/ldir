@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR PDF/A-4 output backend"
+repository.workspace = true
+readme = "README.md"
+keywords = ["pdf", "pdf-a", "document", "typesetting", "output"]
+categories = ["text-processing", "accessibility"]
 
 [dependencies]
 ldir-core = { workspace = true }

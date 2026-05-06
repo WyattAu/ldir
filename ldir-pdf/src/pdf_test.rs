@@ -4,7 +4,7 @@ use crate::converter::gir_to_pdf;
 use crate::writer::PdfDocumentBuilder;
 
 fn starts_with_pdf_header(bytes: &[u8]) -> bool {
-    bytes.starts_with(b"%PDF-1.7")
+    bytes.starts_with(b"%PDF-1.7") || bytes.starts_with(b"%PDF-2.0")
 }
 
 fn ends_with_eof(bytes: &[u8]) -> bool {

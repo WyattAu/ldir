@@ -4,8 +4,12 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR HTML backend — converts S-IR v2 to semantic HTML5"
+repository.workspace = true
+readme = "README.md"
+keywords = ["html", "html5", "document", "output", "typesetting"]
+categories = ["text-processing"]
 
 [dependencies]
-ldir-ir = { path = "../ldir-ir" }
+ldir-ir = { workspace = true }
 
 [dev-dependencies]

@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR WASM bridge — browser-based document compilation"
+repository.workspace = true
+readme = "README.md"
+keywords = ["wasm", "webassembly", "browser", "document", "compilation"]
+categories = ["wasm"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

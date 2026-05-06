@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR core: fp26_6 arithmetic, ECS, S-IR validator, compiler, and G-IR emitter"
+repository.workspace = true
+readme = "README.md"
+keywords = ["document", "compiler", "typesetting", "layout", "text-shaping"]
+categories = ["compilers", "text-processing"]
 
 [dependencies]
 indexmap = { workspace = true }
@@ -26,9 +30,9 @@ proptest = { workspace = true }
 quickcheck = { workspace = true }
 criterion = { workspace = true }
 serde_json = "1"
-ldir-pdf = { path = "../ldir-pdf" }
-ldir-tex = { path = "../ldir-tex" }
-ldir-md = { path = "../ldir-md" }
+ldir-pdf = { workspace = true }
+ldir-tex = { workspace = true }
+ldir-md = { workspace = true }
 
 [[bench]]
 name = "bench_fp266"

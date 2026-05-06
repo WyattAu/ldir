@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "LDIR Asciidoc frontend — converts Asciidoc (.adoc) to S-IR v2"
+repository.workspace = true
+readme = "README.md"
+keywords = ["asciidoc", "parser", "document", "input"]
+categories = ["text-processing"]
 
 [dependencies]
-ldir-ir = { path = "../ldir-ir" }
+ldir-ir = { workspace = true }

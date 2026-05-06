@@ -6,17 +6,20 @@ license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 description = "LDIR Language Server Protocol server for Markdown, TeX, and Typst"
+readme = "README.md"
+keywords = ["lsp", "language-server", "editor", "ide"]
+categories = ["development-tools"]
 
 [[bin]]
 name = "ldir-lsp"
 path = "src/main.rs"
 
 [dependencies]
-ldir-core = { path = "../ldir-core" }
-ldir-md = { path = "../ldir-md" }
-ldir-pdf = { path = "../ldir-pdf" }
-ldir-tex = { path = "../ldir-tex" }
-ldir-typst = { path = "../ldir-typst" }
+ldir-core = { workspace = true }
+ldir-md = { workspace = true }
+ldir-pdf = { workspace = true }
+ldir-tex = { workspace = true }
+ldir-typst = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["io-std", "io-util", "rt", "rt-multi-thread", "macros", "sync", "time"] }

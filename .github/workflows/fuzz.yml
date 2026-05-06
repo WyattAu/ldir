@@ -1,0 +1,29 @@
+name: Fuzz
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      duration-minutes:
+        description: 'Fuzz duration in minutes'
+        required: false
+        default: '30'
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-fuzz
+      - run: cd ldir-core/fuzz && cargo fuzz build --release
+      - run: cd ldir-core/fuzz && cargo fuzz run fuzz_sir_parser -- -max_total_time=${{ github.event.inputs.duration-minutes || '30' }}m
+        continue-on-error: true
+      - run: cd ldir-core/fuzz && cargo fuzz run fuzz_compiler -- -max_total_time=${{ github.event.inputs.duration-minutes || '30' }}m
+        continue-on-error: true
+      - name: Upload artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts
+          path: ldir-core/fuzz/artifacts/
