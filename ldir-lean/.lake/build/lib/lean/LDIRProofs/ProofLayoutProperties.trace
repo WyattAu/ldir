@@ -1,7 +1,7 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["5ff165e5bca8c25b.olean"],
+ {"o": ["8931f1ba80df6575.olean"],
   "i": "d0fba2f18571a25a.ilean",
   "c": "e7b137b8484eb9b6.c"},
  "log":
@@ -25,7 +25,7 @@
         ["LDIRProofs.proof_ir_wellformedness transitive imports (legacy)",
          "00000000000006bb"],
         ["LDIRProofs.proof_ir_wellformedness:importAllArts",
-         "fbf81db24fe06fde"]]]]],
+         "887bd2569146eff6"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -40,4 +40,4 @@
   ["Module.name: LDIRProofs.ProofLayoutProperties", "7b912ebf1c27f787"],
   ["Package.id?: (some LDIRProofs)", "28e6e8b171463516"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "e36732010cb45f76"}
+ "depHash": "1aee4380046e6f70"}

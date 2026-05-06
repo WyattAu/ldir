@@ -1,27 +1,30 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["53a9ddd036a4161a.olean"],
-  "i": "be256bdf49b6f498.ilean",
+ {"o": ["1036086ab974a207.olean"],
+  "i": "e9bc05d04b934379.ilean",
   "c": "317ecce1a378e7eb.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/Cli/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/batteries/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/Qq/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/aesop/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/proofwidgets/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/importGraph/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/plausible/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/packages/mathlib/.lake/build/lib/lean:/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/lib/lean /home/wyatt/.elan/toolchains/leanprover--lean4---v4.29.0/bin/lean /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/LDIRProofs/proof_ir_wellformedness.lean -o /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/lib/lean/LDIRProofs/proof_ir_wellformedness.olean -i /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/lib/lean/LDIRProofs/proof_ir_wellformedness.ilean -c /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/ir/LDIRProofs/proof_ir_wellformedness.c --setup /home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/.lake/build/ir/LDIRProofs/proof_ir_wellformedness.setup.json --json",
    "level": "trace"},
   {"message":
-   "LDIRProofs/proof_ir_wellformedness.lean:301:8: declaration uses `sorry`",
+   "LDIRProofs/proof_ir_wellformedness.lean:315:8: declaration uses `sorry`",
    "level": "warning"},
   {"message":
-   "LDIRProofs/proof_ir_wellformedness.lean:350:8: declaration uses `sorry`",
+   "LDIRProofs/proof_ir_wellformedness.lean:339:8: declaration uses `sorry`",
    "level": "warning"},
   {"message":
-   "LDIRProofs/proof_ir_wellformedness.lean:372:8: declaration uses `sorry`",
+   "LDIRProofs/proof_ir_wellformedness.lean:376:8: declaration uses `sorry`",
    "level": "warning"},
   {"message":
-   "LDIRProofs/proof_ir_wellformedness.lean:493:8: declaration uses `sorry`",
+   "LDIRProofs/proof_ir_wellformedness.lean:415:8: declaration uses `sorry`",
    "level": "warning"},
   {"message":
-   "LDIRProofs/proof_ir_wellformedness.lean:510:8: declaration uses `sorry`",
+   "LDIRProofs/proof_ir_wellformedness.lean:554:8: declaration uses `sorry`",
+   "level": "warning"},
+  {"message":
+   "LDIRProofs/proof_ir_wellformedness.lean:571:8: declaration uses `sorry`",
    "level": "warning"}],
  "inputs":
  [["LDIRProofs.proof_ir_wellformedness:deps",
@@ -37,10 +40,10 @@
   ["Lean 4.29.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740",
    "60bb08ef22408c8a"],
   ["/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/LDIRProofs/proof_ir_wellformedness.lean",
-   "cb7e3d1ad2ffa526"],
+   "3ea1c29c64fa640d"],
   ["options", [["-DautoImplicit=false", "4a85acb881fd49d0"]]],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: LDIRProofs.proof_ir_wellformedness", "971b857142c1a876"],
   ["Package.id?: (some LDIRProofs)", "28e6e8b171463516"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "9ee5dc83f16520fe"}
+ "depHash": "dfdc46d34c117089"}
