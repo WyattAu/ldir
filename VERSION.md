@@ -1,19 +1,19 @@
 # LDIR Version & State Tracker
 
 ## Current State
-- **Phase:** Phase E — Accessibility, Compliance & Ecosystem
-- **Version:** 3.3.0
+- **Phase:** Phase H — Formal Verification & Ecosystem Hardening
+- **Version:** 3.6.0
 - **Status:** ✅ All quality gates passing
-- **Last Updated:** 2026-05-06
+- **Last Updated:** 2026-05-08
 
 ## Quality Metrics
 | Metric | Value |
 |--------|-------|
-| **Total tests** | **1,577** |
+| **Total tests** | **1,652** |
 | Test failures | 0 |
 | Clippy errors | 0 (`-D warnings`) |
 | `cargo fmt` | Clean |
-| Lean4 proofs | 0 errors, 5 sorry (3 isAcyclic monotonicity + 2 compilation correctness; proof sketches provided) |
+| Lean4 proofs | 0 errors, 6 sorry (4 isAcyclic + 1 compile List.mem foldl + 1 cumWidth_mono; all with proof sketches) |
 | Production unwrap/expect | 0 (all eliminated) |
 | PDF determinism | Bit-identical verified |
 

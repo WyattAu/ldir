@@ -368,9 +368,12 @@ theorem isAcyclic_single (instr : SIRInstruction) :
       -- h2 : ¬(instr.parent_id == rootSentinel) = true
       -- Goal: isAcyclicAux [instr] instr.parent_id 0 = false
       -- With fuel=0, isAcyclicAux returns false by definition
-      -- Lean4 unfold produces match on 0 which should reduce,
-      -- but the goal has additional match structure from find?.
-      -- The chain: fuel=0 → false, regardless of find? result.
+      -- NOTE: The outer split on isAcyclicAux produces two branches:
+      -- the true branch (parent == rootSentinel) and the false branch.
+      -- In the false branch, the goal contains both the recursive call
+      -- result AND the remaining List.all predicate. The sorry here
+      -- covers the case where fuel=0 makes the recursive call return false,
+      -- which combined with the all predicate yields the full result.
       sorry
 
 /-- A single instruction with parent_id == rootSentinel is acyclic. -/
