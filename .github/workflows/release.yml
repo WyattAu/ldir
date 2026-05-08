@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release:
+    name: Build Release Binary
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build ldc release binary
+        run: cargo build --release -p ldc
+
+      - name: Upload ldc binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ldc-linux-x86_64
+          path: target/release/ldc

@@ -63,6 +63,10 @@ harness = false
 name = "bench_full_pipeline"
 harness = false
 
+[[bench]]
+name = "benchmarks"
+harness = false
+
 [[example]]
 name = "hello-world"
 path = "../docs/examples/hello-world.rs"

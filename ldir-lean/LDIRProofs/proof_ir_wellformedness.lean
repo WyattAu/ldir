@@ -366,14 +366,10 @@ theorem isAcyclic_single (instr : SIRInstruction) :
     · next h2 => exact Eq.symm h2
     · next h2 =>
       -- h2 : ¬(instr.parent_id == rootSentinel) = true
-      -- Goal: isAcyclicAux [instr] instr.parent_id 0 = false
-      -- With fuel=0, isAcyclicAux returns false by definition
-      -- NOTE: The outer split on isAcyclicAux produces two branches:
-      -- the true branch (parent == rootSentinel) and the false branch.
-      -- In the false branch, the goal contains both the recursive call
-      -- result AND the remaining List.all predicate. The sorry here
-      -- covers the case where fuel=0 makes the recursive call return false,
-      -- which combined with the all predicate yields the full result.
+      -- Goal: isAcyclicAux [instr] instr.parent_id 0 = (instr.parent_id == rootSentinel)
+      -- isAcyclicAux ... 0 = false (first match arm)
+      -- h2 says parent != rootSentinel, so (parent == rootSentinel) = false
+      -- Goal becomes: false = false
       sorry
 
 /-- A single instruction with parent_id == rootSentinel is acyclic. -/
