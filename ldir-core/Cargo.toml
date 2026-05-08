@@ -36,6 +36,8 @@ ldir-md = { workspace = true }
 ldir-typst = { workspace = true }
 ldir-html-reader = { workspace = true }
 ldir-html = { workspace = true }
+ldir-adoc = { workspace = true }
+ldir-org = { workspace = true }
 
 [[bench]]
 name = "bench_fp266"

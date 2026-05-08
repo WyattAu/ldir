@@ -513,10 +513,22 @@ static const lean_closure_object lp_LDIRProofs_LDIR_wellFormedGIR___closed__0_va
 static const lean_object* lp_LDIRProofs_LDIR_wellFormedGIR___closed__0 = (const lean_object*)&lp_LDIRProofs_LDIR_wellFormedGIR___closed__0_value;
 LEAN_EXPORT uint8_t lp_LDIRProofs_LDIR_wellFormedGIR(lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_wellFormedGIR___boxed(lean_object*);
-static const lean_ctor_object lp_LDIRProofs_LDIR_compile___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = sizeof(lean_ctor_object) + sizeof(void*)*2 + 0, .m_other = 2, .m_tag = 1}, .m_objs = {((lean_object*)(((size_t)(0) << 1) | 1)),((lean_object*)(((size_t)(0) << 1) | 1))}};
-static const lean_object* lp_LDIRProofs_LDIR_compile___closed__0 = (const lean_object*)&lp_LDIRProofs_LDIR_compile___closed__0_value;
-LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compile(lean_object*);
-LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compile___boxed(lean_object*);
+static const lean_ctor_object lp_LDIRProofs_LDIR_compileStub___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = sizeof(lean_ctor_object) + sizeof(void*)*2 + 0, .m_other = 2, .m_tag = 1}, .m_objs = {((lean_object*)(((size_t)(0) << 1) | 1)),((lean_object*)(((size_t)(0) << 1) | 1))}};
+static const lean_object* lp_LDIRProofs_LDIR_compileStub___closed__0 = (const lean_object*)&lp_LDIRProofs_LDIR_compileStub___closed__0_value;
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileStub(lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileStub___boxed(lean_object*);
+static lean_once_cell_t lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__0_once = LEAN_ONCE_CELL_INITIALIZER;
+static lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__0;
+static lean_once_cell_t lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__1_once = LEAN_ONCE_CELL_INITIALIZER;
+static lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__1;
+static lean_once_cell_t lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__2_once = LEAN_ONCE_CELL_INITIALIZER;
+static lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__2;
+lean_object* l_List_appendTR___redArg(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___boxed(lean_object*, lean_object*);
+uint8_t l_List_isEmpty___redArg(lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileReal(lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileReal___boxed(lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs___private_LDIRProofs_proof__ir__wellformedness_0__LDIR_stackBalancedAux_match__4_splitter___redArg(lean_object*, lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs___private_LDIRProofs_proof__ir__wellformedness_0__LDIR_stackBalancedAux_match__4_splitter(lean_object*, lean_object*, lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs___private_LDIRProofs_proof__ir__wellformedness_0__LDIR_stackBalancedAux_match__1_splitter___redArg(uint8_t, lean_object*, lean_object*, lean_object*);
@@ -544,9 +556,10 @@ lean_object* l_List_finRange(lean_object*);
 static lean_once_cell_t lp_LDIRProofs_List_mapTR_loop___at___00LDIR_girSemanticContent_spec__1___closed__0_once = LEAN_ONCE_CELL_INITIALIZER;
 static lean_object* lp_LDIRProofs_List_mapTR_loop___at___00LDIR_girSemanticContent_spec__1___closed__0;
 LEAN_EXPORT lean_object* lp_LDIRProofs_List_mapTR_loop___at___00LDIR_girSemanticContent_spec__1(lean_object*, lean_object*);
-lean_object* l_List_appendTR___redArg(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_girSemanticContent_spec__2(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_girSemanticContent(lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs___private_LDIRProofs_proof__ir__wellformedness_0__LDIR_compileReal_match__1_splitter___redArg(lean_object*, lean_object*, lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs___private_LDIRProofs_proof__ir__wellformedness_0__LDIR_compileReal_match__1_splitter(lean_object*, lean_object*, lean_object*, lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_BlockType_ctorIdx(uint8_t x_1) {
 _start:
 {
@@ -4991,19 +5004,150 @@ x_3 = lean_box(x_2);
 return x_3;
 }
 }
-LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compile(lean_object* x_1) {
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileStub(lean_object* x_1) {
 _start:
 {
 lean_object* x_2; 
-x_2 = ((lean_object*)(lp_LDIRProofs_LDIR_compile___closed__0));
+x_2 = ((lean_object*)(lp_LDIRProofs_LDIR_compileStub___closed__0));
 return x_2;
 }
 }
-LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compile___boxed(lean_object* x_1) {
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileStub___boxed(lean_object* x_1) {
 _start:
 {
 lean_object* x_2; 
-x_2 = lp_LDIRProofs_LDIR_compile(x_1);
+x_2 = lp_LDIRProofs_LDIR_compileStub(x_1);
+lean_dec(x_1);
+return x_2;
+}
+}
+static lean_object* _init_lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__0(void) {
+_start:
+{
+uint8_t x_1; lean_object* x_2; 
+x_1 = 2;
+x_2 = lp_LDIRProofs_LDIR_GIRCommand_zeroed(x_1);
+return x_2;
+}
+}
+static lean_object* _init_lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__1(void) {
+_start:
+{
+lean_object* x_1; lean_object* x_2; lean_object* x_3; 
+x_1 = lean_box(0);
+x_2 = lean_obj_once(&lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__0, &lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__0_once, _init_lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__0);
+x_3 = lean_alloc_ctor(1, 2, 0);
+lean_ctor_set(x_3, 0, x_2);
+lean_ctor_set(x_3, 1, x_1);
+return x_3;
+}
+}
+static lean_object* _init_lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__2(void) {
+_start:
+{
+lean_object* x_1; lean_object* x_2; lean_object* x_3; 
+x_1 = lean_box(0);
+x_2 = lean_obj_once(&lp_LDIRProofs_LDIR_instInhabitedGIRCommand___closed__0, &lp_LDIRProofs_LDIR_instInhabitedGIRCommand___closed__0_once, _init_lp_LDIRProofs_LDIR_instInhabitedGIRCommand___closed__0);
+x_3 = lean_alloc_ctor(1, 2, 0);
+lean_ctor_set(x_3, 0, x_2);
+lean_ctor_set(x_3, 1, x_1);
+return x_3;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0(lean_object* x_1, lean_object* x_2) {
+_start:
+{
+if (lean_obj_tag(x_2) == 0)
+{
+return x_1;
+}
+else
+{
+lean_object* x_3; lean_object* x_4; 
+x_3 = lean_ctor_get(x_2, 0);
+x_4 = lean_ctor_get(x_3, 0);
+switch (lean_obj_tag(x_4)) {
+case 1:
+{
+lean_object* x_5; lean_object* x_6; lean_object* x_7; 
+x_5 = lean_ctor_get(x_2, 1);
+x_6 = lean_obj_once(&lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__1, &lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__1_once, _init_lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__1);
+x_7 = l_List_appendTR___redArg(x_1, x_6);
+x_1 = x_7;
+x_2 = x_5;
+goto _start;
+}
+case 0:
+{
+uint8_t x_9; 
+x_9 = lean_ctor_get_uint8(x_4, 0);
+if (x_9 == 2)
+{
+lean_object* x_10; lean_object* x_11; lean_object* x_12; 
+x_10 = lean_ctor_get(x_2, 1);
+x_11 = lean_obj_once(&lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__2, &lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__2_once, _init_lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___closed__2);
+x_12 = l_List_appendTR___redArg(x_1, x_11);
+x_1 = x_12;
+x_2 = x_10;
+goto _start;
+}
+else
+{
+lean_object* x_14; 
+x_14 = lean_ctor_get(x_2, 1);
+x_2 = x_14;
+goto _start;
+}
+}
+default: 
+{
+lean_object* x_16; 
+x_16 = lean_ctor_get(x_2, 1);
+x_2 = x_16;
+goto _start;
+}
+}
+}
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0___boxed(lean_object* x_1, lean_object* x_2) {
+_start:
+{
+lean_object* x_3; 
+x_3 = lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0(x_1, x_2);
+lean_dec(x_2);
+return x_3;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileReal(lean_object* x_1) {
+_start:
+{
+lean_object* x_2; lean_object* x_3; uint8_t x_4; 
+x_2 = lean_box(0);
+x_3 = lp_LDIRProofs_List_foldl___at___00LDIR_compileReal_spec__0(x_2, x_1);
+x_4 = l_List_isEmpty___redArg(x_3);
+if (x_4 == 0)
+{
+lean_object* x_5; 
+x_5 = lean_alloc_ctor(1, 2, 0);
+lean_ctor_set(x_5, 0, x_3);
+lean_ctor_set(x_5, 1, x_2);
+return x_5;
+}
+else
+{
+lean_object* x_6; 
+lean_dec(x_3);
+x_6 = ((lean_object*)(lp_LDIRProofs_LDIR_compileStub___closed__0));
+return x_6;
+}
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_compileReal___boxed(lean_object* x_1) {
+_start:
+{
+lean_object* x_2; 
+x_2 = lp_LDIRProofs_LDIR_compileReal(x_1);
 lean_dec(x_1);
 return x_2;
 }
@@ -5650,6 +5794,98 @@ lean_object* x_2; lean_object* x_3;
 x_2 = lean_box(0);
 x_3 = lp_LDIRProofs_List_foldl___at___00LDIR_girSemanticContent_spec__2(x_2, x_1);
 return x_3;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs___private_LDIRProofs_proof__ir__wellformedness_0__LDIR_compileReal_match__1_splitter___redArg(lean_object* x_1, lean_object* x_2, lean_object* x_3, lean_object* x_4) {
+_start:
+{
+switch (lean_obj_tag(x_1)) {
+case 1:
+{
+lean_object* x_5; lean_object* x_6; 
+lean_dec(x_4);
+lean_dec(x_3);
+x_5 = lean_box(0);
+x_6 = lean_apply_1(x_2, x_5);
+return x_6;
+}
+case 0:
+{
+uint8_t x_7; 
+lean_dec(x_2);
+x_7 = lean_ctor_get_uint8(x_1, 0);
+if (x_7 == 2)
+{
+lean_object* x_8; lean_object* x_9; 
+lean_dec_ref(x_1);
+lean_dec(x_4);
+x_8 = lean_box(0);
+x_9 = lean_apply_1(x_3, x_8);
+return x_9;
+}
+else
+{
+lean_object* x_10; 
+lean_dec(x_3);
+x_10 = lean_apply_3(x_4, x_1, lean_box(0), lean_box(0));
+return x_10;
+}
+}
+default: 
+{
+lean_object* x_11; 
+lean_dec(x_3);
+lean_dec(x_2);
+x_11 = lean_apply_3(x_4, x_1, lean_box(0), lean_box(0));
+return x_11;
+}
+}
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs___private_LDIRProofs_proof__ir__wellformedness_0__LDIR_compileReal_match__1_splitter(lean_object* x_1, lean_object* x_2, lean_object* x_3, lean_object* x_4, lean_object* x_5) {
+_start:
+{
+switch (lean_obj_tag(x_2)) {
+case 1:
+{
+lean_object* x_6; lean_object* x_7; 
+lean_dec(x_5);
+lean_dec(x_4);
+x_6 = lean_box(0);
+x_7 = lean_apply_1(x_3, x_6);
+return x_7;
+}
+case 0:
+{
+uint8_t x_8; 
+lean_dec(x_3);
+x_8 = lean_ctor_get_uint8(x_2, 0);
+if (x_8 == 2)
+{
+lean_object* x_9; lean_object* x_10; 
+lean_dec_ref(x_2);
+lean_dec(x_5);
+x_9 = lean_box(0);
+x_10 = lean_apply_1(x_4, x_9);
+return x_10;
+}
+else
+{
+lean_object* x_11; 
+lean_dec(x_4);
+x_11 = lean_apply_3(x_5, x_2, lean_box(0), lean_box(0));
+return x_11;
+}
+}
+default: 
+{
+lean_object* x_12; 
+lean_dec(x_4);
+lean_dec(x_3);
+x_12 = lean_apply_3(x_5, x_2, lean_box(0), lean_box(0));
+return x_12;
+}
+}
 }
 }
 lean_object* initialize_Init(uint8_t builtin);
