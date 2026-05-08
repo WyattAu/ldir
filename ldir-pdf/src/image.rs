@@ -168,6 +168,64 @@ pub fn decode_jpeg(data: &[u8]) -> Result<ImageData, Error> {
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ImageDimensions {
+    pub width: u32,
+    pub height: u32,
+}
+
+pub fn detect_png_dimensions(data: &[u8]) -> Option<ImageDimensions> {
+    if data.len() < 24 {
+        return None;
+    }
+    if data.get(0..4) != Some(&[0x89, 0x50, 0x4E, 0x47][..]) {
+        return None;
+    }
+    if &data[12..16] != b"IHDR" {
+        return None;
+    }
+    let width = u32::from_be_bytes([data[16], data[17], data[18], data[19]]);
+    let height = u32::from_be_bytes([data[20], data[21], data[22], data[23]]);
+    Some(ImageDimensions { width, height })
+}
+
+pub fn detect_jpeg_dimensions(data: &[u8]) -> Option<ImageDimensions> {
+    if data.len() < 4 {
+        return None;
+    }
+    if data[0] != 0xFF || data[1] != 0xD8 {
+        return None;
+    }
+    let mut pos = 2usize;
+    while pos + 1 < data.len() {
+        if data[pos] != 0xFF {
+            return None;
+        }
+        let marker = data[pos + 1];
+        pos += 2;
+        if marker == 0xC0 || marker == 0xC2 {
+            if pos + 7 > data.len() {
+                return None;
+            }
+            let height = u16::from_be_bytes([data[pos + 3], data[pos + 4]]) as u32;
+            let width = u16::from_be_bytes([data[pos + 5], data[pos + 6]]) as u32;
+            return Some(ImageDimensions { width, height });
+        }
+        if marker == 0xD8 || marker == 0xD9 {
+            continue;
+        }
+        if pos + 2 > data.len() {
+            return None;
+        }
+        let seg_len = u16::from_be_bytes([data[pos], data[pos + 1]]) as usize;
+        if seg_len < 2 {
+            return None;
+        }
+        pos += seg_len;
+    }
+    None
+}
+
 pub fn scale_to_fit(width: u32, height: u32, max_width_pt: f64, max_height_pt: f64) -> (f64, f64) {
     let w = width as f64;
     let h = height as f64;
@@ -346,6 +404,125 @@ mod tests {
         let result = load_image(&path);
         assert!(result.is_err());
         let _ = std::fs::remove_file(&path);
+    }
+
+    fn make_minimal_png_header(width: u32, height: u32) -> Vec<u8> {
+        let mut data = vec![
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+            0x44, 0x52,
+        ];
+        data.extend_from_slice(&width.to_be_bytes());
+        data.extend_from_slice(&height.to_be_bytes());
+        data.extend_from_slice(&[0x08, 0x02, 0x00, 0x00, 0x00]);
+        let crc = crc32_png(&data[12..29]);
+        data.extend_from_slice(&crc.to_be_bytes());
+        data
+    }
+
+    fn crc32_png(data: &[u8]) -> u32 {
+        let mut crc: u32 = 0xFFFFFFFF;
+        for &byte in data {
+            crc ^= byte as u32;
+            for _ in 0..8 {
+                if crc & 1 != 0 {
+                    crc = (crc >> 1) ^ 0xEDB88320;
+                } else {
+                    crc >>= 1;
+                }
+            }
+        }
+        !crc
+    }
+
+    #[test]
+    fn test_detect_png_dimensions() {
+        let data = make_minimal_png_header(800, 600);
+        let dims = detect_png_dimensions(&data);
+        assert_eq!(
+            dims,
+            Some(ImageDimensions {
+                width: 800,
+                height: 600
+            })
+        );
+    }
+
+    #[test]
+    fn test_detect_png_dimensions_small() {
+        let data = make_minimal_png_header(1, 1);
+        let dims = detect_png_dimensions(&data);
+        assert_eq!(
+            dims,
+            Some(ImageDimensions {
+                width: 1,
+                height: 1
+            })
+        );
+    }
+
+    fn make_minimal_jpeg_with_sof0(width: u16, height: u16) -> Vec<u8> {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x02];
+        data.extend_from_slice(&[0xFF, 0xC0, 0x00, 0x0B, 0x08]);
+        data.extend_from_slice(&height.to_be_bytes());
+        data.extend_from_slice(&width.to_be_bytes());
+        data.extend_from_slice(&[0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01]);
+        data
+    }
+
+    #[test]
+    fn test_detect_jpeg_dimensions() {
+        let data = make_minimal_jpeg_with_sof0(1920, 1080);
+        let dims = detect_jpeg_dimensions(&data);
+        assert_eq!(
+            dims,
+            Some(ImageDimensions {
+                width: 1920,
+                height: 1080
+            })
+        );
+    }
+
+    #[test]
+    fn test_detect_jpeg_dimensions_sof2() {
+        let mut data = vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x02];
+        data.extend_from_slice(&[0xFF, 0xC2, 0x00, 0x0B, 0x08]);
+        data.extend_from_slice(&640u16.to_be_bytes());
+        data.extend_from_slice(&480u16.to_be_bytes());
+        data.extend_from_slice(&[0x03, 0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01]);
+        let dims = detect_jpeg_dimensions(&data);
+        assert_eq!(
+            dims,
+            Some(ImageDimensions {
+                width: 480,
+                height: 640
+            })
+        );
+    }
+
+    #[test]
+    fn test_detect_invalid_returns_none() {
+        assert_eq!(detect_png_dimensions(&[]), None);
+        assert_eq!(detect_png_dimensions(&[0x00, 0x01]), None);
+        assert_eq!(detect_jpeg_dimensions(&[]), None);
+        assert_eq!(detect_jpeg_dimensions(&[0x00, 0x01]), None);
+        assert_eq!(
+            detect_png_dimensions(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+            None
+        );
+    }
+
+    #[test]
+    fn test_detect_png_dimensions_validates_magic() {
+        let mut data = make_minimal_png_header(100, 200);
+        data[0] = 0x00;
+        assert_eq!(detect_png_dimensions(&data), None);
+    }
+
+    #[test]
+    fn test_detect_png_dimensions_validates_ihdr() {
+        let mut data = make_minimal_png_header(100, 200);
+        data[12] = 0x00;
+        assert_eq!(detect_png_dimensions(&data), None);
     }
 
     #[test]

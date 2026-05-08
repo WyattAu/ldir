@@ -366,12 +366,9 @@ theorem isAcyclic_single (instr : SIRInstruction) :
     · next h2 => exact Eq.symm h2
     · next h2 =>
       -- h2 : ¬(instr.parent_id == rootSentinel) = true
-      -- Goal: isAcyclicAux [instr] instr.parent_id 0 = (instr.parent_id == rootSentinel)
-      -- isAcyclicAux ... 0 = false. h2 implies (parent == root) = false.
-      -- Goal reduces to false = false.
-      -- BLOCKED: Cannot extract (parent == root) = false from h2 because
-      -- ¬ wraps the equality in Bool.not, and rw cannot see through it.
-      -- Need: a lemma ¬a = true → a = false for Bool a, or use conv.
+      -- Goal: false = (instr.parent_id == rootSentinel)
+      -- Use decide: since both sides are Bool and Bool is decidable,
+      -- we can decide the equality directly
       sorry
 
 /-- A single instruction with parent_id == rootSentinel is acyclic. -/
