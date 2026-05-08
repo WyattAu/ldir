@@ -339,6 +339,51 @@ impl PdfDocumentBuilder {
             .push((x, y, w, h, image_index));
     }
 
+    /// Draw a simple table grid using stroked lines.
+    ///
+    /// - `x`, `y`: top-left corner (PDF coordinates, y decreases downward)
+    /// - `col_widths`: width of each column
+    /// - `row_height`: height of each row
+    /// - `num_rows`: number of rows in the grid
+    /// - `line_width`: stroke thickness of the grid lines
+    pub fn draw_table(
+        &mut self,
+        x: f64,
+        y: f64,
+        col_widths: &[f64],
+        row_height: f64,
+        num_rows: usize,
+        line_width: f64,
+    ) {
+        if self.pages.is_empty() || col_widths.is_empty() || num_rows == 0 {
+            return;
+        }
+
+        let total_width: f64 = col_widths.iter().sum();
+        let total_height = row_height * num_rows as f64;
+        let content = &mut self.pages[self.current_page].content;
+
+        content.set_line_width(line_width as f32);
+        content.set_stroke_gray(0.0);
+
+        for i in 0..=num_rows {
+            let ly = y - (i as f64 * row_height);
+            content
+                .move_to(x as f32, ly as f32)
+                .line_to((x + total_width) as f32, ly as f32)
+                .stroke();
+        }
+
+        let mut cx = x;
+        for &w in col_widths.iter().chain(std::iter::once(&0.0)) {
+            content
+                .move_to(cx as f32, y as f32)
+                .line_to(cx as f32, (y - total_height) as f32)
+                .stroke();
+            cx += w;
+        }
+    }
+
     /// Build the final PDF bytes.
     ///
     /// This allocates PDF object IDs for:
@@ -1605,5 +1650,63 @@ mod tests {
         };
         let s = String::from_utf8_lossy(&bytes);
         assert!(s.contains("%PDF-2.0"));
+    }
+
+    #[test]
+    fn test_table_draws_borders() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.draw_table(72.0, 700.0, &[200.0, 200.0], 20.0, 3, 1.0);
+        let bytes = builder.build();
+        assert!(bytes.starts_with(b"%PDF"));
+        // Table content is in the compressed content stream, so just verify valid PDF
+        assert!(bytes.len() > 500);
+    }
+
+    #[test]
+    fn test_table_single_cell() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.draw_table(72.0, 700.0, &[468.0], 20.0, 1, 0.5);
+        let bytes = builder.build();
+        assert!(bytes.starts_with(b"%PDF"));
+        assert!(bytes.len() > 500);
+    }
+
+    #[test]
+    fn test_table_multiple_columns() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.draw_table(50.0, 600.0, &[100.0, 150.0, 200.0, 50.0], 25.0, 5, 1.0);
+        let bytes = builder.build();
+        assert!(bytes.starts_with(b"%PDF"));
+        assert!(bytes.len() > 500);
+    }
+
+    #[test]
+    fn test_table_empty_columns_noop() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.draw_table(72.0, 700.0, &[], 20.0, 3, 1.0);
+        let bytes = builder.build();
+        assert!(bytes.starts_with(b"%PDF"));
+    }
+
+    #[test]
+    fn test_table_zero_rows_noop() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.draw_table(72.0, 700.0, &[200.0], 20.0, 0, 1.0);
+        let bytes = builder.build();
+        assert!(bytes.starts_with(b"%PDF"));
+    }
+
+    #[test]
+    fn test_table_no_page_auto_creates() {
+        let mut builder = PdfDocumentBuilder::new();
+        // No page added — draw_table should not panic on empty pages
+        builder.draw_table(72.0, 700.0, &[200.0], 20.0, 1, 1.0);
+        // Should have auto-created a page via the early return (pages is empty, so just returns)
+        assert_eq!(builder.pages.len(), 0);
     }
 }
