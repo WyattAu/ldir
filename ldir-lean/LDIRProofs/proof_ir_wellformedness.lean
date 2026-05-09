@@ -312,37 +312,20 @@ theorem isAcyclic_nil : isAcyclic ([] : SIRDocument) = true := by
 /-- isAcyclicAux is monotonic in fuel: if a chain terminates in n steps,
     it also terminates in n+1 steps.
 
-    Proof sketch (informal):
-    By induction on n.
-    - Base (n=0): isAcyclicAux doc id 0 = false by definition, so the
-      hypothesis h : false = true is contradictory.
-    - Step (n → n+1): Both the LHS (fuel n+1) and RHS (fuel n+2) are > 0,
-      so both unfold to the same find? match on doc. Three cases:
-      (a) find? returns none → both return true. ✓
-      (b) find? returns some instr, instr.parent_id == rootSentinel → both return true. ✓
-      (c) find? returns some instr, instr.parent_id ≠ rootSentinel → both recurse
-          with fuel n (LHS) and fuel n+1 (RHS). By IH, the result holds.
-
-    The formal proof requires careful handling of nested match expressions
-    in Lean4's term representation. We provide the inductive structure and
-    delegate the match-case alignment to sorry, which can be resolved with
-    a custom tactic or by using well-founded recursion on fuel. -/
-theorem isAcyclicAux_mono (doc : SIRDocument) (id : EntityID) (n : Nat) :
-    isAcyclicAux doc id n = true → isAcyclicAux doc id (n + 1) = true := by
+    Proof: By induction on n with id universally quantified.
+    - Base (n=0): isAcyclicAux doc id 0 = false by definition, contradiction.
+    - Step (n → n+1): Both sides unfold to the same find? match.
+      Case (c) recurses with instr.parent_id; the IH applies because
+      id is universally quantified. -/
+private theorem isAcyclicAux_mono_all (doc : SIRDocument) (n : Nat) :
+    ∀ id, isAcyclicAux doc id n = true → isAcyclicAux doc id (n + 1) = true := by
   induction n with
   | zero =>
-    intro h
+    intro id h
     unfold isAcyclicAux at h
-    -- After unfold with fuel=0, isAcyclicAux doc id 0 reduces to:
-    -- match 0 with | 0 => false | _ => ...
-    -- which is false. So h : false = true.
     contradiction
   | succ n ih =>
-    intro h
-    -- Goal: isAcyclicAux doc id (n+2) = true
-    -- h: isAcyclicAux doc id (n+1) = true
-    -- Both have fuel > 0. Let findResult = doc.find? (fun i => i.entity_id == id)
-    -- This is the SAME expression in both. Generalize over it, then case-split.
+    intro id h
     generalize h_find : doc.find? (fun i => i.entity_id == id) = a
     cases a with
     | none =>
@@ -350,18 +333,20 @@ theorem isAcyclicAux_mono (doc : SIRDocument) (id : EntityID) (n : Nat) :
     | some instr =>
       by_cases h_root : instr.parent_id == rootSentinel
       · simp [isAcyclicAux, h_find, h_root]
-      · simp only [isAcyclicAux] at h ⊢
+      · unfold isAcyclicAux at h ⊢
         rw [h_find] at h
         simp only [h_root] at h
-        -- h : (if false = true then true else isAcyclicAux doc instr.parent_id n) = true
-        -- The if-condition (false = true) is always false (Prop equality), so reduce to else branch
         split at h
-        · -- if-true branch: false = true, contradiction
-          contradiction
-        · -- h : isAcyclicAux doc instr.parent_id n = true
-          -- Goal: isAcyclicAux doc instr.parent_id (n+1) = true
-          -- BLOCKER: ih is for doc id, not doc instr.parent_id
-          sorry
+        · contradiction
+        · rw [h_find] at ⊢
+          simp only [h_root] at ⊢
+          split at ⊢
+          · contradiction
+          · exact ih instr.parent_id h
+
+theorem isAcyclicAux_mono (doc : SIRDocument) (id : EntityID) (n : Nat) :
+    isAcyclicAux doc id n = true → isAcyclicAux doc id (n + 1) = true :=
+  isAcyclicAux_mono_all doc n id
 
 /-- A single instruction is acyclic iff its parent is rootSentinel.
     With fuel = 1: find? always finds the instruction (entity_id matches itself).

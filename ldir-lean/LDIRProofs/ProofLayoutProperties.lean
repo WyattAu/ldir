@@ -214,14 +214,16 @@ theorem kp_optimality_from_dp_correctness (items : List KPItem) (breaks : KPBrea
 /-- Line width for paragraph formatting (in points). -/
 def lineWidth : Nat := 324
 
+/-- Extract the width component from a KPItem. -/
+def itemWidth (item : KPItem) : Nat :=
+  match item with
+  | KPItem.box w => w
+  | KPItem.glue _ _ w => w
+  | KPItem.penalty w _ _ => w
+
 /-- Cumulative width up to position i in the item list. -/
 def cumWidth (items : List KPItem) (i : Nat) : Nat :=
-  (items.take i).foldl (fun w item =>
-    match item with
-    | KPItem.box width => w + width
-    | KPItem.glue _ _ width => w + width
-    | KPItem.penalty width _ _ => w + width
-  ) 0
+  (items.take i).foldl (fun w item => w + itemWidth item) 0
 
 /-- Check if a break from position `prev` to position `pos` is feasible.
     A break is feasible if the line content fits within lineWidth. -/
@@ -234,50 +236,53 @@ def feasibleBreak (items : List KPItem) (pos : Nat) (prev : Option Nat) : Bool :
 def demeritsReal (items : List KPItem) (pos : Nat) (prev : Option Nat) : Int :=
   if feasibleBreak items pos prev then 0 else 10000
 
+
+/-- Helper: foldl with additive step satisfies f w ys = w + f 0 ys. -/
+lemma foldl_add_left_cancel (w : Nat) (ys : List KPItem) :
+    (ys.foldl (fun acc item => acc + itemWidth item) w) = w + (ys.foldl (fun acc item => acc + itemWidth item) 0) := by
+  induction ys generalizing w with
+  | nil => rfl
+  | cons y ys ih =>
+    simp only [List.foldl_cons]
+    rw [ih (w + itemWidth y), ih (0 + itemWidth y)]
+    omega
+
 /-- LEM-KP-006: cumWidth is monotonically non-decreasing.
-    Proof sketch: cumWidth uses `take i`, and take i ⊆ take j when i ≤ j.
-    foldl over a superset list produces a result ≥ the foldl over the subset,
-    because each step adds a non-negative width. -/
+    Proof: by structural induction on the item list, case-splitting on i and j.
+    The key insight is that List.take i is a prefix of List.take j when i ≤ j,
+    and foldl with a non-decreasing step function (addition) preserves the
+    prefix ordering. -/
 theorem cumWidth_mono (items : List KPItem) (i j : Nat) :
     i ≤ j → cumWidth items i ≤ cumWidth items j := by
   intro h_le
-  -- Prove by induction on items, using the monotonicity of foldl's step function.
-  induction items with
-  | nil =>
-    -- cumWidth [] n = 0 for all n, so 0 ≤ 0
-    unfold cumWidth; simp
+  induction items generalizing i j with
+  | nil => simp [cumWidth]
   | cons x xs ih =>
-    -- cumWidth (x :: xs) n = (x :: xs).take n |> foldl f 0
-    -- After one step of foldl: f (f 0 x) (xs.take (n-1)) when n > 0
-    -- Key: the first element x contributes the same width to both sides.
-    -- The difference is only in xs.take (i-1) vs xs.take (j-1).
-    unfold cumWidth
-    -- Goal: (x :: xs).take i |> foldl f 0 ≤ (x :: xs).take j |> foldl f 0
-    -- Case split on i:
+    simp only [cumWidth]
     cases i with
-    | zero =>
-      -- cumWidth (x::xs) 0 = foldl f 0 [] = 0 ≤ anything
-      simp [List.foldl]
+    | zero => simp [List.take]
     | succ i' =>
       cases j with
-      | zero => omega  -- succ i' ≤ 0 impossible
+      | zero => omega
       | succ j' =>
-        -- Both i,j > 0: (x::xs).take (succ i') = x :: xs.take i'
-        -- foldl f 0 (x :: xs.take i') = foldl f (f 0 x) (xs.take i')
-        -- Similarly for j'. So we need:
-        -- foldl f (f 0 x) (xs.take i') ≤ foldl f (f 0 x) (xs.take j')
-        -- Since i' ≤ j' (from h_le), by ih applied to xs:
-        -- cumWidth xs i' ≤ cumWidth xs j'
-        -- But we need the folded version with non-zero initial accumulator.
-        -- f = λw item => w + itemWidth, which is monotone in w.
-        -- So foldl f w0 (shorter) ≤ foldl f w0 (longer) when step is monotone.
-        -- This is the key insight: foldl with monotone step preserves ordering.
-        sorry
+        have ht_i : List.take (i' + 1) (x :: xs) = x :: List.take i' xs :=
+          (List.take_cons (Nat.succ_pos i')).trans (by rw [Nat.succ_sub_one])
+        have ht_j : List.take (j' + 1) (x :: xs) = x :: List.take j' xs :=
+          (List.take_cons (Nat.succ_pos j')).trans (by rw [Nat.succ_sub_one])
+        rw [ht_i, ht_j]
+        have h_i'_j' : i' ≤ j' := Nat.succ_le_succ_iff.mp h_le
+        have h_mono := ih i' j' h_i'_j'
+        simp only [cumWidth] at h_mono
+        simp only [List.foldl_cons, List.foldl_cons]
+        have h1 := foldl_add_left_cancel (0 + itemWidth x) (xs.take i')
+        have h2 := foldl_add_left_cancel (0 + itemWidth x) (xs.take j')
+        rw [h1, h2]
+        exact Nat.add_le_add_left h_mono (0 + itemWidth x)
 
 /-- LEM-KP-007: A single box always fits on a line iff its width ≤ lineWidth. -/
 theorem single_box_feasible (w : Nat) :
     feasibleBreak [KPItem.box w] 1 none = (w ≤ lineWidth) := by
-  simp [feasibleBreak, cumWidth, lineWidth]
+  simp [feasibleBreak, cumWidth, lineWidth, itemWidth]
 
 /-- LEM-KP-008: demeritsReal is 0 for feasible breaks. -/
 theorem demeritsReal_feasible (items : List KPItem) (pos : Nat) (prev : Option Nat) :
