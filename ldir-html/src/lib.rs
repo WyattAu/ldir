@@ -1,4 +1,7 @@
 //! LDIR HTML Backend — converts S-IR v2 to semantic HTML5.
+
+#![warn(clippy::unwrap_used, clippy::expect_used)]
+#![deny(unsafe_code)]
 //!
 //! # Usage
 //!

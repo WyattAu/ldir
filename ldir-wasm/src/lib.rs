@@ -1,5 +1,6 @@
 //! LDIR WASM module — browser-based document compilation and preview.
 
+#![warn(clippy::unwrap_used, clippy::expect_used)]
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 

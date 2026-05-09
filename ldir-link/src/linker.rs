@@ -203,30 +203,32 @@ mod tests {
     }
 
     #[test]
-    fn test_link_single_module() {
+    fn test_link_single_module() -> Result<(), Box<dyn std::error::Error>> {
         let m = SIRModuleV2::new();
-        let result = link_modules(vec![m]).unwrap();
+        let result = link_modules(vec![m])?;
         assert!(result.body.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_link_two_modules() {
+    fn test_link_two_modules() -> Result<(), Box<dyn std::error::Error>> {
         let m1 = make_module_with_nodes(vec![Node::new(1, NodeType::Section)]);
         let m2 = make_module_with_nodes(vec![Node::new(1, NodeType::Section)]);
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.body.len(), 3);
+        Ok(())
     }
 
     // --- ID remapping ---
 
     #[test]
-    fn test_link_id_remapping() {
+    fn test_link_id_remapping() -> Result<(), Box<dyn std::error::Error>> {
         let m1 = make_module_with_nodes(vec![
             Node::new(1, NodeType::Section),
             Node::new(2, NodeType::Paragraph).with_parent(1),
         ]);
         let m2 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
 
         assert!(result.body.get(1).is_some());
         assert!(result.body.get(2).is_some());
@@ -234,13 +236,14 @@ mod tests {
         let m2_chapter = result
             .body
             .iter()
-            .find(|n| matches!(n.node_type, NodeType::Chapter));
-        assert!(m2_chapter.is_some());
-        assert_ne!(m2_chapter.unwrap().id, 1);
+            .find(|n| matches!(n.node_type, NodeType::Chapter))
+            .ok_or("chapter not found")?;
+        assert_ne!(m2_chapter.id, 1);
+        Ok(())
     }
 
     #[test]
-    fn test_link_parent_ids_remapped() {
+    fn test_link_parent_ids_remapped() -> Result<(), Box<dyn std::error::Error>> {
         let m1 = make_module_with_nodes(vec![
             Node::new(1, NodeType::Section),
             Node::new(2, NodeType::Paragraph).with_parent(1),
@@ -249,17 +252,18 @@ mod tests {
             Node::new(1, NodeType::Section),
             Node::new(2, NodeType::Paragraph).with_parent(1),
         ]);
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
 
-        let doc = result.body.get(result.body.roots()[0]).unwrap();
+        let doc = result.body.get(result.body.roots()[0]).ok_or("no root node")?;
         assert!(matches!(doc.node_type, NodeType::Document));
         assert_eq!(doc.child_ids.len(), 2);
+        Ok(())
     }
 
     // --- Style merging ---
 
     #[test]
-    fn test_link_style_merge() {
+    fn test_link_style_merge() -> Result<(), Box<dyn std::error::Error>> {
         let mut m1 = SIRModuleV2::new();
         m1.styles.styles.push(StyleDecl {
             name: "body".to_string(),
@@ -274,12 +278,13 @@ mod tests {
             properties: Default::default(),
         });
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.styles.styles.len(), 2);
+        Ok(())
     }
 
     #[test]
-    fn test_link_style_override() {
+    fn test_link_style_override() -> Result<(), Box<dyn std::error::Error>> {
         let mut m1 = SIRModuleV2::new();
         m1.styles.styles.push(StyleDecl {
             name: "body".to_string(),
@@ -300,18 +305,19 @@ mod tests {
             },
         });
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.styles.styles.len(), 1);
         assert_eq!(
             result.styles.styles[0].properties.font_name.as_deref(),
             Some("New")
         );
+        Ok(())
     }
 
     // --- Resource merging ---
 
     #[test]
-    fn test_link_font_merge() {
+    fn test_link_font_merge() -> Result<(), Box<dyn std::error::Error>> {
         let mut m1 = SIRModuleV2::new();
         m1.resources.fonts.push(FontDecl {
             name: "body".to_string(),
@@ -332,12 +338,13 @@ mod tests {
             features: Vec::new(),
         });
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.resources.fonts.len(), 2);
+        Ok(())
     }
 
     #[test]
-    fn test_link_font_dedup() {
+    fn test_link_font_dedup() -> Result<(), Box<dyn std::error::Error>> {
         let mut m1 = SIRModuleV2::new();
         m1.resources.fonts.push(FontDecl {
             name: "body".to_string(),
@@ -358,12 +365,13 @@ mod tests {
             features: Vec::new(),
         });
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.resources.fonts.len(), 1);
+        Ok(())
     }
 
     #[test]
-    fn test_link_color_merge() {
+    fn test_link_color_merge() -> Result<(), Box<dyn std::error::Error>> {
         let mut m1 = SIRModuleV2::new();
         m1.resources.colors.push(ColorDecl {
             name: "primary".to_string(),
@@ -386,12 +394,13 @@ mod tests {
             },
         });
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.resources.colors.len(), 2);
+        Ok(())
     }
 
     #[test]
-    fn test_link_counter_merge() {
+    fn test_link_counter_merge() -> Result<(), Box<dyn std::error::Error>> {
         let mut m1 = SIRModuleV2::new();
         m1.resources.counters.push(CounterDecl {
             name: "section".to_string(),
@@ -406,8 +415,9 @@ mod tests {
             reset_scope: CounterReset::PerDocument,
         });
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.resources.counters.len(), 2);
+        Ok(())
     }
 
     // --- Label collision ---
@@ -423,8 +433,8 @@ mod tests {
 
         let result = link_modules(vec![m1, m2]);
         assert!(result.is_err());
-        match result.unwrap_err() {
-            LinkError::LinkErrors(errs) => assert!(!errs.is_empty()),
+        match result {
+            Err(LinkError::LinkErrors(errs)) => assert!(!errs.is_empty()),
             _ => panic!("expected LinkErrors"),
         }
     }
@@ -432,42 +442,45 @@ mod tests {
     // --- Root consolidation ---
 
     #[test]
-    fn test_link_root_consolidation() {
+    fn test_link_root_consolidation() -> Result<(), Box<dyn std::error::Error>> {
         let m1 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
         let m2 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.body.roots().len(), 1);
-        let root = result.body.get(result.body.roots()[0]).unwrap();
+        let root = result.body.get(result.body.roots()[0]).ok_or("no root node")?;
         assert!(matches!(root.node_type, NodeType::Document));
         assert_eq!(root.child_ids.len(), 2);
+        Ok(())
     }
 
     // --- Metadata ---
 
     #[test]
-    fn test_link_primary_metadata() {
+    fn test_link_primary_metadata() -> Result<(), Box<dyn std::error::Error>> {
         let mut m1 = SIRModuleV2::new();
         m1.metadata.title = Some("Primary".to_string());
         let mut m2 = SIRModuleV2::new();
         m2.metadata.title = Some("Secondary".to_string());
 
-        let result = link_modules(vec![m1, m2]).unwrap();
+        let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.metadata.title.as_deref(), Some("Primary"));
+        Ok(())
     }
 
     // --- Three modules ---
 
     #[test]
-    fn test_link_three_modules() {
+    fn test_link_three_modules() -> Result<(), Box<dyn std::error::Error>> {
         let m1 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
         let m2 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
         let m3 = make_module_with_nodes(vec![Node::new(1, NodeType::Chapter)]);
 
-        let result = link_modules(vec![m1, m2, m3]).unwrap();
+        let result = link_modules(vec![m1, m2, m3])?;
         assert_eq!(result.body.roots().len(), 1);
-        let root = result.body.get(result.body.roots()[0]).unwrap();
+        let root = result.body.get(result.body.roots()[0]).ok_or("no root node")?;
         assert_eq!(root.child_ids.len(), 3);
+        Ok(())
     }
 
     // --- Error display ---

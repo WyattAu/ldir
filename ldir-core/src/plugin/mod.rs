@@ -253,18 +253,17 @@ mod tests {
     }
 
     #[test]
-    fn test_find_frontend_by_extension() {
+    fn test_find_frontend_by_extension() -> Result<(), Box<dyn std::error::Error>> {
         let mut registry = PluginRegistry::new();
         registry.register_frontend(Box::new(MockFrontend::new("Markdown", &["md", "markdown"])));
         registry.register_frontend(Box::new(MockFrontend::new("LaTeX", &["tex", "latex"])));
 
-        let found = registry.find_frontend("md");
-        assert!(found.is_some());
-        assert_eq!(found.unwrap().name(), "Markdown");
+        let found = registry.find_frontend("md").ok_or("md not found")?;
+        assert_eq!(found.name(), "Markdown");
 
-        let found_latex = registry.find_frontend("latex");
-        assert!(found_latex.is_some());
-        assert_eq!(found_latex.unwrap().name(), "LaTeX");
+        let found_latex = registry.find_frontend("latex").ok_or("latex not found")?;
+        assert_eq!(found_latex.name(), "LaTeX");
+        Ok(())
     }
 
     #[test]
@@ -274,24 +273,24 @@ mod tests {
     }
 
     #[test]
-    fn test_find_backend_by_name() {
+    fn test_find_backend_by_name() -> Result<(), Box<dyn std::error::Error>> {
         let mut registry = PluginRegistry::new();
         registry.register_backend(Box::new(MockBackend::new("HTML", "html")));
         registry.register_backend(Box::new(MockBackend::new("PDF", "pdf")));
 
-        let found = registry.find_backend("PDF");
-        assert!(found.is_some());
-        assert_eq!(found.unwrap().extension(), "pdf");
+        let found = registry.find_backend("PDF").ok_or("PDF not found")?;
+        assert_eq!(found.extension(), "pdf");
+        Ok(())
     }
 
     #[test]
-    fn test_find_backend_by_extension() {
+    fn test_find_backend_by_extension() -> Result<(), Box<dyn std::error::Error>> {
         let mut registry = PluginRegistry::new();
         registry.register_backend(Box::new(MockBackend::new("HTML", "html")));
 
-        let found = registry.find_backend("html");
-        assert!(found.is_some());
-        assert_eq!(found.unwrap().name(), "HTML");
+        let found = registry.find_backend("html").ok_or("html not found")?;
+        assert_eq!(found.name(), "HTML");
+        Ok(())
     }
 
     #[test]
@@ -337,26 +336,27 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_string_returns_module() {
+    fn test_parse_string_returns_module() -> Result<(), Box<dyn std::error::Error>> {
         let mut registry = PluginRegistry::new();
         registry.register_frontend(Box::new(MockFrontend::new("Markdown", &["md"])));
 
-        let frontend = registry.find_frontend("md").unwrap();
-        let module = frontend.parse_string("# Hello", "test.md").unwrap();
+        let frontend = registry.find_frontend("md").ok_or("md not found")?;
+        let module = frontend.parse_string("# Hello", "test.md")?;
         assert_eq!(module.header.version, (2, 0, 0));
+        Ok(())
     }
 
     #[test]
-    fn test_backend_generate() {
+    fn test_backend_generate() -> Result<(), Box<dyn std::error::Error>> {
         let mut registry = PluginRegistry::new();
         registry.register_backend(Box::new(MockBackend::new("HTML", "html")));
 
-        let backend = registry.find_backend("html").unwrap();
+        let backend = registry.find_backend("html").ok_or("html not found")?;
         let module = SIRModuleV2::new();
         let result = backend
-            .generate(&module, &GenerateOptions::default())
-            .unwrap();
+            .generate(&module, &GenerateOptions::default())?;
         assert_eq!(result, b"<html>");
+        Ok(())
     }
 
     #[test]

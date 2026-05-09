@@ -3,6 +3,9 @@
 //! PDF generation backend for the LDIR document pipeline. Converts G-IR
 //! rendering commands into valid PDF files with embedded TrueType fonts,
 //! ToUnicode CMaps for text extraction, and FlateDecode compression.
+
+#![warn(clippy::unwrap_used, clippy::expect_used)]
+#![deny(unsafe_code)]
 //!
 //! ## Key Types
 //!

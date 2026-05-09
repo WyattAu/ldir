@@ -384,57 +384,63 @@ mod tests {
             )
             .with_parent(3),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(0).unwrap().add_child(3);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(3).unwrap().add_child(4);
+        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
+        if let Some(node) = m.body.get_mut(0) { node.add_child(3); }
+        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
+        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
         m
     }
 
     #[test]
-    fn test_epub_builds() {
+    fn test_epub_builds() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
-        let epub = EpubBuilder::new().build(&m).unwrap();
+        let epub = EpubBuilder::new().build(&m)?;
         assert!(epub.len() > 100);
+        Ok(())
     }
 
     #[test]
-    fn test_epub_starts_with_pk() {
+    fn test_epub_starts_with_pk() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
-        let epub = EpubBuilder::new().build(&m).unwrap();
+        let epub = EpubBuilder::new().build(&m)?;
         assert_eq!(&epub[0..4], b"PK\x03\x04");
+        Ok(())
     }
 
     #[test]
-    fn test_epub_contains_mimetype() {
+    fn test_epub_contains_mimetype() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
-        let epub = EpubBuilder::new().build(&m).unwrap();
+        let epub = EpubBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(text.contains("application/epub+zip"));
+        Ok(())
     }
 
     #[test]
-    fn test_epub_contains_title() {
+    fn test_epub_contains_title() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
-        let epub = EpubBuilder::new().build(&m).unwrap();
+        let epub = EpubBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(text.contains("Test Book"));
+        Ok(())
     }
 
     #[test]
-    fn test_epub_contains_content() {
+    fn test_epub_contains_content() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
-        let epub = EpubBuilder::new().build(&m).unwrap();
+        let epub = EpubBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(text.contains("Hello EPUB!"));
+        Ok(())
     }
 
     #[test]
-    fn test_epub_has_container_xml() {
+    fn test_epub_has_container_xml() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
-        let epub = EpubBuilder::new().build(&m).unwrap();
+        let epub = EpubBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(text.contains("container.xml"));
+        Ok(())
     }
 
     #[test]
@@ -451,36 +457,37 @@ mod tests {
     }
 
     #[test]
-    fn test_epub_with_custom_css() {
+    fn test_epub_with_custom_css() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
         let epub = EpubBuilder::with_options(EpubOptions {
             include_toc: false,
             css: Some("body { color: red; }".into()),
         })
-        .build(&m)
-        .unwrap();
+        .build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(text.contains("color: red"));
+        Ok(())
     }
 
     #[test]
-    fn test_epub_no_toc_when_disabled() {
+    fn test_epub_no_toc_when_disabled() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
         let epub = EpubBuilder::with_options(EpubOptions {
             include_toc: false,
             css: None,
         })
-        .build(&m)
-        .unwrap();
+        .build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(!text.contains("class=\"toc\""));
+        Ok(())
     }
 
     #[test]
-    fn test_epub_default_builder() {
+    fn test_epub_default_builder() -> Result<(), Box<dyn std::error::Error>> {
         let builder = EpubBuilder::default();
         let m = make_simple_module();
-        let epub = builder.build(&m).unwrap();
+        let epub = builder.build(&m)?;
         assert!(epub.len() > 100);
+        Ok(())
     }
 }

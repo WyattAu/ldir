@@ -519,55 +519,60 @@ mod tests {
             )
             .with_parent(3),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(0).unwrap().add_child(3);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(3).unwrap().add_child(4);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(0) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
         m
     }
 
     #[test]
-    fn test_docx_builds() {
+    fn test_docx_builds() -> Result<(), String> {
         let m = make_simple_module();
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         assert!(docx.len() > 100);
+        Ok(())
     }
 
     #[test]
-    fn test_docx_starts_with_pk() {
+    fn test_docx_starts_with_pk() -> Result<(), String> {
         let m = make_simple_module();
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         assert_eq!(&docx[0..4], b"PK\x03\x04");
+        Ok(())
     }
 
     #[test]
-    fn test_docx_contains_content_types() {
+    fn test_docx_contains_content_types() -> Result<(), String> {
         let m = make_simple_module();
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("[Content_Types].xml"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_contains_document_xml() {
+    fn test_docx_contains_document_xml() -> Result<(), String> {
         let m = make_simple_module();
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("word/document.xml"));
         assert!(text.contains("Hello DOCX!"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_contains_heading() {
+    fn test_docx_contains_heading() -> Result<(), String> {
         let m = make_simple_module();
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("Chapter 1"));
         assert!(text.contains("Heading2"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_bold_italic() {
+    fn test_docx_bold_italic() -> Result<(), String> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body
@@ -592,22 +597,23 @@ mod tests {
             )
             .with_parent(4),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(1).unwrap().add_child(4);
-        m.body.get_mut(2).unwrap().add_child(3);
-        m.body.get_mut(4).unwrap().add_child(5);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(4); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(4) { n.add_child(5); }
 
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("<w:b/>"));
         assert!(text.contains("<w:i/>"));
         assert!(text.contains("bold"));
         assert!(text.contains("italic"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_list() {
+    fn test_docx_list() -> Result<(), String> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
@@ -631,18 +637,19 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("item 1"));
         assert!(text.contains("<w:numPr>"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_table() {
+    fn test_docx_table() -> Result<(), String> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
@@ -679,20 +686,21 @@ mod tests {
             )
             .with_parent(3),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
-        m.body.get_mut(3).unwrap().add_child(4);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
 
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("<w:tbl>"));
         assert!(text.contains("<w:tc>"));
         assert!(text.contains("Cell1"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_code_block() {
+    fn test_docx_code_block() -> Result<(), String> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
@@ -714,30 +722,32 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("Courier New"));
         assert!(text.contains("fn main()"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_thematic_break() {
+    fn test_docx_thematic_break() -> Result<(), String> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body
             .push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
-        m.body.get_mut(0).unwrap().add_child(1);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
 
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("<w:pBdr>"));
+        Ok(())
     }
 
     #[test]
-    fn test_docx_xml_escaping() {
+    fn test_docx_xml_escaping() -> Result<(), String> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body
@@ -751,15 +761,16 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("&lt;"));
         assert!(text.contains("&amp;"));
         assert!(text.contains("&gt;"));
         assert!(!text.contains("a < b"));
+        Ok(())
     }
 
     #[test]
@@ -777,10 +788,11 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_empty_module() {
+    fn test_docx_empty_module() -> Result<(), String> {
         let m = SIRModuleV2::new();
-        let docx = DocxBuilder::new().build(&m).unwrap();
+        let docx = DocxBuilder::new().build(&m)?;
         assert!(docx.len() > 100);
         assert_eq!(&docx[0..4], b"PK\x03\x04");
+        Ok(())
     }
 }

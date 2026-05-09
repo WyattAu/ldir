@@ -302,17 +302,17 @@ mod tests {
     }
 
     #[test]
-    fn test_sparse_set_remove_existing() {
+    fn test_sparse_set_remove_existing() -> Result<(), Box<dyn std::error::Error>> {
         let mut set = SparseSet::new();
         set.insert(10u32);
         set.insert(20u32);
         set.insert(30u32);
-        let idx = set.remove(&20).unwrap();
+        let idx = set.remove(&20).ok_or("key 20 not found")?;
         assert_eq!(idx, 1);
         assert!(!set.contains(&20));
         assert_eq!(set.len(), 2);
-        // Verify dense compactness: no gaps
         assert_eq!(set.dense().len(), 2);
+        Ok(())
     }
 
     #[test]
@@ -338,14 +338,15 @@ mod tests {
     }
 
     #[test]
-    fn test_sparse_set_remove_last_element() {
+    fn test_sparse_set_remove_last_element() -> Result<(), Box<dyn std::error::Error>> {
         let mut set = SparseSet::new();
         set.insert(10u32);
         set.insert(20u32);
-        let idx = set.remove(&20).unwrap();
+        let idx = set.remove(&20).ok_or("key 20 not found")?;
         assert_eq!(idx, 1);
         assert_eq!(set.dense(), &[10]);
         assert_eq!(set.get(&10), Some(0));
+        Ok(())
     }
 
     #[test]
@@ -358,22 +359,20 @@ mod tests {
     }
 
     #[test]
-    fn test_sparse_set_dense_compactness_after_many_removals() {
+    fn test_sparse_set_dense_compactness_after_many_removals() -> Result<(), Box<dyn std::error::Error>> {
         let mut set = SparseSet::new();
         for i in 0..100u32 {
             set.insert(i);
         }
-        // Remove every other element
         for i in (0..100).step_by(2) {
             set.remove(&i);
         }
-        // All remaining should have valid indices
         for i in (1..100).step_by(2) {
-            let idx = set.get(&i).unwrap();
+            let idx = set.get(&i).ok_or("key not found")?;
             assert!(idx < set.len());
         }
-        // Dense array should be compact
         assert_eq!(set.len(), set.dense().len());
+        Ok(())
     }
 
     // === ComponentStore tests ===
@@ -423,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    fn test_component_remove() {
+    fn test_component_remove() -> Result<(), Box<dyn std::error::Error>> {
         let mut store = ComponentStore::<i32>::new();
         let e0 = make_entity(0);
         let e1 = make_entity(1);
@@ -431,13 +430,13 @@ mod tests {
         store.insert(e0, 10);
         store.insert(e1, 20);
         store.insert(e2, 30);
-        let removed = store.remove(e1).unwrap();
+        let removed = store.remove(e1).ok_or("e1 not found")?;
         assert_eq!(removed, 20);
         assert_eq!(store.get(e1), None);
         assert_eq!(store.len(), 2);
-        // Remaining should still be accessible
         assert!(store.contains(e0));
         assert!(store.contains(e2));
+        Ok(())
     }
 
     #[test]
@@ -447,12 +446,13 @@ mod tests {
     }
 
     #[test]
-    fn test_component_get_mut() {
+    fn test_component_get_mut() -> Result<(), Box<dyn std::error::Error>> {
         let mut store = ComponentStore::<i32>::new();
         let e = make_entity(0);
         store.insert(e, 10);
-        *store.get_mut(e).unwrap() = 99;
+        *store.get_mut(e).ok_or("e not found")? = 99;
         assert_eq!(store.get(e), Some(&99));
+        Ok(())
     }
 
     #[test]
@@ -492,7 +492,7 @@ mod tests {
     }
 
     #[test]
-    fn test_component_with_struct_data() {
+    fn test_component_with_struct_data() -> Result<(), Box<dyn std::error::Error>> {
         #[derive(Debug, Clone, PartialEq)]
         struct Position {
             x: f64,
@@ -502,9 +502,11 @@ mod tests {
         let e = make_entity(5);
         store.insert(e, Position { x: 1.0, y: 2.0 });
         assert_eq!(store.get(e), Some(&Position { x: 1.0, y: 2.0 }));
-        let pos = store.get_mut(e).unwrap();
+        let pos = store.get_mut(e).ok_or("e not found")?;
         pos.x = 10.0;
-        assert_eq!(store.get(e).unwrap().x, 10.0);
+        let retrieved = store.get(e).ok_or("e not found")?;
+        assert_eq!(retrieved.x, 10.0);
+        Ok(())
     }
 
     #[test]

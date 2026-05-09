@@ -923,10 +923,10 @@ mod tests {
             )
             .with_parent(3),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(0).unwrap().add_child(3);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(3).unwrap().add_child(4);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(0) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
         m
     }
 
@@ -1012,12 +1012,12 @@ mod tests {
             )
             .with_parent(5),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(1).unwrap().add_child(4);
-        m.body.get_mut(1).unwrap().add_child(5);
-        m.body.get_mut(2).unwrap().add_child(3);
-        m.body.get_mut(5).unwrap().add_child(6);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(4); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(5); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(5) { n.add_child(6); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<strong>bold</strong>"));
@@ -1039,8 +1039,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(!html.contains("<script>"));
@@ -1072,9 +1072,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<a href=\"https://example.com\""));
@@ -1116,11 +1116,11 @@ mod tests {
             )
             .with_parent(4),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(1).unwrap().add_child(4);
-        m.body.get_mut(2).unwrap().add_child(3);
-        m.body.get_mut(4).unwrap().add_child(5);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(4); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(4) { n.add_child(5); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<ul>"));
@@ -1152,8 +1152,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<pre><code"));
@@ -1178,9 +1178,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<blockquote>"));
@@ -1225,10 +1225,10 @@ mod tests {
             )
             .with_parent(3),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
-        m.body.get_mut(3).unwrap().add_child(4);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<table>"));
@@ -1242,7 +1242,7 @@ mod tests {
         m.body.push(Node::new(0, NodeType::Document));
         m.body
             .push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
-        m.body.get_mut(0).unwrap().add_child(1);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<hr>"));
@@ -1263,8 +1263,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<math>"));
@@ -1295,8 +1295,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("class=\"math-display\""));
@@ -1362,9 +1362,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<ol>"));
@@ -1391,8 +1391,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("src=\"photo.png\""));
@@ -1436,10 +1436,10 @@ mod tests {
             )
             .with_parent(3),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(1).unwrap().add_child(3);
-        m.body.get_mut(3).unwrap().add_child(4);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("class=\"figure\""));
@@ -1464,9 +1464,9 @@ mod tests {
         );
         m.body
             .push(Node::new(3, NodeType::FootnoteBlock).with_parent(0));
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(0).unwrap().add_child(3);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(0) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("class=\"footnote-ref\""));
@@ -1484,8 +1484,8 @@ mod tests {
             .push(Node::new(1, NodeType::Paragraph).with_parent(0));
         m.body
             .push(Node::new(2, NodeType::LineBreak).with_parent(1));
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<br>"));
@@ -1506,8 +1506,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::with_options(HtmlOptions {
             math_format: MathFormat::LaTeX,
@@ -1534,8 +1534,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::with_options(HtmlOptions {
             math_format: MathFormat::Text,
@@ -1570,9 +1570,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<span class=\"highlight\">styled</span>"));
@@ -1594,9 +1594,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<code>code</code>"));
@@ -1619,9 +1619,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<u>under</u>"));
@@ -1644,9 +1644,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<s>del</s>"));
@@ -1687,12 +1687,12 @@ mod tests {
             )
             .with_parent(5),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(0).unwrap().add_child(3);
-        m.body.get_mut(0).unwrap().add_child(5);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(3).unwrap().add_child(4);
-        m.body.get_mut(5).unwrap().add_child(6);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(0) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(0) { n.add_child(5); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
+        if let Some(n) = m.body.get_mut(5) { n.add_child(6); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("1. First"));
@@ -1759,13 +1759,13 @@ mod tests {
             )
             .with_parent(6),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(1).unwrap().add_child(5);
-        m.body.get_mut(2).unwrap().add_child(3);
-        m.body.get_mut(3).unwrap().add_child(4);
-        m.body.get_mut(5).unwrap().add_child(6);
-        m.body.get_mut(6).unwrap().add_child(7);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(5); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
+        if let Some(n) = m.body.get_mut(5) { n.add_child(6); }
+        if let Some(n) = m.body.get_mut(6) { n.add_child(7); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<th>H</th>"));
@@ -1795,8 +1795,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<pre><code>"));
@@ -1819,9 +1819,9 @@ mod tests {
             )
             .with_parent(2),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(2).unwrap().add_child(3);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("inside"));
@@ -1843,8 +1843,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::with_options(HtmlOptions {
             math_format: MathFormat::Html,
@@ -1871,8 +1871,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::with_options(HtmlOptions {
             math_format: MathFormat::Html,
@@ -1897,8 +1897,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::with_options(HtmlOptions {
             math_format: MathFormat::Html,
@@ -1925,8 +1925,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::with_options(HtmlOptions {
             math_format: MathFormat::Html,
@@ -1967,10 +1967,10 @@ mod tests {
             )
             .with_parent(3),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(0).unwrap().add_child(3);
-        m.body.get_mut(1).unwrap().add_child(2);
-        m.body.get_mut(3).unwrap().add_child(4);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(0) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<a href=\"#sec:intro\" class=\"ref\">"));
@@ -1992,8 +1992,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("Section ??"));
@@ -2014,8 +2014,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::new().render(&m);
         assert!(html.contains("<span id=\"eq:important\"></span>"));
@@ -2036,8 +2036,8 @@ mod tests {
             )
             .with_parent(1),
         );
-        m.body.get_mut(0).unwrap().add_child(1);
-        m.body.get_mut(1).unwrap().add_child(2);
+        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
 
         let html = HtmlRenderer::with_options(HtmlOptions {
             math_format: MathFormat::Html,

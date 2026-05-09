@@ -1,3 +1,6 @@
+#![warn(clippy::unwrap_used, clippy::expect_used)]
+#![deny(unsafe_code)]
+
 mod pass_manager;
 mod passes;
 

@@ -180,11 +180,12 @@ mod tests {
     }
 
     #[test]
-    fn test_emit_and_parse_roundtrip() {
+    fn test_emit_and_parse_roundtrip() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let doc = make_test_doc();
         let bytes = emit_gir(&doc);
-        let parsed = parse_gir(&bytes).unwrap();
+        let parsed = parse_gir(&bytes)?;
         assert_eq!(doc, parsed);
+        Ok(())
     }
 
     #[test]
@@ -195,25 +196,27 @@ mod tests {
     }
 
     #[test]
-    fn test_emit_page_count() {
+    fn test_emit_page_count() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let doc = make_test_doc();
         let bytes = emit_gir(&doc);
-        let count = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
+        let count = u32::from_le_bytes(bytes[4..8].try_into().map_err(|e: std::array::TryFromSliceError| e.to_string())?);
         assert_eq!(count, 1);
+        Ok(())
     }
 
     #[test]
-    fn test_emit_multi_page() {
+    fn test_emit_multi_page() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut doc = GIRDocument::new();
         doc.push_page(GIRPage::new());
         doc.push_page(GIRPage::new());
         doc.push_page(GIRPage::new());
         let bytes = emit_gir(&doc);
-        let count = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
+        let count = u32::from_le_bytes(bytes[4..8].try_into().map_err(|e: std::array::TryFromSliceError| e.to_string())?);
         assert_eq!(count, 3);
 
-        let parsed = parse_gir(&bytes).unwrap();
+        let parsed = parse_gir(&bytes)?;
         assert_eq!(parsed.page_count(), 3);
+        Ok(())
     }
 
     #[test]
@@ -260,15 +263,16 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_doc_emit_parse() {
+    fn test_empty_doc_emit_parse() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let doc = GIRDocument::new();
         let bytes = emit_gir(&doc);
-        let parsed = parse_gir(&bytes).unwrap();
+        let parsed = parse_gir(&bytes)?;
         assert_eq!(doc, parsed);
+        Ok(())
     }
 
     #[test]
-    fn test_all_opcodes_roundtrip() {
+    fn test_all_opcodes_roundtrip() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut doc = GIRDocument::new();
         let mut page = GIRPage::new();
         page.push(GIRCommand::new_set_font(0));
@@ -283,13 +287,14 @@ mod tests {
         doc.push_page(page);
 
         let bytes = emit_gir(&doc);
-        let parsed = parse_gir(&bytes).unwrap();
+        let parsed = parse_gir(&bytes)?;
         assert_eq!(doc, parsed);
         assert!(parsed.is_well_formed());
+        Ok(())
     }
 
     #[test]
-    fn test_large_args_roundtrip() {
+    fn test_large_args_roundtrip() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut doc = GIRDocument::new();
         let mut page = GIRPage::new();
         let big_arg = [i32::MAX, i32::MIN, 0, -1, 1, 999999, -999999, 42];
@@ -297,7 +302,8 @@ mod tests {
         doc.push_page(page);
 
         let bytes = emit_gir(&doc);
-        let parsed = parse_gir(&bytes).unwrap();
+        let parsed = parse_gir(&bytes)?;
         assert_eq!(doc, parsed);
+        Ok(())
     }
 }

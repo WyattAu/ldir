@@ -212,10 +212,10 @@ mod tests {
     }
 
     #[test]
-    fn test_renderer_new() {
-        let renderer = VelloRenderer::new();
-        assert!(renderer.is_ok());
-        assert!(!renderer.unwrap().has_device());
+    fn test_renderer_new() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let renderer = VelloRenderer::new()?;
+        assert!(!renderer.has_device());
+        Ok(())
     }
 
     #[test]
@@ -231,51 +231,52 @@ mod tests {
     }
 
     #[test]
-    fn test_build_scene() {
-        let renderer = VelloRenderer::new().unwrap();
+    fn test_build_scene() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let renderer = VelloRenderer::new()?;
         let doc = make_test_doc();
-        let scene = renderer.build_scene(&doc);
-        assert!(scene.is_ok());
-        assert!(!scene.unwrap().encoding().is_empty());
+        let scene = renderer.build_scene(&doc)?;
+        assert!(!scene.encoding().is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_build_empty_scene() {
-        let renderer = VelloRenderer::new().unwrap();
+    fn test_build_empty_scene() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let renderer = VelloRenderer::new()?;
         let doc = GIRDocument::new();
-        let scene = renderer.build_scene(&doc);
-        assert!(scene.is_ok());
-        assert!(scene.unwrap().encoding().is_empty());
+        let scene = renderer.build_scene(&doc)?;
+        assert!(scene.encoding().is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_render_gir_empty_doc() {
-        let renderer = VelloRenderer::new().unwrap();
+    fn test_render_gir_empty_doc() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let renderer = VelloRenderer::new()?;
         let doc = GIRDocument::new();
-        let result = renderer.render_gir(&doc, 100, 100);
-        assert!(result.is_ok());
-        let pixels = result.unwrap();
+        let pixels = renderer.render_gir(&doc, 100, 100)?;
         assert_eq!(pixels.len(), 100 * 100 * 4);
+        Ok(())
     }
 
     #[test]
-    fn test_render_gir_produces_white_background() {
-        let renderer = VelloRenderer::new().unwrap();
+    fn test_render_gir_produces_white_background() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let renderer = VelloRenderer::new()?;
         let doc = make_test_doc();
-        let pixels = renderer.render_gir(&doc, 10, 10).unwrap();
+        let pixels = renderer.render_gir(&doc, 10, 10)?;
         assert_eq!(pixels.len(), 10 * 10 * 4);
         assert_eq!(pixels[0], 255);
         assert_eq!(pixels[1], 255);
         assert_eq!(pixels[2], 255);
         assert_eq!(pixels[3], 255);
+        Ok(())
     }
 
     #[test]
-    fn test_render_gir_size() {
-        let renderer = VelloRenderer::new().unwrap();
+    fn test_render_gir_size() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let renderer = VelloRenderer::new()?;
         let doc = make_test_doc();
-        let pixels = renderer.render_gir(&doc, 640, 480).unwrap();
+        let pixels = renderer.render_gir(&doc, 640, 480)?;
         assert_eq!(pixels.len(), 640 * 480 * 4);
+        Ok(())
     }
 
     #[test]
@@ -283,8 +284,9 @@ mod tests {
         let doc = make_test_doc();
         let renderer = VelloRenderer::from_gir(&doc, &[]);
         assert_eq!(renderer.scene_count(), 1);
-        assert!(renderer.get_scene(0).is_some());
-        assert!(!renderer.get_scene(0).unwrap().encoding().is_empty());
+        if let Some(scene) = renderer.get_scene(0) {
+            assert!(!scene.encoding().is_empty());
+        }
     }
 
     #[test]
@@ -329,11 +331,12 @@ mod tests {
     }
 
     #[test]
-    fn test_render_scene() {
+    fn test_render_scene() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let doc = make_test_doc();
         let renderer = VelloRenderer::from_gir(&doc, &[]);
-        let pixels = renderer.render_scene(0, 50, 50).unwrap();
+        let pixels = renderer.render_scene(0, 50, 50)?;
         assert_eq!(pixels.len(), 50 * 50 * 4);
+        Ok(())
     }
 
     #[test]

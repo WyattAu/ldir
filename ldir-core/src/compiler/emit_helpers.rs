@@ -96,24 +96,28 @@ mod tests {
     }
 
     #[test]
-    fn test_emit_move_xy() {
+    fn test_emit_move_xy() -> Result<(), Box<dyn std::error::Error>> {
         let mut page = GIRPage::new();
         emit_move_xy(&mut page, Fp266::from_int(100), Fp266::from_int(200));
         assert_eq!(page.len(), 1);
-        let cmd = page.get(0).unwrap();
+        let cmd = page.get(0).ok_or("no command")?;
         assert_eq!(cmd.opcode(), GIROpcode::MoveXY);
         assert_eq!(cmd.arg(0), Some(100 * 64));
         assert_eq!(cmd.arg(1), Some(200 * 64));
+        Ok(())
     }
 
     #[test]
-    fn test_emit_text_content() {
+    fn test_emit_text_content() -> Result<(), Box<dyn std::error::Error>> {
         let mut page = GIRPage::new();
         emit_text_content(&mut page, "AB", 7 * 64);
         assert_eq!(page.len(), 2);
-        assert_eq!(page.get(0).unwrap().opcode(), GIROpcode::PutGlyph);
-        assert_eq!(page.get(0).unwrap().arg(0), Some('A' as i32));
-        assert_eq!(page.get(1).unwrap().arg(0), Some('B' as i32));
+        let cmd0 = page.get(0).ok_or("no command at 0")?;
+        assert_eq!(cmd0.opcode(), GIROpcode::PutGlyph);
+        assert_eq!(cmd0.arg(0), Some('A' as i32));
+        let cmd1 = page.get(1).ok_or("no command at 1")?;
+        assert_eq!(cmd1.arg(0), Some('B' as i32));
+        Ok(())
     }
 
     #[test]
@@ -124,7 +128,7 @@ mod tests {
     }
 
     #[test]
-    fn test_emit_draw_rule() {
+    fn test_emit_draw_rule() -> Result<(), Box<dyn std::error::Error>> {
         let mut page = GIRPage::new();
         emit_draw_rule(
             &mut page,
@@ -134,8 +138,9 @@ mod tests {
             Fp266::from_int(1),
         );
         assert_eq!(page.len(), 1);
-        let cmd = page.get(0).unwrap();
+        let cmd = page.get(0).ok_or("no command")?;
         assert_eq!(cmd.opcode(), GIROpcode::DrawRule);
+        Ok(())
     }
 
     #[test]
@@ -150,21 +155,23 @@ mod tests {
     }
 
     #[test]
-    fn test_emit_attach_metadata() {
+    fn test_emit_attach_metadata() -> Result<(), Box<dyn std::error::Error>> {
         let mut page = GIRPage::new();
         emit_attach_metadata(&mut page, 0, 10, 4, 20);
         assert_eq!(page.len(), 1);
-        let cmd = page.get(0).unwrap();
+        let cmd = page.get(0).ok_or("no command")?;
         assert_eq!(cmd.opcode(), GIROpcode::AttachMetadata);
+        Ok(())
     }
 
     #[test]
-    fn test_emit_paragraph_spacing() {
+    fn test_emit_paragraph_spacing() -> Result<(), Box<dyn std::error::Error>> {
         let mut page = GIRPage::new();
         let mut ctx = CompileContext::new();
         emit_paragraph_spacing(&mut page, &mut ctx, 12);
         assert_eq!(page.len(), 1);
-        let cmd = page.get(0).unwrap();
+        let cmd = page.get(0).ok_or("no command")?;
         assert_eq!(cmd.opcode(), GIROpcode::MoveXY);
+        Ok(())
     }
 }

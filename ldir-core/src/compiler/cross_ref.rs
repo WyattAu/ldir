@@ -427,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    fn test_collect_labels_multi_kind() {
+    fn test_collect_labels_multi_kind() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         let doc_id = m.body.push(Node::new(0, NodeType::Document));
 
@@ -463,21 +463,22 @@ mod tests {
         let labels = collect_labels(&m);
         assert_eq!(labels.len(), 3);
 
-        let sec = labels.iter().find(|l| l.label == "sec:methods").unwrap();
+        let sec = labels.iter().find(|l| l.label == "sec:methods").ok_or("sec:methods not found")?;
         assert_eq!(sec.kind, LabelKind::Section { level: 2 });
         assert_eq!(sec.number, "0.1");
 
-        let eq = labels.iter().find(|l| l.label == "eq:pythagoras").unwrap();
+        let eq = labels.iter().find(|l| l.label == "eq:pythagoras").ok_or("eq:pythagoras not found")?;
         assert_eq!(eq.kind, LabelKind::Equation);
         assert_eq!(eq.number, "1");
 
-        let fig = labels.iter().find(|l| l.label == "fig:results").unwrap();
+        let fig = labels.iter().find(|l| l.label == "fig:results").ok_or("fig:results not found")?;
         assert_eq!(fig.kind, LabelKind::Figure);
         assert_eq!(fig.number, "1");
+        Ok(())
     }
 
     #[test]
-    fn test_collect_labels_section_numbering() {
+    fn test_collect_labels_section_numbering() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         let doc_id = m.body.push(Node::new(0, NodeType::Document));
 
@@ -503,23 +504,26 @@ mod tests {
         }
 
         let labels = collect_labels(&m);
-        let a = labels.iter().find(|l| l.label == "sec:a").unwrap();
+        let a = labels.iter().find(|l| l.label == "sec:a").ok_or("sec:a not found")?;
         assert_eq!(a.number, "0.1");
-        let b = labels.iter().find(|l| l.label == "sec:b").unwrap();
+        let b = labels.iter().find(|l| l.label == "sec:b").ok_or("sec:b not found")?;
         assert_eq!(b.number, "0.2");
-        let c = labels.iter().find(|l| l.label == "subsec:c").unwrap();
+        let c = labels.iter().find(|l| l.label == "subsec:c").ok_or("subsec:c not found")?;
         assert_eq!(c.number, "0.2.1");
+        Ok(())
     }
 
     #[test]
-    fn test_resolve_references_basic() {
+    fn test_resolve_references_basic() -> Result<(), Box<dyn std::error::Error>> {
         let labels = vec![ResolvedLabel {
             label: "sec:intro".to_string(),
             kind: LabelKind::Section { level: 2 },
             number: "1.2".to_string(),
         }];
         let map = resolve_references(&labels);
-        assert_eq!(map.get("sec:intro").unwrap(), "1.2");
+        let val = map.get("sec:intro").ok_or("sec:intro not found")?;
+        assert_eq!(val, "1.2");
+        Ok(())
     }
 
     #[test]
@@ -650,7 +654,7 @@ mod tests {
     }
 
     #[test]
-    fn test_collect_labels_chapter_section_numbering() {
+    fn test_collect_labels_chapter_section_numbering() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         let doc_id = m.body.push(Node::new(0, NodeType::Document));
 
@@ -673,13 +677,14 @@ mod tests {
         }
 
         let labels = collect_labels(&m);
-        let ch_label = labels.iter().find(|l| l.label == "ch:intro").unwrap();
+        let ch_label = labels.iter().find(|l| l.label == "ch:intro").ok_or("ch:intro not found")?;
         assert_eq!(ch_label.number, "1");
         assert_eq!(ch_label.kind, LabelKind::Section { level: 1 });
 
-        let sec_label = labels.iter().find(|l| l.label == "sec:background").unwrap();
+        let sec_label = labels.iter().find(|l| l.label == "sec:background").ok_or("sec:background not found")?;
         assert_eq!(sec_label.number, "1.1");
         assert_eq!(sec_label.kind, LabelKind::Section { level: 2 });
+        Ok(())
     }
 
     #[test]

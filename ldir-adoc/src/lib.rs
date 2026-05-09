@@ -1,5 +1,7 @@
 //! LDIR Asciidoc Frontend — converts Asciidoc (.adoc) files to S-IR v2.
 
+#![warn(clippy::unwrap_used, clippy::expect_used)]
+#![deny(unsafe_code)]
 #![allow(
     clippy::collapsible_if,
     clippy::manual_strip,

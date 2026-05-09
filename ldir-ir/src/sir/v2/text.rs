@@ -482,64 +482,71 @@ mod tests {
     }
 
     #[test]
-    fn test_text_to_module_basic() {
+    fn test_text_to_module_basic() -> Result<(), Box<dyn std::error::Error>> {
         let text = r#";; ldir-ir v2.0.0
 @meta { title = "Test" }
 @section [id=1] { }
 @paragraph [id=2, parent=1] { }
 @text [id=3, parent=2] { "Hello" }
 "#;
-        let m = text_to_module(text).unwrap();
+        let m = text_to_module(text)?;
         assert_eq!(m.body.len(), 3);
         assert!(m.body.get(1).is_some());
         assert!(m.body.get(2).is_some());
         assert!(m.body.get(3).is_some());
+        Ok(())
     }
 
     #[test]
-    fn test_text_to_module_with_style() {
+    fn test_text_to_module_with_style() -> Result<(), Box<dyn std::error::Error>> {
         let text = r#";; ldir-ir v2.0.0
 @style "heading" { parent = "body" }
 @section [id=1, style="heading"] { }
 "#;
-        let m = text_to_module(text).unwrap();
+        let m = text_to_module(text)?;
         assert_eq!(m.body.len(), 1);
         assert_eq!(m.styles.styles.len(), 1);
-        assert_eq!(m.body.get(1).unwrap().style.as_deref(), Some("heading"));
+        let node = m.body.get(1).ok_or("no node at id 1")?;
+        assert_eq!(node.style.as_deref(), Some("heading"));
+        Ok(())
     }
 
     #[test]
-    fn test_text_to_module_with_label() {
+    fn test_text_to_module_with_label() -> Result<(), Box<dyn std::error::Error>> {
         let text = r#";; ldir-ir v2.0.0
 @section [id=1, label="sec:intro"] { }
 "#;
-        let m = text_to_module(text).unwrap();
+        let m = text_to_module(text)?;
         assert!(m.annotations.find_label("sec:intro").is_some());
+        Ok(())
     }
 
     #[test]
-    fn test_text_to_module_with_counter() {
+    fn test_text_to_module_with_counter() -> Result<(), Box<dyn std::error::Error>> {
         let text = r#";; ldir-ir v2.0.0
 @counter "section" { format = "arabic" }
 @section [id=1, counter="section"] { }
 "#;
-        let m = text_to_module(text).unwrap();
+        let m = text_to_module(text)?;
         assert_eq!(m.resources.counters.len(), 1);
-        assert_eq!(m.body.get(1).unwrap().counter.as_deref(), Some("section"));
+        let node = m.body.get(1).ok_or("no node at id 1")?;
+        assert_eq!(node.counter.as_deref(), Some("section"));
+        Ok(())
     }
 
     #[test]
-    fn test_text_to_module_with_font() {
+    fn test_text_to_module_with_font() -> Result<(), Box<dyn std::error::Error>> {
         let text = r#";; ldir-ir v2.0.0
 @font "body" { family = "Inter", weight = "regular" }
 "#;
-        let m = text_to_module(text).unwrap();
+        let m = text_to_module(text)?;
         assert_eq!(m.resources.fonts.len(), 1);
         assert_eq!(m.resources.fonts[0].name, "body");
+        Ok(())
     }
 
     #[test]
-    fn test_text_roundtrip() {
+    fn test_text_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         m.metadata.title = Some("Roundtrip Test".to_string());
         m.body
@@ -557,8 +564,10 @@ mod tests {
         );
 
         let text = module_to_text(&m);
-        let m2 = text_to_module(&text).unwrap();
+        let m2 = text_to_module(&text)?;
         assert_eq!(m2.body.len(), 3);
-        assert_eq!(m2.body.get(1).unwrap().label.as_deref(), Some("sec:a"));
+        let node = m2.body.get(1).ok_or("no node at id 1")?;
+        assert_eq!(node.label.as_deref(), Some("sec:a"));
+        Ok(())
     }
 }

@@ -2,6 +2,8 @@
 //!
 //! IR type definitions for the LDIR document pipeline: S-IR, L-IR, and G-IR
 //! with rkyv serialization support.
+
+#![warn(clippy::unwrap_used, clippy::expect_used)]
 //!
 //! This crate defines three layers of intermediate representation used
 //! throughout the LDIR compilation pipeline:

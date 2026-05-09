@@ -65,7 +65,9 @@ pub struct FontFace {
 // The `data` field is never moved or dropped while `face` is alive,
 // because both are dropped together when FontFace is dropped.
 // This is the standard pattern for self-referential font data in Rust.
+#[allow(unsafe_code)]
 unsafe impl Send for FontFace {}
+#[allow(unsafe_code)]
 unsafe impl Sync for FontFace {}
 
 impl Clone for FontFace {
@@ -101,6 +103,7 @@ impl FontFace {
         // 1. `data_owned` is stored in the same struct
         // 2. Both are dropped together
         // 3. FontFace is not Clone
+        #[allow(unsafe_code)]
         let face: ttf_parser::Face<'static> =
             unsafe { std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(face) };
 
@@ -349,76 +352,82 @@ mod tests {
     }
 
     #[test]
-    fn test_font_face_from_system_font() {
+    fn test_font_face_from_system_font() -> Result<(), Box<dyn std::error::Error>> {
         let data = make_minimal_ttf();
         if data.is_empty() {
-            return; // skip if no system font available
+            return Ok(());
         }
-        let face = FontFace::from_bytes(&data).unwrap();
+        let face = FontFace::from_bytes(&data)?;
         assert!(face.glyph_count() > 0);
         assert!(face.pdf_info().units_per_em > 0);
         assert!(!face.pdf_info().postscript_name.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_glyph_id_for_char() {
+    fn test_glyph_id_for_char() -> Result<(), Box<dyn std::error::Error>> {
         let data = make_minimal_ttf();
         if data.is_empty() {
-            return;
+            return Ok(());
         }
-        let face = FontFace::from_bytes(&data).unwrap();
-        // 'A' should have a glyph in any Latin font
+        let face = FontFace::from_bytes(&data)?;
         let gid = face.glyph_id_for_char('A');
         assert!(gid.is_some());
-        assert!(gid.unwrap() > 0); // not .notdef
+        let g = gid.ok_or("no glyph for 'A'")?;
+        assert!(g > 0);
+        Ok(())
     }
 
     #[test]
-    fn test_glyph_metrics() {
+    fn test_glyph_metrics() -> Result<(), Box<dyn std::error::Error>> {
         let data = make_minimal_ttf();
         if data.is_empty() {
-            return;
+            return Ok(());
         }
-        let face = FontFace::from_bytes(&data).unwrap();
-        let gid = face.glyph_id_for_char('A').unwrap();
-        let metrics = face.glyph_metrics(gid).unwrap();
+        let face = FontFace::from_bytes(&data)?;
+        let gid = face.glyph_id_for_char('A').ok_or("no glyph for 'A'")?;
+        let metrics = face.glyph_metrics(gid).ok_or("no metrics for glyph")?;
         assert!(metrics.advance_width > 0.0);
+        Ok(())
     }
 
     #[test]
-    fn test_glyph_to_unicode_roundtrip() {
+    fn test_glyph_to_unicode_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
         let data = make_minimal_ttf();
         if data.is_empty() {
-            return;
+            return Ok(());
         }
-        let face = FontFace::from_bytes(&data).unwrap();
-        let gid = face.glyph_id_for_char('A').unwrap();
+        let face = FontFace::from_bytes(&data)?;
+        let gid = face.glyph_id_for_char('A').ok_or("no glyph for 'A'")?;
         let back = face.glyph_to_unicode(gid);
         assert_eq!(back, Some('A'));
+        Ok(())
     }
 
     #[test]
-    fn test_pdf_font_info() {
+    fn test_pdf_font_info() -> Result<(), Box<dyn std::error::Error>> {
         let data = make_minimal_ttf();
         if data.is_empty() {
-            return;
+            return Ok(());
         }
-        let face = FontFace::from_bytes(&data).unwrap();
+        let face = FontFace::from_bytes(&data)?;
         let info = face.pdf_info();
         assert!(info.ascent > 0);
         assert!(info.descent <= 0);
         assert!(info.units_per_em >= 16);
         assert!(info.glyph_count > 0);
+        Ok(())
     }
 
     #[test]
-    fn test_raw_bytes_accessible() {
+    fn test_raw_bytes_accessible() -> Result<(), Box<dyn std::error::Error>> {
         let data = make_minimal_ttf();
         if data.is_empty() {
-            return;
+            return Ok(());
         }
-        let face = FontFace::from_bytes(&data).unwrap();
+        let face = FontFace::from_bytes(&data)?;
         assert!(!face.raw_bytes().is_empty());
+        Ok(())
     }
 
     #[test]

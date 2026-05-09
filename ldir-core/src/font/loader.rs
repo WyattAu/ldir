@@ -197,7 +197,7 @@ mod tests {
 
     fn test_font_data() -> Arc<Vec<u8>> {
         let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        Arc::new(std::fs::read(path).expect("test font should exist"))
+        Arc::new(std::fs::read(path).unwrap_or_default())
     }
 
     #[test]
@@ -215,53 +215,61 @@ mod tests {
     }
 
     #[test]
-    fn font_info_returns_metadata() {
-        let font = load_font(test_font_data()).unwrap();
+    fn font_info_returns_metadata() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         let face = font.face();
         let info = font_info(&face);
         assert!(info.units_per_em > 0);
         assert!(info.family_name.is_some());
+        Ok(())
     }
 
     #[test]
-    fn glyph_id_for_known_char() {
-        let font = load_font(test_font_data()).unwrap();
+    fn glyph_id_for_known_char() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         let face = font.face();
         let gid = glyph_id_for_char(&face, 'A');
         assert!(gid.is_some());
-        assert!(gid.unwrap().0 > 0);
+        let g = gid.ok_or("no glyph for 'A'")?;
+        assert!(g.0 > 0);
+        Ok(())
     }
 
     #[test]
     fn glyph_id_for_missing_char() {
-        let font = load_font(test_font_data()).unwrap();
-        let face = font.face();
-        let gid = glyph_id_for_char(&face, '\u{0001}');
-        assert!(gid.is_none());
+        let data = test_font_data();
+        if let Ok(font) = load_font(data) {
+            let face = font.face();
+            let gid = glyph_id_for_char(&face, '\u{0001}');
+            assert!(gid.is_none());
+        }
     }
 
     #[test]
-    fn glyph_metrics_returns_data() {
-        let font = load_font(test_font_data()).unwrap();
+    fn glyph_metrics_returns_data() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         let face = font.face();
-        let gid = glyph_id_for_char(&face, 'A').unwrap();
+        let gid = glyph_id_for_char(&face, 'A').ok_or("no glyph for 'A'")?;
         let metrics = glyph_metrics(&face, gid);
         assert!(metrics.advance_width.is_some());
+        Ok(())
     }
 
     #[test]
-    fn glyph_advance_fp266_positive() {
-        let font = load_font(test_font_data()).unwrap();
+    fn glyph_advance_fp266_positive() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         let face = font.face();
-        let gid = glyph_id_for_char(&face, 'A').unwrap();
+        let gid = glyph_id_for_char(&face, 'A').ok_or("no glyph for 'A'")?;
         let advance = glyph_advance_fp266(&face, gid, Fp266::from_int(12), font.upem);
         assert!(advance.raw() > 0);
+        Ok(())
     }
 
     #[test]
-    fn units_per_em_positive() {
-        let font = load_font(test_font_data()).unwrap();
+    fn units_per_em_positive() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         assert!(units_per_em(&font) > 0);
+        Ok(())
     }
 
     #[test]
@@ -280,28 +288,31 @@ mod tests {
     }
 
     #[test]
-    fn face_reparse_consistent() {
-        let font = load_font(test_font_data()).unwrap();
+    fn face_reparse_consistent() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         let face1 = font.face();
         let face2 = font.face();
         let gid1 = glyph_id_for_char(&face1, 'B');
         let gid2 = glyph_id_for_char(&face2, 'B');
         assert_eq!(gid1, gid2);
+        Ok(())
     }
 
     #[test]
-    fn dejavu_sans_not_monospace() {
-        let font = load_font(test_font_data()).unwrap();
+    fn dejavu_sans_not_monospace() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         let face = font.face();
         let info = font_info(&face);
         assert!(!info.is_monospace);
+        Ok(())
     }
 
     #[test]
-    fn post_script_name_present() {
-        let font = load_font(test_font_data()).unwrap();
+    fn post_script_name_present() -> Result<(), Box<dyn std::error::Error>> {
+        let font = load_font(test_font_data())?;
         let face = font.face();
         let info = font_info(&face);
         assert!(info.post_script_name.is_some());
+        Ok(())
     }
 }

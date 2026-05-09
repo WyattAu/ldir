@@ -342,53 +342,57 @@ mod tests {
     }
 
     #[test]
-    fn incremental_multiple_dirty() {
+    fn incremental_multiple_dirty() -> Result<(), Box<dyn std::error::Error>> {
         let module = make_simple_module();
         let mut layout = IncrementalLayout::new(&module);
         layout.mark_dirty(1);
         layout.mark_dirty(2);
         assert_eq!(layout.dirty_set().len(), 2);
         let ctx = make_ctx();
-        let old_lir = compile_sir_to_lir(&module, &ctx).unwrap();
+        let old_lir = compile_sir_to_lir(&module, &ctx)?;
         let result = layout.recompile_lir(&old_lir, &ctx);
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[test]
-    fn determinism_same_input_same_output() {
+    fn determinism_same_input_same_output() -> Result<(), Box<dyn std::error::Error>> {
         let module = make_simple_module();
         let layout1 = IncrementalLayout::new(&module);
         let layout2 = IncrementalLayout::new(&module);
         let ctx = make_ctx();
-        let lir1 = compile_sir_to_lir(&module, &ctx).unwrap();
-        let lir2 = compile_sir_to_lir(&module, &ctx).unwrap();
+        let lir1 = compile_sir_to_lir(&module, &ctx)?;
+        let lir2 = compile_sir_to_lir(&module, &ctx)?;
         assert_eq!(
-            layout1.recompile_lir(&lir1, &ctx).unwrap(),
-            layout2.recompile_lir(&lir2, &ctx).unwrap()
+            layout1.recompile_lir(&lir1, &ctx)?,
+            layout2.recompile_lir(&lir2, &ctx)?
         );
+        Ok(())
     }
 
     // === v2-specific tests ===
 
     #[test]
-    fn test_v2_unchanged_produces_same_lir() {
+    fn test_v2_unchanged_produces_same_lir() -> Result<(), Box<dyn std::error::Error>> {
         let module = make_simple_module();
         let layout = IncrementalLayout::new(&module);
         let ctx = make_ctx();
-        let lir1 = compile_sir_to_lir(&module, &ctx).unwrap();
-        let lir2 = layout.recompile_lir(&lir1, &ctx).unwrap();
+        let lir1 = compile_sir_to_lir(&module, &ctx)?;
+        let lir2 = layout.recompile_lir(&lir1, &ctx)?;
         assert_eq!(lir1, lir2);
+        Ok(())
     }
 
     #[test]
-    fn test_v2_dirty_triggers_recompile() {
+    fn test_v2_dirty_triggers_recompile() -> Result<(), Box<dyn std::error::Error>> {
         let module = make_simple_module();
         let mut layout = IncrementalLayout::new(&module);
         layout.mark_dirty(2);
         let ctx = make_ctx();
-        let old_lir = compile_sir_to_lir(&module, &ctx).unwrap();
-        let new_lir = layout.recompile_lir(&old_lir, &ctx).unwrap();
+        let old_lir = compile_sir_to_lir(&module, &ctx)?;
+        let new_lir = layout.recompile_lir(&old_lir, &ctx)?;
         assert_eq!(old_lir, new_lir);
+        Ok(())
     }
 
     #[test]

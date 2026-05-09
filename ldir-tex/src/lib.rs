@@ -3,6 +3,9 @@
 //! TeX/LaTeX to S-IR parser for the LDIR document pipeline. Converts a
 //! practical subset of LaTeX into an S-IR document tree suitable for
 //! compilation by `ldir-core`.
+
+#![warn(clippy::unwrap_used, clippy::expect_used)]
+#![deny(unsafe_code)]
 //!
 //! ## Key Types
 //!
