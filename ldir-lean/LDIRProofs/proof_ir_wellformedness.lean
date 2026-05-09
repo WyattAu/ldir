@@ -339,12 +339,29 @@ theorem isAcyclicAux_mono (doc : SIRDocument) (id : EntityID) (n : Nat) :
     contradiction
   | succ n ih =>
     intro h
-    -- Goal: isAcyclicAux doc id (n+2) = true, given h : isAcyclicAux doc id (n+1) = true
-    -- Both have fuel > 0, so both unfold to the find? branch.
-    -- The find? expression is identical; the only difference is fuel in recursive call.
-    -- After unfolding, split on find? and the root check:
-    --   none → true; some+root → true; some+!root → recurse (apply ih).
-    sorry
+    -- Goal: isAcyclicAux doc id (n+2) = true
+    -- h: isAcyclicAux doc id (n+1) = true
+    -- Both have fuel > 0. Let findResult = doc.find? (fun i => i.entity_id == id)
+    -- This is the SAME expression in both. Generalize over it, then case-split.
+    generalize h_find : doc.find? (fun i => i.entity_id == id) = a
+    cases a with
+    | none =>
+      simp [isAcyclicAux, h_find]
+    | some instr =>
+      by_cases h_root : instr.parent_id == rootSentinel
+      · simp [isAcyclicAux, h_find, h_root]
+      · simp only [isAcyclicAux] at h ⊢
+        rw [h_find] at h
+        simp only [h_root] at h
+        -- h : (if false = true then true else isAcyclicAux doc instr.parent_id n) = true
+        -- The if-condition (false = true) is always false (Prop equality), so reduce to else branch
+        split at h
+        · -- if-true branch: false = true, contradiction
+          contradiction
+        · -- h : isAcyclicAux doc instr.parent_id n = true
+          -- Goal: isAcyclicAux doc instr.parent_id (n+1) = true
+          -- BLOCKER: ih is for doc id, not doc instr.parent_id
+          sorry
 
 /-- A single instruction is acyclic iff its parent is rootSentinel.
     With fuel = 1: find? always finds the instruction (entity_id matches itself).

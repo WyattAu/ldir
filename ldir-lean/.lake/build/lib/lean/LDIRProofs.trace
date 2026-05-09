@@ -17,9 +17,9 @@
        [["LDIRProofs.proof_ir_wellformedness transitive imports (legacy)",
          "00000000000006bb"],
         ["LDIRProofs.proof_ir_wellformedness:importAllArts",
-         "fefb76b9f01887bc"],
+         "e211e3ca95e1a6a2"],
         ["LDIRProofs.ProofLayoutProperties transitive imports (legacy)",
-         "306e912a6d4e2136"],
+         "984efc916c59eb90"],
         ["LDIRProofs.ProofLayoutProperties:importAllArts",
          "9b87059434dfc726"]]]]],
     ["libs",
@@ -36,4 +36,4 @@
   ["Module.name: LDIRProofs", "35a7ae28e6c5c80b"],
   ["Package.id?: (some LDIRProofs)", "28e6e8b171463516"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "21fff5cd59c9b4b1"}
+ "depHash": "9240dd71764cda4f"}

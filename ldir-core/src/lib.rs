@@ -91,6 +91,12 @@ pub mod font;
 /// 26.6 fixed-point arithmetic for coordinates (REQ-3.2.5).
 pub mod fp266;
 
+/// Page number formatting: arabic, roman, alphabetic.
+pub mod page_numbers;
+
+/// Table of contents and document outline generation.
+pub mod toc;
+
 pub(crate) mod layout;
 
 pub use layout::lir_compile::compile_sir_to_lir;
