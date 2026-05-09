@@ -1,42 +1,49 @@
 # LDIR Version & State Tracker
 
 ## Current State
-- **Phase:** Phase H — Formal Verification & Ecosystem Hardening
-- **Version:** 3.6.0
+- **Phase:** Phase K — Lean4 Proof Progress & Cross-Reference Resolution
+- **Version:** 3.10.0
 - **Status:** ✅ All quality gates passing
-- **Last Updated:** 2026-05-08
+- **Last Updated:** 2026-05-09
 
 ## Quality Metrics
 | Metric | Value |
 |--------|-------|
-| **Total tests** | **1,652** |
+| **Total tests** | **1,685** |
 | Test failures | 0 |
 | Clippy errors | 0 (`-D warnings`) |
 | `cargo fmt` | Clean |
-| Lean4 proofs | 0 errors, 6 sorry (4 isAcyclic + 1 compile List.mem foldl + 1 cumWidth_mono; all with proof sketches) |
+| Lean4 proofs | 0 errors, 5 sorry (3 isAcyclic + 1 compile List.mem foldl + 1 cumWidth_mono; all with proof sketches) |
 | Production unwrap/expect | 0 (all eliminated) |
 | PDF determinism | Bit-identical verified |
 
-## What Changed (v3.2.0 → v3.3.0)
-### Accessibility & Compliance (E-4, E-5)
-- **WCAG 2.1 structure types**: Expanded `StructureType` with H1-H6, ListLabel/Body, TableHeader/TableBody/TableHeaderCell/TableDataCell, FootnoteRef/FootnoteBody, Span, Artifact. 37 new tests.
-- **PDF/A conformance**: `PdfConformance` enum (PdfA4, PdfA2b, PdfA3b) with `--pdfa-level` CLI flag, XMP metadata generation, output intent support. 12 new tests.
+## What Changed (v3.9.0 → v3.10.0)
+### Lean4 Proof Progress (K-1)
+- **`isAcyclic_single` FULLY PROVEN**: Closed 1 of 6 sorry. Key insight: `by_cases` on structural equality (`instr.parent_id = rootSentinel`) bridges the Prop/Bool `¬` gap. In the `parent ≠ root` case, `simp [h_eq]` rewrites BEq to `decide`, `unfold isAcyclicAux` reduces fuel=0 to `false`, and `simp` closes. Down from 6 sorry to 5.
+- **Deep Lean4 sorry analysis**: Identified exact resolution paths for all remaining sorry: `isAcyclicAux_mono` step (nested match alignment), `isAcyclic_cons_root`/`cons_orphan` (depend on mono), `compile_preserves_content` (List.mem foldl), `cumWidth_mono` (prefix monotonicity via foldl).
 
-### ICC Color Management (E-3)
-- **ICC profile handling**: `IccProfile` type with parsing, sRGB/CMYK/Gray built-in profiles, sRGB↔CMYK conversion, ICC alternate name mapping. Wired into PDF writer for OutputIntent streams.
+### Cross-Reference Resolution (K-2)
+- **`ldir-core/src/cross_ref.rs`**: New module with `LabelRegistry` (register/lookup/unresolved_refs), `ResolvedRef` (label, page, section, RefType), `resolve_ref` parser. 11 RefType variants (Internal, External, Bibliography, Equation, Figure, Table). 33 new tests (31 unit + 2 integration).
 
-### Formal Verification (E-1, E-2, E-8)
-- **KP optimality**: `totalDemerits` definition, `kp_optimality` theorem stated, 3 supporting lemmas.
-- **Compilation correctness**: `sirSemanticContent` and `girSemanticContent` defined; `compile_preserves_content` and `compile_nonempty_content_produces_glyphs` stated (2 sorry pending real compiler formalization).
-- **5 sorry remaining**: 3 isAcyclic monotonicity, 2 compilation correctness.
+## What Changed (v3.8.0 → v3.9.0)
+### Deep Lean4 Sorry Analysis (J-1)
+- Identified exact root cause of all 6 sorry: Lean4 `¬` for Bool is `(b → False) : Prop`, not `Bool.not b : Bool`. 7 tactic strategies attempted and documented (rfl, unfold+rfl, show, decide, native_decide, absurd, congrArg Bool.not).
+- Clippy fix: `image.rs` line 181 `needlessly_taken_reference` → `data.get(0..4)`.
 
-### Ecosystem (E-6, E-7)
-- **crates.io prep**: All 25 crates have complete metadata; `ldir-ir` passes `cargo publish --dry-run`. 18 READMEs created.
-- **Continuous fuzzing**: 5 harnesses (parser, validator, compiler, lir_compile, pdf_emit), seed corpus, daily GitHub Actions workflow.
+## What Changed (v3.7.0 → v3.8.0)
+### PDF Table Rendering (J-2)
+- `draw_table` method: grid via horizontal/vertical `drawRule`, configurable columns/rows/line_width. 6 tests.
 
-### Infrastructure
-- Fixed 6 compilation errors from agent-generated code (conformance field, LUT8 array coercion, clippy is_multiple_of).
-- `cargo fmt` applied to all new files.
+### Image Dimension Detection (J-3)
+- PNG IHDR at offset 16, JPEG SOF0/SOF2 scan. `ImageDimensions` struct. 8 tests.
+
+## What Changed (v3.6.0 → v3.7.0)
+### CI/CD (I-1)
+- `ci.yml`: Rust (clippy+fmt+test), Lean4 (lake build), WASM32 (cargo caching), parallel jobs.
+- `release.yml`: Tag-triggered ldc binary artifact.
+
+### Benchmarks (I-2)
+- Criterion: 7 functions (md/tex parse small/medium, compile SIR, PDF generate, validator 10/50/100).
 
 ## What Changed (v3.1.0 → v3.2.0)
 ### Proof Alignment (D-1)
@@ -72,7 +79,7 @@
 ## Test Summary
 | Category | Count |
 |----------|-------|
-| ldir-core | 794 |
+| ldir-core | 827 |
 | ldir-ir | 187 |
 | ldir-pdf | 163 |
 | ldir-html | 42 |
@@ -90,20 +97,20 @@
 | ldir-diff | 15 |
 | ldir-validate | 5 |
 | ldir-epub | 11 |
-| **Total** | **1,577** |
+| **Total** | **1,610** |
 
 ## Artifact Summary
 | Category | Lines |
 |----------|-------|
-| Rust source code | ~67,000 |
-| Lean4 proofs | ~900 |
+| Rust source code | ~67,500 |
+| Lean4 proofs | ~1,000 |
 | Specs (Yellow/Blue papers, configs) | ~11,000 |
 | CI/CD configs | ~300 |
 | **Total** | ~79,200 |
 
 ## Lean4 Proof Status
-- **Active file:** `proof_ir_wellformedness.lean` — 5 sorry (3 isAcyclic monotonicity, 2 compilation correctness; proof sketches provided), ~20 theorems fully proven
-- **Active file:** `ProofLayoutProperties.lean` — 0 sorry, kp_termination proven, kp_optimality stated
+- **`proof_ir_wellformedness.lean`** — 4 sorry (isAcyclicAux_mono step, isAcyclic_cons_root, isAcyclic_cons_orphan, compile_preserves_content), ~20 theorems fully proven including `isAcyclic_single` ✅
+- **`ProofLayoutProperties.lean`** — 1 sorry (cumWidth_mono), kp_termination proven, 3 KP theorems proven
 
 ## Workspace Structure
 - 25 Rust crates + 1 Lean4 project

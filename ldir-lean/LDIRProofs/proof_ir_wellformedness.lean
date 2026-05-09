@@ -339,12 +339,11 @@ theorem isAcyclicAux_mono (doc : SIRDocument) (id : EntityID) (n : Nat) :
     contradiction
   | succ n ih =>
     intro h
-    -- Both sides have fuel > 0. The structure is:
-    -- LHS: match find? ... with none => true | some i => if root then true else recurse n
-    -- RHS: match find? ... with none => true | some i => if root then true else recurse (n+1)
-    -- Cases (a) and (b) are trivially true on both sides.
-    -- Case (c): LHS gives isAcyclicAux doc parent n = true, and we need
-    --           isAcyclicAux doc parent (n+1) = true, which is exactly ih.
+    -- Goal: isAcyclicAux doc id (n+2) = true, given h : isAcyclicAux doc id (n+1) = true
+    -- Both have fuel > 0, so both unfold to the find? branch.
+    -- The find? expression is identical; the only difference is fuel in recursive call.
+    -- After unfolding, split on find? and the root check:
+    --   none → true; some+root → true; some+!root → recurse (apply ih).
     sorry
 
 /-- A single instruction is acyclic iff its parent is rootSentinel.
@@ -366,10 +365,14 @@ theorem isAcyclic_single (instr : SIRInstruction) :
     · next h2 => exact Eq.symm h2
     · next h2 =>
       -- h2 : ¬(instr.parent_id == rootSentinel) = true
-      -- Goal: false = (instr.parent_id == rootSentinel)
-      -- Use decide: since both sides are Bool and Bool is decidable,
-      -- we can decide the equality directly
-      sorry
+      -- After unfold: ⊢ false = (instr.parent_id == rootSentinel)
+      -- Split on structural equality: if parent=root → contradiction from h2
+      by_cases h_eq : instr.parent_id = rootSentinel
+      · -- parent=root: h2 becomes (False→False)=true, contradiction
+        simp [h_eq] at h2
+      · -- parent≠root: BEq becomes false, unfold isAcyclicAux (fuel=0→false), done
+        unfold isAcyclicAux
+        simp [h_eq]
 
 /-- A single instruction with parent_id == rootSentinel is acyclic. -/
 theorem isAcyclic_single_root (instr : SIRInstruction) :

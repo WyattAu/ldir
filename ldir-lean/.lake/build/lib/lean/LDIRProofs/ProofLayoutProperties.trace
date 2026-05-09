@@ -1,8 +1,8 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["222eb8f6fbfd27ce.olean"],
-  "i": "bf9696d4a83f8e5a.ilean",
+ {"o": ["9b43d7aa8e50644a.olean"],
+  "i": "bfbae544d6056903.ilean",
   "c": "bc3ab9768f7e50be.c"},
  "log":
  [{"message":
@@ -10,6 +10,9 @@
    "level": "trace"},
   {"message":
    "LDIRProofs/ProofLayoutProperties.lean:241:8: declaration uses `sorry`",
+   "level": "warning"},
+  {"message":
+   "LDIRProofs/ProofLayoutProperties.lean:260:12: This simp argument is unused:\n  List.foldl\n\nHint: Omit it from the simp argument list.\n  simp ̵[̵L̵i̵s̵t̵.̵f̵o̵l̵d̵l̵]̵\n\nNote: This linter can be disabled with `set_option linter.unusedSimpArgs false`",
    "level": "warning"}],
  "inputs":
  [["LDIRProofs.ProofLayoutProperties:deps",
@@ -28,7 +31,7 @@
         ["LDIRProofs.proof_ir_wellformedness transitive imports (legacy)",
          "00000000000006bb"],
         ["LDIRProofs.proof_ir_wellformedness:importAllArts",
-         "0fccbb51d7766392"]]]]],
+         "fefb76b9f01887bc"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -37,10 +40,10 @@
   ["Lean 4.29.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740",
    "60bb08ef22408c8a"],
   ["/home/wyatt/dev/src/github.com/WyattAu/ldir/ldir-lean/LDIRProofs/ProofLayoutProperties.lean",
-   "0ed114b9791a5d7d"],
+   "6aea31d374042650"],
   ["options", [["-DautoImplicit=false", "4a85acb881fd49d0"]]],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: LDIRProofs.ProofLayoutProperties", "7b912ebf1c27f787"],
   ["Package.id?: (some LDIRProofs)", "28e6e8b171463516"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "d2dffeaaac1a2482"}
+ "depHash": "174496f24fa8e6fe"}

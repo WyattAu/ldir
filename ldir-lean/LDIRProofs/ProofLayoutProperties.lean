@@ -241,11 +241,38 @@ def demeritsReal (items : List KPItem) (pos : Nat) (prev : Option Nat) : Int :=
 theorem cumWidth_mono (items : List KPItem) (i j : Nat) :
     i ≤ j → cumWidth items i ≤ cumWidth items j := by
   intro h_le
-  -- Proof sketch: cumWidth uses `take i`, and take i is a prefix of take j when i ≤ j.
-  -- foldl with a non-decreasing accumulator (Nat + Nat) over a longer list
-  -- produces a result ≥ the foldl over the shorter prefix.
-  -- Formal proof requires List.take_take, List.foldl_cons, and Nat.add_le_add.
-  sorry
+  -- Prove by induction on items, using the monotonicity of foldl's step function.
+  induction items with
+  | nil =>
+    -- cumWidth [] n = 0 for all n, so 0 ≤ 0
+    unfold cumWidth; simp
+  | cons x xs ih =>
+    -- cumWidth (x :: xs) n = (x :: xs).take n |> foldl f 0
+    -- After one step of foldl: f (f 0 x) (xs.take (n-1)) when n > 0
+    -- Key: the first element x contributes the same width to both sides.
+    -- The difference is only in xs.take (i-1) vs xs.take (j-1).
+    unfold cumWidth
+    -- Goal: (x :: xs).take i |> foldl f 0 ≤ (x :: xs).take j |> foldl f 0
+    -- Case split on i:
+    cases i with
+    | zero =>
+      -- cumWidth (x::xs) 0 = foldl f 0 [] = 0 ≤ anything
+      simp [List.foldl]
+    | succ i' =>
+      cases j with
+      | zero => omega  -- succ i' ≤ 0 impossible
+      | succ j' =>
+        -- Both i,j > 0: (x::xs).take (succ i') = x :: xs.take i'
+        -- foldl f 0 (x :: xs.take i') = foldl f (f 0 x) (xs.take i')
+        -- Similarly for j'. So we need:
+        -- foldl f (f 0 x) (xs.take i') ≤ foldl f (f 0 x) (xs.take j')
+        -- Since i' ≤ j' (from h_le), by ih applied to xs:
+        -- cumWidth xs i' ≤ cumWidth xs j'
+        -- But we need the folded version with non-zero initial accumulator.
+        -- f = λw item => w + itemWidth, which is monotone in w.
+        -- So foldl f w0 (shorter) ≤ foldl f w0 (longer) when step is monotone.
+        -- This is the key insight: foldl with monotone step preserves ordering.
+        sorry
 
 /-- LEM-KP-007: A single box always fits on a line iff its width ≤ lineWidth. -/
 theorem single_box_feasible (w : Nat) :

@@ -76,6 +76,9 @@ pub mod compiler;
 pub(crate) mod ecs;
 pub mod interner;
 
+/// Cross-reference resolution for document labels and citations.
+pub mod cross_ref;
+
 /// G-IR binary emitter and parser (IF-EMIT-001).
 pub mod emitter;
 
