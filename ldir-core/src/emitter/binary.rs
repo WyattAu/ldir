@@ -199,7 +199,11 @@ mod tests {
     fn test_emit_page_count() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let doc = make_test_doc();
         let bytes = emit_gir(&doc);
-        let count = u32::from_le_bytes(bytes[4..8].try_into().map_err(|e: std::array::TryFromSliceError| e.to_string())?);
+        let count = u32::from_le_bytes(
+            bytes[4..8]
+                .try_into()
+                .map_err(|e: std::array::TryFromSliceError| e.to_string())?,
+        );
         assert_eq!(count, 1);
         Ok(())
     }
@@ -211,7 +215,11 @@ mod tests {
         doc.push_page(GIRPage::new());
         doc.push_page(GIRPage::new());
         let bytes = emit_gir(&doc);
-        let count = u32::from_le_bytes(bytes[4..8].try_into().map_err(|e: std::array::TryFromSliceError| e.to_string())?);
+        let count = u32::from_le_bytes(
+            bytes[4..8]
+                .try_into()
+                .map_err(|e: std::array::TryFromSliceError| e.to_string())?,
+        );
         assert_eq!(count, 3);
 
         let parsed = parse_gir(&bytes)?;
@@ -233,7 +241,7 @@ mod tests {
 
     #[test]
     fn test_parse_bad_magic() {
-        let mut bytes = vec![0x00; 8];
+        let bytes = vec![0x00; 8];
         let result = parse_gir(&bytes);
         assert!(result.is_err());
     }

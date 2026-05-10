@@ -519,10 +519,18 @@ mod tests {
             )
             .with_parent(3),
         );
-        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
-        if let Some(n) = m.body.get_mut(0) { n.add_child(3); }
-        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
-        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(3);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(3) {
+            n.add_child(4);
+        }
         m
     }
 
@@ -597,11 +605,21 @@ mod tests {
             )
             .with_parent(4),
         );
-        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
-        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
-        if let Some(n) = m.body.get_mut(1) { n.add_child(4); }
-        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
-        if let Some(n) = m.body.get_mut(4) { n.add_child(5); }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(4);
+        }
+        if let Some(n) = m.body.get_mut(2) {
+            n.add_child(3);
+        }
+        if let Some(n) = m.body.get_mut(4) {
+            n.add_child(5);
+        }
 
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -637,9 +655,15 @@ mod tests {
             )
             .with_parent(2),
         );
-        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
-        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
-        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(2) {
+            n.add_child(3);
+        }
 
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -686,10 +710,18 @@ mod tests {
             )
             .with_parent(3),
         );
-        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
-        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
-        if let Some(n) = m.body.get_mut(2) { n.add_child(3); }
-        if let Some(n) = m.body.get_mut(3) { n.add_child(4); }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(2) {
+            n.add_child(3);
+        }
+        if let Some(n) = m.body.get_mut(3) {
+            n.add_child(4);
+        }
 
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -722,8 +754,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
-        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
 
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -738,7 +774,9 @@ mod tests {
         m.body.push(Node::new(0, NodeType::Document));
         m.body
             .push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
-        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
 
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -761,8 +799,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(n) = m.body.get_mut(0) { n.add_child(1); }
-        if let Some(n) = m.body.get_mut(1) { n.add_child(2); }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
 
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);

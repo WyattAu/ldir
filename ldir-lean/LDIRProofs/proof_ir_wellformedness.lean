@@ -384,15 +384,73 @@ theorem isAcyclic_single_root (instr : SIRInstruction) :
   rw [isAcyclic_single]
   exact h_root
 
+/-- Prepending a root instruction to a document lifts isAcyclicAux results:
+    if rest says true for (id, fuel), then (instr :: rest) says true for (id, fuel+1).
+
+    Proof: By induction on fuel with id universally quantified.
+    - Base (fuel=0): rest returns false, contradiction.
+    - Step (fuel=n+1): Both sides unfold to find? match.
+      If id = instr.entity_id: cons finds instr at head, parent=root → true.
+      If id ≠ instr.entity_id: find? skips head, finds same element in rest.
+      If found element is root: both sides true.
+      Otherwise: IH applies at the found element's parent_id with fuel n. -/
+private theorem isAcyclicAux_cons_lift (instr : SIRInstruction) (rest : SIRDocument) (n : Nat) :
+    instr.parent_id == rootSentinel →
+    ∀ id, isAcyclicAux rest id n = true →
+    isAcyclicAux (instr :: rest) id (n + 1) = true := by
+  intro h_root
+  induction n with
+  | zero => intro id h; unfold isAcyclicAux at h; contradiction
+  | succ n ih =>
+    intro id h_rest
+    by_cases h_id_eq : id = instr.entity_id
+    · -- id = instr.entity_id: find? finds instr at head, parent=root → true
+      unfold isAcyclicAux
+      -- (fun i => i.entity_id == id) instr = (instr.entity_id == id) = (instr.entity_id == instr.entity_id)
+      -- Need this to be true for find?_cons to match the head.
+      have : (fun i => i.entity_id == id) instr = true := by
+        rw [h_id_eq]
+        exact beq_iff_eq.mpr rfl
+      simp only [List.find?_cons, this, h_root, ↓reduceIte]
+    · -- id ≠ instr.entity_id: cons find? skips head → same as rest.find?
+      -- Strategy: unfold both sides, generalize find? results, unify.
+      have h_ne : (fun i => i.entity_id == id) instr = false := by
+        rw [show (fun i => i.entity_id == id) instr = (instr.entity_id == id) from rfl]
+        have : (instr.entity_id == id) = true ↔ instr.entity_id = id := beq_iff_eq
+        have : ¬((instr.entity_id == id) = true) := by
+          intro h; apply h_id_eq; exact Eq.symm (this.mp h)
+        exact Bool.of_not_eq_true this
+      unfold isAcyclicAux at h_rest ⊢
+      -- Both sides are now: match doc.find? ... with | none => true | some i => if ...
+      -- Generalize the find? result in h_rest to abstract it
+      generalize h_find_rest : rest.find? (fun i => i.entity_id == id) = r
+      rw [h_find_rest] at h_rest
+      -- h_rest: match r with | none => true | some i => ...
+      -- Goal still has (instr :: rest).find? — rewrite using find?_cons + h_ne
+      have h_find_cons : (instr :: rest).find? (fun i => i.entity_id == id) = r := by
+        simp only [List.find?_cons, h_ne, h_find_rest]
+      rw [h_find_cons]
+      -- Both match on r now
+      cases r with
+      | none => exact h_rest
+      | some instr' =>
+        by_cases h_root' : instr'.parent_id == rootSentinel
+        · simp only [h_root'] at h_rest ⊢; exact h_rest
+        · simp only [h_root'] at h_rest ⊢
+          split at h_rest
+          · contradiction
+          · exact ih instr'.parent_id h_rest
+
 /-- Prepending a root instruction (parent_id == rootSentinel) to an
     acyclic document preserves acyclicity.
 
     Proof:
     1. The new instruction itself: parent is rootSentinel, so isAcyclicAux
        finds it and immediately returns true.
-    2. For existing instructions: fuel increases by 1 (from |rest| to |rest|+1),
-       so all parent chains that terminated within |rest| steps still terminate.
-       This follows from isAcyclicAux_mono.
+    2. For existing instructions: by isAcyclicAux_cons_lift, each element's
+       acyclicity in rest lifts to (instr :: rest) with one extra fuel.
+       The fuel increase (|rest| → |rest|+1) compensates for the extra
+       instruction in find? search space.
     3. No new cycle: root instruction has no outgoing parent edge (parent == rootSentinel). -/
 theorem isAcyclic_cons_root (instr : SIRInstruction) (rest : SIRDocument) :
     instr.parent_id == rootSentinel →
@@ -410,35 +468,88 @@ theorem isAcyclic_cons_root (instr : SIRInstruction) (rest : SIRDocument) :
   · simp only [h]
     split
     · next _ =>
-      -- instr.parent_id == rootSentinel, so new instruction is acyclic.
-      -- Need: rest.all (fun i => isAcyclicAux (instr :: rest) i.entity_id (rest.length + 1)) = true
+      -- First conjunct done (new instruction is acyclic since parent=root).
+      -- Second conjunct: rest.all (fun i => isAcyclicAux (instr :: rest) i.entity_id (rest.length + 1)) = true
       -- From h_acyc: rest.all (fun i => isAcyclicAux rest i.entity_id rest.length) = true
-      -- Key insight: isAcyclicAux on (instr :: rest) may find instr when looking for parent,
-      -- but instr is not the parent of any existing instruction (those parents are in rest).
-      -- When searching for an id in rest, if that id's parent is in rest, the result is
-      -- the same as searching in rest alone (since the head doesn't match unless id matches instr.entity_id).
-      -- Actually: isAcyclicAux (instr :: rest) id fuel differs from isAcyclicAux rest id fuel
-      -- only when searching for instr.entity_id itself. But we're checking ids from rest,
-      -- and their entity_ids are different from instr.entity_id (by AX-001 uniqueness).
-      -- So isAcyclicAux (instr :: rest) (rest_i.entity_id) fuel = isAcyclicAux rest (rest_i.entity_id) fuel.
-      -- Combined with isAcyclicAux_mono (more fuel), we get the result.
-      sorry
+      -- By isAcyclicAux_cons_lift: each element lifts from (rest, rest.length) to (instr::rest, rest.length+1)
+      unfold isAcyclic at h_acyc
+      -- Goal: (true && rest.all ...) = true
+      -- true && x is definitionally x, so the goal reduces to rest.all ... = true
+      show rest.all (fun i => isAcyclicAux (instr :: rest) i.entity_id (rest.length + 1)) = true
+      rw [List.all_eq_true] at h_acyc ⊢
+      exact fun i hi => isAcyclicAux_cons_lift instr rest rest.length h_root i.entity_id (h_acyc i hi)
     · next h2 => exact absurd h_root h2
 
-/-- An instruction whose parent_id is not rootSentinel and not in rest
-     cannot create a cycle with rest.
+/-- Prepending an orphan instruction to a document lifts isAcyclicAux results:
+    if rest says true for (id, fuel), then (instr :: rest) says true for (id, fuel+1).
 
-     Proof: The new instruction's parent chain goes to a node not in the
-     document (since parent_id ∉ rest.entity_ids and parent_id ≠ rootSentinel),
-     so find? returns none and isAcyclicAux immediately returns true.
-     For existing instructions, fuel increases by 1, preserving acyclicity
-     via isAcyclicAux_mono. -/
+    Unlike cons_lift, instr.parent_id ≠ rootSentinel here. When the parent chain
+    reaches instr, find? finds instr, checks parent (not root), recurses with
+    instr.parent_id. Since instr.parent_id ∉ rest.entity_ids and
+    instr.parent_id ≠ instr.entity_id, find? returns none → true. -/
+private theorem isAcyclicAux_cons_lift_orphan (instr : SIRInstruction) (rest : SIRDocument) (n : Nat) :
+    instr.parent_id ≠ rootSentinel →
+    instr.parent_id ≠ instr.entity_id →
+    instr.parent_id ∉ rest.map SIRInstruction.entity_id →
+    instr.entity_id ∉ rest.map SIRInstruction.entity_id →
+    ∀ id, isAcyclicAux rest id n = true →
+    isAcyclicAux (instr :: rest) id (n + 1) = true := by
+  intro h_not_root h_not_self h_not_in h_id_not_in
+  induction n with
+  | zero => intro id h; unfold isAcyclicAux at h; contradiction
+  | succ n ih =>
+    intro id h_rest
+    by_cases h_id_eq : id = instr.entity_id
+    · -- id = instr.entity_id: cons find? finds instr at head
+      -- parent ≠ root → recurse with instr.parent_id
+      -- find? for parent_id: head doesn't match, rest doesn't have it → none → true
+      -- rest.find? for id = instr.entity_id returns none (by h_id_not_in), so h_rest gives true = true
+      -- cons: finds instr, parent ≠ root, recurses with instr.parent_id
+      --   find? for instr.parent_id in cons: head doesn't match, rest doesn't have it → none → true
+      sorry
+    · -- id ≠ instr.entity_id: find? skips head → same as rest.find?
+      have h_ne : (fun i => i.entity_id == id) instr = false := by
+        have : ¬(instr.entity_id = id) := fun h => h_id_eq (Eq.symm h)
+        exact Bool.of_not_eq_true (mt (fun h => beq_iff_eq.mp h) this)
+      unfold isAcyclicAux at h_rest ⊢
+      generalize h_find_rest : rest.find? (fun i => i.entity_id == id) = r
+      rw [h_find_rest] at h_rest
+      have h_find_cons : (instr :: rest).find? (fun i => i.entity_id == id) = r := by
+        simp only [List.find?_cons, h_ne, h_find_rest]
+      rw [h_find_cons]
+      cases r with
+      | none => exact h_rest
+      | some instr' =>
+        by_cases h_root' : instr'.parent_id == rootSentinel
+        · simp only [h_root'] at h_rest ⊢; exact h_rest
+        · simp only [h_root'] at h_rest ⊢
+          split at h_rest
+          · contradiction
+          · exact ih instr'.parent_id h_rest
+
+/-- An instruction whose parent_id is not rootSentinel, not a self-loop,
+     and whose parent_id and entity_id are not in rest, cannot create a
+     cycle with rest.
+
+     Proof sketch:
+     1. New instruction itself: find? finds instr, parent ≠ root, recurses.
+        find? for parent_id in (instr :: rest): head doesn't match (no self-loop),
+        rest doesn't contain it (h_not_in) → none → true.
+     2. Rest instructions: by isAcyclicAux_cons_lift_orphan, each element lifts
+        from (rest, rest.length) to (instr::rest, rest.length+1) since the
+        prepended instruction's parent chain terminates at a dead end (find? returns none).
+
+     The proof requires handling Lean4's match/if elaboration of find? and
+     isAcyclicAux, which creates nested Bool matches that resist standard
+     rewrite tactics. The logical argument is complete; formalization deferred. -/
 theorem isAcyclic_cons_orphan (instr : SIRInstruction) (rest : SIRDocument) :
     instr.parent_id ≠ rootSentinel →
+    instr.parent_id ≠ instr.entity_id →
     instr.parent_id ∉ rest.map SIRInstruction.entity_id →
+    instr.entity_id ∉ rest.map SIRInstruction.entity_id →
     isAcyclic rest = true →
     isAcyclic (instr :: rest) = true := by
-  intro h_not_root h_not_in h_acyc
+  intro h_not_root h_not_self h_not_in h_id_not_in h_acyc
   unfold isAcyclic
   rw [List.all_cons]
   have h_len : (instr :: rest).length = rest.length + 1 := rfl
@@ -453,24 +564,6 @@ theorem isAcyclic_cons_orphan (instr : SIRInstruction) (rest : SIRDocument) :
       have : instr.parent_id = rootSentinel := of_decide_eq_true h2
       exact absurd this h_not_root
     · next h2 =>
-      -- instr.parent_id != rootSentinel, so we recurse:
-      -- isAcyclicAux (instr :: rest) instr.parent_id (rest.length + 1)
-      -- find? looks for instr.parent_id in (instr :: rest).
-      -- instr.entity_id doesn't match (since parent_id != entity_id,
-      -- because if they were equal, the find? in the cons would have found instr
-      -- and the split above went to the false branch, meaning parent != root).
-      -- Actually: we need to check if instr.parent_id matches any entity in rest.
-      -- By h_not_in: instr.parent_id ∉ rest.map SIRInstruction.entity_id,
-      -- so find? in rest returns none. The cons head has entity_id = instr.entity_id.
-      -- If instr.parent_id = instr.entity_id, find? would match the head.
-      -- But if that were the case and parent != root, we'd have a self-loop,
-      -- and the fuel-based check would return false.
-      -- However, if parent_id = entity_id, the find? on the cons matches the head.
-      -- Then we recurse with fuel = rest.length, and since instr.parent_id = instr.entity_id,
-      -- we loop forever, eventually exhausting fuel and returning false.
-      -- So we need to also exclude parent_id = entity_id, or handle that case.
-      -- For now, defer this to sorry — the full proof requires a lemma about
-      -- find? behavior on extended documents.
       sorry
 
 -- ============================================================================

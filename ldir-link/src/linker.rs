@@ -254,7 +254,10 @@ mod tests {
         ]);
         let result = link_modules(vec![m1, m2])?;
 
-        let doc = result.body.get(result.body.roots()[0]).ok_or("no root node")?;
+        let doc = result
+            .body
+            .get(result.body.roots()[0])
+            .ok_or("no root node")?;
         assert!(matches!(doc.node_type, NodeType::Document));
         assert_eq!(doc.child_ids.len(), 2);
         Ok(())
@@ -448,7 +451,10 @@ mod tests {
 
         let result = link_modules(vec![m1, m2])?;
         assert_eq!(result.body.roots().len(), 1);
-        let root = result.body.get(result.body.roots()[0]).ok_or("no root node")?;
+        let root = result
+            .body
+            .get(result.body.roots()[0])
+            .ok_or("no root node")?;
         assert!(matches!(root.node_type, NodeType::Document));
         assert_eq!(root.child_ids.len(), 2);
         Ok(())
@@ -478,7 +484,10 @@ mod tests {
 
         let result = link_modules(vec![m1, m2, m3])?;
         assert_eq!(result.body.roots().len(), 1);
-        let root = result.body.get(result.body.roots()[0]).ok_or("no root node")?;
+        let root = result
+            .body
+            .get(result.body.roots()[0])
+            .ok_or("no root node")?;
         assert_eq!(root.child_ids.len(), 3);
         Ok(())
     }

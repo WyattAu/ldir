@@ -463,15 +463,24 @@ mod tests {
         let labels = collect_labels(&m);
         assert_eq!(labels.len(), 3);
 
-        let sec = labels.iter().find(|l| l.label == "sec:methods").ok_or("sec:methods not found")?;
+        let sec = labels
+            .iter()
+            .find(|l| l.label == "sec:methods")
+            .ok_or("sec:methods not found")?;
         assert_eq!(sec.kind, LabelKind::Section { level: 2 });
         assert_eq!(sec.number, "0.1");
 
-        let eq = labels.iter().find(|l| l.label == "eq:pythagoras").ok_or("eq:pythagoras not found")?;
+        let eq = labels
+            .iter()
+            .find(|l| l.label == "eq:pythagoras")
+            .ok_or("eq:pythagoras not found")?;
         assert_eq!(eq.kind, LabelKind::Equation);
         assert_eq!(eq.number, "1");
 
-        let fig = labels.iter().find(|l| l.label == "fig:results").ok_or("fig:results not found")?;
+        let fig = labels
+            .iter()
+            .find(|l| l.label == "fig:results")
+            .ok_or("fig:results not found")?;
         assert_eq!(fig.kind, LabelKind::Figure);
         assert_eq!(fig.number, "1");
         Ok(())
@@ -504,11 +513,20 @@ mod tests {
         }
 
         let labels = collect_labels(&m);
-        let a = labels.iter().find(|l| l.label == "sec:a").ok_or("sec:a not found")?;
+        let a = labels
+            .iter()
+            .find(|l| l.label == "sec:a")
+            .ok_or("sec:a not found")?;
         assert_eq!(a.number, "0.1");
-        let b = labels.iter().find(|l| l.label == "sec:b").ok_or("sec:b not found")?;
+        let b = labels
+            .iter()
+            .find(|l| l.label == "sec:b")
+            .ok_or("sec:b not found")?;
         assert_eq!(b.number, "0.2");
-        let c = labels.iter().find(|l| l.label == "subsec:c").ok_or("subsec:c not found")?;
+        let c = labels
+            .iter()
+            .find(|l| l.label == "subsec:c")
+            .ok_or("subsec:c not found")?;
         assert_eq!(c.number, "0.2.1");
         Ok(())
     }
@@ -677,11 +695,17 @@ mod tests {
         }
 
         let labels = collect_labels(&m);
-        let ch_label = labels.iter().find(|l| l.label == "ch:intro").ok_or("ch:intro not found")?;
+        let ch_label = labels
+            .iter()
+            .find(|l| l.label == "ch:intro")
+            .ok_or("ch:intro not found")?;
         assert_eq!(ch_label.number, "1");
         assert_eq!(ch_label.kind, LabelKind::Section { level: 1 });
 
-        let sec_label = labels.iter().find(|l| l.label == "sec:background").ok_or("sec:background not found")?;
+        let sec_label = labels
+            .iter()
+            .find(|l| l.label == "sec:background")
+            .ok_or("sec:background not found")?;
         assert_eq!(sec_label.number, "1.1");
         assert_eq!(sec_label.kind, LabelKind::Section { level: 2 });
         Ok(())

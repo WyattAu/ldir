@@ -36,7 +36,7 @@ fn arbitrary_valid_sir() -> impl Strategy<Value = SIRDocument> {
             next_id += 1;
 
             for children in &children_groups {
-                let mut parent_id = root_id;
+                let parent_id = root_id;
                 for _ in children {
                     let text = format!("text {}\x00", next_id);
                     doc.push_with_payload(
@@ -53,7 +53,7 @@ fn arbitrary_valid_sir() -> impl Strategy<Value = SIRDocument> {
                         parent_id,
                         0,
                     ));
-                    parent_id = style_id;
+                    let _ = style_id; // style node created; parent_id unchanged for this group
                     next_id += 1;
                 }
             }

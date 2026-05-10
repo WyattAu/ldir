@@ -188,7 +188,6 @@ pub fn shape_harfbuzz(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     fn test_font_data() -> Vec<u8> {
         std::fs::read("/usr/share/fonts/TTF/DejaVuSans.ttf").expect("test font should exist")

@@ -200,7 +200,7 @@ mod tests {
         let mut doc = GIRDocument::new();
         let mut page = GIRPage::new();
         page.push(GIRCommand::new_set_font(1));
-        let mut cmd = GIRCommand::new_move_xy(i32::MIN, i32::MAX);
+        let cmd = GIRCommand::new_move_xy(i32::MIN, i32::MAX);
         page.push(cmd);
         page.push(GIRCommand::new_draw_rule(
             i32::MIN,

@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_binary_magic() {
-        let mut m = SIRModuleV2::new();
+        let m = SIRModuleV2::new();
         let bytes = SIRBinaryWriter::write(&m);
         assert_eq!(&bytes[0..4], b"LDIR");
     }

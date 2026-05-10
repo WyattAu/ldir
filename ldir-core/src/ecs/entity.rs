@@ -226,7 +226,7 @@ mod tests {
         let mut alloc = EntityAllocator::new();
         assert_eq!(alloc.alive_count(), 0);
         let e0 = alloc.allocate();
-        let e1 = alloc.allocate();
+        let _e1 = alloc.allocate();
         assert_eq!(alloc.alive_count(), 2);
         alloc.deallocate(e0);
         assert_eq!(alloc.alive_count(), 1);

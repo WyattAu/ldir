@@ -1,23 +1,35 @@
 # LDIR Version & State Tracker
 
 ## Current State
-- **Phase:** Phase K — Lean4 Proof Progress & Cross-Reference Resolution
-- **Version:** 3.10.0
-- **Status:** ✅ All quality gates passing
-- **Last Updated:** 2026-05-09
+- **Phase:** Phase N -- Quality Hardening, Zero-Warning Enforcement, Pre-commit Gates
+- **Version:** 3.14.0
+- **Status:** All quality gates passing
+- **Last Updated:** 2026-05-10
 
 ## Quality Metrics
 | Metric | Value |
 |--------|-------|
-| **Total tests** | **1,685** |
+| **Total tests** | **1,863** |
 | Test failures | 0 |
 | Clippy errors | 0 (`-D warnings`) |
+| Clippy warnings | 0 (test + lib) |
 | `cargo fmt` | Clean |
-| Lean4 proofs | 0 errors, 5 sorry (3 isAcyclic + 1 compile List.mem foldl + 1 cumWidth_mono; all with proof sketches) |
+| Lean4 proofs | 0 errors, 3 sorry (isAcyclic_cons_root, isAcyclic_cons_orphan, compile_preserves_content; all with proof sketches) |
 | Production unwrap/expect | 0 (all eliminated) |
 | PDF determinism | Bit-identical verified |
 
-## What Changed (v3.9.0 → v3.10.0)
+## What Changed (v3.13.0 -> v3.14.0)
+### Quality Hardening (N-1)
+- **Zero warnings enforcement**: Eliminated all 6 remaining compiler warnings (unused imports, unused mut, unused variables, unused assignments) across `ldir-core`, `ldir-ir`, `ldir-pdf`.
+- **`ldir-pdf` test compilation fix**: Added `#[allow(unsafe_code)]` on font table test module to resolve `#![deny(unsafe_code)]` conflict with test helper using lifetime transmute.
+- **Formatting normalization**: Applied `cargo fmt` across entire workspace; all 30+ formatting diffs resolved.
+- **`.cargo/config.toml` cleanup**: Removed invalid `build.targets` key that produced config warning.
+- **Documentation audit**: Removed all emoji characters from VERSION.md and CAPABILITY_MATRIX.md; replaced with plain-text status indicators.
+- **Test count update**: Verified 1,863 tests passing (up from 1,610 documented).
+- **Lean4 proof status reconciliation**: Updated sorry count from 5 to 3 to reflect Era N proofs (`cumWidth_mono`, `isAcyclicAux_mono`).
+- **Pre-commit hook**: Added `.git/hooks/pre-commit` enforcing `cargo fmt --check`, `cargo clippy -D warnings`, and `cargo test`.
+
+## What Changed (v3.9.0 -> v3.10.0)
 ### Lean4 Proof Progress (K-1)
 - **`isAcyclic_single` FULLY PROVEN**: Closed 1 of 6 sorry. Key insight: `by_cases` on structural equality (`instr.parent_id = rootSentinel`) bridges the Prop/Bool `¬` gap. In the `parent ≠ root` case, `simp [h_eq]` rewrites BEq to `decide`, `unfold isAcyclicAux` reduces fuel=0 to `false`, and `simp` closes. Down from 6 sorry to 5.
 - **Deep Lean4 sorry analysis**: Identified exact resolution paths for all remaining sorry: `isAcyclicAux_mono` step (nested match alignment), `isAcyclic_cons_root`/`cons_orphan` (depend on mono), `compile_preserves_content` (List.mem foldl), `cumWidth_mono` (prefix monotonicity via foldl).
@@ -109,8 +121,8 @@
 | **Total** | ~79,200 |
 
 ## Lean4 Proof Status
-- **`proof_ir_wellformedness.lean`** — 4 sorry (isAcyclicAux_mono step, isAcyclic_cons_root, isAcyclic_cons_orphan, compile_preserves_content), ~20 theorems fully proven including `isAcyclic_single` ✅
-- **`ProofLayoutProperties.lean`** — 1 sorry (cumWidth_mono), kp_termination proven, 3 KP theorems proven
+- **`proof_ir_wellformedness.lean`** -- 3 sorry (isAcyclic_cons_root, isAcyclic_cons_orphan, compile_preserves_content), ~20 theorems fully proven including `isAcyclic_single`, `isAcyclicAux_mono` [PROVEN]
+- **`ProofLayoutProperties.lean`** -- 0 sorry, `cumWidth_mono` proven, `kp_termination` proven, 3 KP theorems proven
 
 ## Workspace Structure
 - 25 Rust crates + 1 Lean4 project

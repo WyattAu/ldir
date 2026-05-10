@@ -359,7 +359,8 @@ mod tests {
     }
 
     #[test]
-    fn test_sparse_set_dense_compactness_after_many_removals() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_sparse_set_dense_compactness_after_many_removals()
+    -> Result<(), Box<dyn std::error::Error>> {
         let mut set = SparseSet::new();
         for i in 0..100u32 {
             set.insert(i);

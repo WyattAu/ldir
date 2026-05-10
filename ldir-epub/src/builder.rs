@@ -384,10 +384,18 @@ mod tests {
             )
             .with_parent(3),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(0) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(3) {
+            node.add_child(4);
+        }
         m
     }
 

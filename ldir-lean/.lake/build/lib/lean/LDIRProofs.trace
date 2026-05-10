@@ -17,11 +17,11 @@
        [["LDIRProofs.proof_ir_wellformedness transitive imports (legacy)",
          "00000000000006bb"],
         ["LDIRProofs.proof_ir_wellformedness:importAllArts",
-         "e211e3ca95e1a6a2"],
+         "be4813a3a52e64c1"],
         ["LDIRProofs.ProofLayoutProperties transitive imports (legacy)",
-         "984efc916c59eb90"],
+         "eac8b37c7f3b5886"],
         ["LDIRProofs.ProofLayoutProperties:importAllArts",
-         "9b87059434dfc726"]]]]],
+         "55b8f43af8c38165"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -36,4 +36,4 @@
   ["Module.name: LDIRProofs", "35a7ae28e6c5c80b"],
   ["Package.id?: (some LDIRProofs)", "28e6e8b171463516"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "9240dd71764cda4f"}
+ "depHash": "32efe8b9eedf0b8f"}

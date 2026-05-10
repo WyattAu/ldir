@@ -1440,7 +1440,7 @@ mod tests {
 
     #[test]
     fn test_headings_produce_h1_h6_structure() {
-        use crate::structure::{HeadingLevel, heading};
+        use crate::structure::heading;
 
         let mut doc = StructureNode::with_children(
             StructureType::Document,

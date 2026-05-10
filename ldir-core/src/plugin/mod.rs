@@ -353,8 +353,7 @@ mod tests {
 
         let backend = registry.find_backend("html").ok_or("html not found")?;
         let module = SIRModuleV2::new();
-        let result = backend
-            .generate(&module, &GenerateOptions::default())?;
+        let result = backend.generate(&module, &GenerateOptions::default())?;
         assert_eq!(result, b"<html>");
         Ok(())
     }

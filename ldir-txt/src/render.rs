@@ -592,10 +592,18 @@ mod tests {
             )
             .with_parent(3),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(0) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(3) {
+            node.add_child(4);
+        }
         m
     }
 
@@ -669,11 +677,21 @@ mod tests {
             )
             .with_parent(4),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(4); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(4) { node.add_child(5); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(4);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(4) {
+            node.add_child(5);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("- item 1"));
@@ -715,11 +733,21 @@ mod tests {
             )
             .with_parent(4),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(4); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(4) { node.add_child(5); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(4);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(4) {
+            node.add_child(5);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("1. first"));
@@ -751,9 +779,15 @@ mod tests {
             )
             .with_parent(2),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(3); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(3);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("link (https://example.com)"));
@@ -782,8 +816,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("```rust"));
@@ -806,8 +844,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("$x^2 + y^2$"));
@@ -819,7 +861,9 @@ mod tests {
         m.body.push(Node::new(0, NodeType::Document));
         m.body
             .push(Node::new(1, NodeType::ThematicBreak).with_parent(0));
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains(&"-".repeat(80)));
@@ -842,9 +886,15 @@ mod tests {
             )
             .with_parent(2),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(3); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(3);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("> A quote"));
@@ -885,12 +935,24 @@ mod tests {
             )
             .with_parent(5),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(4); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(5); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(5) { node.add_child(6); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(4);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(5);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(5) {
+            node.add_child(6);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("bold and `code`"));
@@ -993,17 +1055,39 @@ mod tests {
             )
             .with_parent(10),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(7); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(5); }
-        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
-        if let Some(node) = m.body.get_mut(5) { node.add_child(6); }
-        if let Some(node) = m.body.get_mut(7) { node.add_child(8); }
-        if let Some(node) = m.body.get_mut(7) { node.add_child(10); }
-        if let Some(node) = m.body.get_mut(8) { node.add_child(9); }
-        if let Some(node) = m.body.get_mut(10) { node.add_child(11); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(7);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(5);
+        }
+        if let Some(node) = m.body.get_mut(3) {
+            node.add_child(4);
+        }
+        if let Some(node) = m.body.get_mut(5) {
+            node.add_child(6);
+        }
+        if let Some(node) = m.body.get_mut(7) {
+            node.add_child(8);
+        }
+        if let Some(node) = m.body.get_mut(7) {
+            node.add_child(10);
+        }
+        if let Some(node) = m.body.get_mut(8) {
+            node.add_child(9);
+        }
+        if let Some(node) = m.body.get_mut(10) {
+            node.add_child(11);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("Name"));
@@ -1034,8 +1118,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("a < b & c > d"));
@@ -1078,12 +1166,24 @@ mod tests {
             )
             .with_parent(5),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(0) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(0) { node.add_child(5); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
-        if let Some(node) = m.body.get_mut(5) { node.add_child(6); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(5);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(3) {
+            node.add_child(4);
+        }
+        if let Some(node) = m.body.get_mut(5) {
+            node.add_child(6);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("1. First"));
@@ -1110,8 +1210,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("[Image: A photo]"));
@@ -1161,10 +1265,18 @@ mod tests {
             )
             .with_parent(3),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(0) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(3) {
+            node.add_child(4);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("1. Introduction\n====="));
@@ -1185,8 +1297,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
 
         let text = TextRenderer::with_options(TextOptions {
             underline_headings: false,
@@ -1253,14 +1369,30 @@ mod tests {
             )
             .with_parent(7),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(4); }
-        if let Some(node) = m.body.get_mut(2) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(4) { node.add_child(5); }
-        if let Some(node) = m.body.get_mut(4) { node.add_child(6); }
-        if let Some(node) = m.body.get_mut(6) { node.add_child(7); }
-        if let Some(node) = m.body.get_mut(7) { node.add_child(8); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(4);
+        }
+        if let Some(node) = m.body.get_mut(2) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(4) {
+            node.add_child(5);
+        }
+        if let Some(node) = m.body.get_mut(4) {
+            node.add_child(6);
+        }
+        if let Some(node) = m.body.get_mut(6) {
+            node.add_child(7);
+        }
+        if let Some(node) = m.body.get_mut(7) {
+            node.add_child(8);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("1. First item"));
@@ -1291,8 +1423,12 @@ mod tests {
             )
             .with_parent(1),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("```rust"));
@@ -1330,10 +1466,18 @@ mod tests {
             )
             .with_parent(3),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(0) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(3) {
+            node.add_child(4);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("See 1 for details."));
@@ -1369,10 +1513,18 @@ mod tests {
             )
             .with_parent(3),
         );
-        if let Some(node) = m.body.get_mut(0) { node.add_child(1); }
-        if let Some(node) = m.body.get_mut(0) { node.add_child(3); }
-        if let Some(node) = m.body.get_mut(1) { node.add_child(2); }
-        if let Some(node) = m.body.get_mut(3) { node.add_child(4); }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(1);
+        }
+        if let Some(node) = m.body.get_mut(0) {
+            node.add_child(3);
+        }
+        if let Some(node) = m.body.get_mut(1) {
+            node.add_child(2);
+        }
+        if let Some(node) = m.body.get_mut(3) {
+            node.add_child(4);
+        }
 
         let text = TextRenderer::new().render(&m);
         assert!(text.contains("Section 1"));

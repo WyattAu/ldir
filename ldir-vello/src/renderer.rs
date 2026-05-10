@@ -258,7 +258,8 @@ mod tests {
     }
 
     #[test]
-    fn test_render_gir_produces_white_background() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    fn test_render_gir_produces_white_background()
+    -> std::result::Result<(), Box<dyn std::error::Error>> {
         let renderer = VelloRenderer::new()?;
         let doc = make_test_doc();
         let pixels = renderer.render_gir(&doc, 10, 10)?;

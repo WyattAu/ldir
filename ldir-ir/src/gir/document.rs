@@ -290,7 +290,6 @@ mod tests {
 mod proptests {
     use super::*;
     use crate::gir::command::GIRCommand;
-    use crate::gir::opcode::GIROpcode;
     use proptest::prelude::*;
 
     proptest! {

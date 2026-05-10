@@ -145,6 +145,8 @@ LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_totalDemerits___boxed(lean_object*, 
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_kp__findOptimalBreaks(lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_kp__findOptimalBreaks___boxed(lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_lineWidth;
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_itemWidth(lean_object*);
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_itemWidth___boxed(lean_object*);
 lean_object* lean_nat_add(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_cumWidth_spec__0(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_cumWidth_spec__0___boxed(lean_object*, lean_object*);
@@ -1120,6 +1122,34 @@ _start:
 lean_object* x_1; 
 x_1 = lean_unsigned_to_nat(324u);
 return x_1;
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_itemWidth(lean_object* x_1) {
+_start:
+{
+if (lean_obj_tag(x_1) == 1)
+{
+lean_object* x_2; 
+x_2 = lean_ctor_get(x_1, 2);
+lean_inc(x_2);
+return x_2;
+}
+else
+{
+lean_object* x_3; 
+x_3 = lean_ctor_get(x_1, 0);
+lean_inc(x_3);
+return x_3;
+}
+}
+}
+LEAN_EXPORT lean_object* lp_LDIRProofs_LDIR_itemWidth___boxed(lean_object* x_1) {
+_start:
+{
+lean_object* x_2; 
+x_2 = lp_LDIRProofs_LDIR_itemWidth(x_1);
+lean_dec_ref(x_1);
+return x_2;
 }
 }
 LEAN_EXPORT lean_object* lp_LDIRProofs_List_foldl___at___00LDIR_cumWidth_spec__0(lean_object* x_1, lean_object* x_2) {
