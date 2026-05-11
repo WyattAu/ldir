@@ -206,7 +206,11 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                         });
                     }
                     if !rows.is_empty() {
-                        blocks.push(Block::StructuredTable { num_cols, rows });
+                        blocks.push(Block::StructuredTable {
+                            num_cols,
+                            rows,
+                            alignments: std::mem::take(&mut table_col_alignments),
+                        });
                     }
                     table_rows.clear();
                     table_col_alignments.clear();
@@ -452,10 +456,14 @@ impl<'a> ParseContext<'a> {
                         );
                     }
                     self.emit_link(link_url, root_id);
-                    let _ = inline_styles;
+                    self.emit_inline_styles(inline_styles, root_id);
                 }
-                Block::StructuredTable { num_cols, rows } => {
-                    self.emit_structured_table(root_id, num_cols, &rows);
+                Block::StructuredTable {
+                    num_cols,
+                    rows,
+                    alignments,
+                } => {
+                    self.emit_structured_table(root_id, num_cols, &rows, &alignments);
                 }
                 Block::FootnoteBlock { entries } => {
                     self.emit_footnote_block(root_id, &entries);
@@ -540,10 +548,20 @@ impl<'a> ParseContext<'a> {
         root_id: u32,
         num_cols: usize,
         rows: &[StructuredTableRow],
+        alignments: &[pulldown_cmark::Alignment],
     ) {
         let table_id = self.next_entity_id();
         let mut payload = vec![BlockType::Table as u8];
         payload.extend_from_slice(&(num_cols as u32).to_le_bytes());
+        for align in alignments {
+            let align_byte = match align {
+                pulldown_cmark::Alignment::None => 0u8,
+                pulldown_cmark::Alignment::Left => 1,
+                pulldown_cmark::Alignment::Center => 2,
+                pulldown_cmark::Alignment::Right => 3,
+            };
+            payload.push(align_byte);
+        }
         let payload_offset = self.doc.payload_mut().append(&payload);
         self.doc.push(SIRInstruction::new(
             SIROpcode::PushBlock,
@@ -655,6 +673,7 @@ enum Block {
     StructuredTable {
         num_cols: usize,
         rows: Vec<StructuredTableRow>,
+        alignments: Vec<pulldown_cmark::Alignment>,
     },
     FootnoteBlock {
         entries: Vec<(u32, String)>,

@@ -1,3 +1,4 @@
+use ldir_ir::sir::v2::metadata::Dimension;
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
 
@@ -28,6 +29,57 @@ fn attr(attrs: &[(String, String)], name: &str) -> Option<String> {
         .iter()
         .find(|(k, _)| k == name)
         .map(|(_, v)| v.clone())
+}
+
+fn parse_html_dimension(s: &str) -> Option<Dimension> {
+    let s = s.trim();
+    if let Some(v) = s
+        .strip_suffix("px")
+        .and_then(|v| v.trim().parse::<f64>().ok())
+    {
+        return Some(Dimension::Pt(v));
+    }
+    if let Some(v) = s
+        .strip_suffix('%')
+        .and_then(|v| v.trim().parse::<f64>().ok())
+    {
+        return Some(Dimension::Percent(v));
+    }
+    if let Some(v) = s
+        .strip_suffix("pt")
+        .and_then(|v| v.trim().parse::<f64>().ok())
+    {
+        return Some(Dimension::Pt(v));
+    }
+    if let Some(v) = s
+        .strip_suffix("mm")
+        .and_then(|v| v.trim().parse::<f64>().ok())
+    {
+        return Some(Dimension::Mm(v));
+    }
+    if let Some(v) = s
+        .strip_suffix("cm")
+        .and_then(|v| v.trim().parse::<f64>().ok())
+    {
+        return Some(Dimension::Cm(v));
+    }
+    if let Some(v) = s
+        .strip_suffix("in")
+        .and_then(|v| v.trim().parse::<f64>().ok())
+    {
+        return Some(Dimension::In(v));
+    }
+    s.parse::<f64>().ok().map(Dimension::Pt)
+}
+
+fn extract_width_from_style(style: &str) -> Option<f64> {
+    let style_lower = style.to_ascii_lowercase();
+    let start = style_lower.find("width:")?;
+    let after = &style_lower[start + 6..];
+    let end = after.find(';').unwrap_or(after.len());
+    let val = after[..end].trim();
+    let val = val.strip_suffix("px").unwrap_or(val).trim();
+    val.parse::<f64>().ok()
 }
 
 fn decode_entities(s: &str) -> String {
@@ -453,11 +505,13 @@ impl Converter {
             "img" => {
                 let source = attr(&dom.attrs, "src").unwrap_or_default();
                 let alt = attr(&dom.attrs, "alt").unwrap_or_default();
+                let width = attr(&dom.attrs, "width").and_then(|v| parse_html_dimension(&v));
+                let height = attr(&dom.attrs, "height").and_then(|v| parse_html_dimension(&v));
                 Some(NodeType::Image {
                     source,
                     alt,
-                    width: None,
-                    height: None,
+                    width,
+                    height,
                     placement: FloatPlacement::Here,
                 })
             }
@@ -472,6 +526,14 @@ impl Converter {
                 start: attr(&dom.attrs, "start").and_then(|s| s.parse::<u32>().ok()),
             }),
             "li" => Some(NodeType::ListItem),
+            "dl" => Some(NodeType::List {
+                list_type: ListType::Description,
+                ordered: false,
+                start: None,
+            }),
+            "dt" => Some(NodeType::Bold),
+            "dd" => Some(NodeType::Group),
+            "colgroup" | "col" => None,
             "blockquote" => Some(NodeType::BlockQuote),
             "pre" => Some(NodeType::CodeBlock {
                 language: None,
@@ -610,6 +672,47 @@ impl Converter {
 
         if tag == "img" {
             return Some(emitted_id);
+        }
+
+        if tag == "table" {
+            let mut col_widths = Vec::new();
+            for child in &dom.children {
+                if child.tag == "colgroup" {
+                    for col in &child.children {
+                        if col.tag == "col" {
+                            if let Some(w) =
+                                attr(&col.attrs, "width").and_then(|v| v.parse::<f64>().ok())
+                            {
+                                col_widths.push(w);
+                            } else if let Some(style) = attr(&col.attrs, "style")
+                                && let Some(w) = extract_width_from_style(&style)
+                            {
+                                col_widths.push(w);
+                            }
+                        }
+                    }
+                } else if child.tag == "col" {
+                    if let Some(w) = attr(&child.attrs, "width").and_then(|v| v.parse::<f64>().ok())
+                    {
+                        col_widths.push(w);
+                    } else if let Some(style) = attr(&child.attrs, "style")
+                        && let Some(w) = extract_width_from_style(&style)
+                    {
+                        col_widths.push(w);
+                    }
+                }
+            }
+            if !col_widths.is_empty()
+                && let Some(table_node) = self.module.body.get_mut(emitted_id)
+                && let NodeType::Table {
+                    column_widths,
+                    num_cols,
+                    ..
+                } = &mut table_node.node_type
+            {
+                *num_cols = col_widths.len();
+                *column_widths = col_widths;
+            }
         }
 
         if tag == "br" || tag == "hr" {

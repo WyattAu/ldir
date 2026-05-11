@@ -661,7 +661,23 @@ impl<'a> TeXParser<'a> {
     }
 
     fn parse_list_env(&mut self, parent_id: u32) {
+        self.parse_list_env_inner(parent_id, 0);
+    }
+
+    fn parse_list_env_inner(&mut self, parent_id: u32, depth: usize) {
         let list_id = self.emit_block(BlockType::List, parent_id, None, "");
+        let items = self.collect_list_items(depth);
+        let content = items.join("\n");
+        if !content.is_empty() {
+            let content_id = self.next_entity_id();
+            self.doc.push_with_payload(
+                SIRInstruction::new(SIROpcode::SetContent, content_id, list_id, 0),
+                content.as_bytes(),
+            );
+        }
+    }
+
+    fn collect_list_items(&mut self, depth: usize) -> Vec<String> {
         let mut item_buffer = String::new();
         let mut items: Vec<String> = Vec::new();
 
@@ -670,22 +686,37 @@ impl<'a> TeXParser<'a> {
                 Token::ControlSequence(name) if name == "end" => {
                     if self.is_end_env("itemize") || self.is_end_env("enumerate") {
                         if !item_buffer.trim().is_empty() {
-                            items.push(item_buffer.trim().to_string());
+                            items.push(Self::indent_text(item_buffer.trim(), depth));
                         }
                         self.consume_end_env("itemize");
-                        break;
+                        return items;
                     }
                     item_buffer.push_str(&format!("\\{name}"));
                     self.advance();
                 }
                 Token::ControlSequence(name) if name == "item" => {
                     if !item_buffer.trim().is_empty() {
-                        items.push(item_buffer.trim().to_string());
+                        items.push(Self::indent_text(item_buffer.trim(), depth));
                         item_buffer.clear();
                     }
                     self.advance();
                     if let Some(&Token::BracketOpen) = self.peek() {
                         self.parse_optional();
+                    }
+                }
+                Token::ControlSequence(name) if name == "begin" => {
+                    if self.is_begin_env("itemize") || self.is_begin_env("enumerate") {
+                        if !item_buffer.trim().is_empty() {
+                            items.push(Self::indent_text(item_buffer.trim(), depth));
+                            item_buffer.clear();
+                        }
+                        self.advance();
+                        let _env = self.parse_group_content();
+                        let nested = self.collect_list_items(depth + 1);
+                        items.extend(nested);
+                    } else {
+                        item_buffer.push_str(&format!("\\{name}"));
+                        self.advance();
                     }
                 }
                 Token::ControlSequence(name) => {
@@ -713,13 +744,14 @@ impl<'a> TeXParser<'a> {
             }
         }
 
-        let content = items.join("\n");
-        if !content.is_empty() {
-            let content_id = self.next_entity_id();
-            self.doc.push_with_payload(
-                SIRInstruction::new(SIROpcode::SetContent, content_id, list_id, 0),
-                content.as_bytes(),
-            );
+        items
+    }
+
+    fn indent_text(text: &str, depth: usize) -> String {
+        if depth == 0 {
+            text.to_string()
+        } else {
+            format!("{}{}", "  ".repeat(depth), text)
         }
     }
 
@@ -816,9 +848,16 @@ impl<'a> TeXParser<'a> {
     }
 
     fn parse_tabular_as_children(&mut self, table_id: u32) {
-        if let Some(&Token::BraceOpen) = self.peek() {
-            self.skip_group();
-        }
+        let preamble = if let Some(&Token::BraceOpen) = self.peek() {
+            self.parse_group_content()
+        } else {
+            String::new()
+        };
+
+        let alignments: Vec<char> = preamble
+            .chars()
+            .filter(|c| matches!(c, 'l' | 'c' | 'r' | 'p'))
+            .collect();
 
         let mut rows: Vec<Vec<String>> = Vec::new();
         let mut current_row: Vec<String> = Vec::new();
@@ -921,6 +960,15 @@ impl<'a> TeXParser<'a> {
             self.doc.push_with_payload(
                 SIRInstruction::new(SIROpcode::SetContent, num_cols_id, table_id, 0),
                 num_cols.to_string().as_bytes(),
+            );
+        }
+
+        if !alignments.is_empty() {
+            let align_str: String = alignments.iter().collect();
+            let align_id = self.next_entity_id();
+            self.doc.push_with_payload(
+                SIRInstruction::new(SIROpcode::SetContent, align_id, table_id, 0),
+                align_str.as_bytes(),
             );
         }
     }
