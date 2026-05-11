@@ -48,6 +48,8 @@ impl StyleModifier {
     pub const ITALIC_STYLE: StyleModifier = StyleModifier(Self::ITALIC);
     /// Monospace (inline code) style.
     pub const MONO_STYLE: StyleModifier = StyleModifier(Self::MONO);
+    /// Strikethrough style (~~strike~~).
+    pub const STRIKE_STYLE: StyleModifier = StyleModifier(Self::STRIKE);
     /// Bold + italic combined.
     pub const BOLD_ITALIC: StyleModifier = StyleModifier(Self::BOLD | Self::ITALIC);
 

@@ -83,7 +83,8 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
         markdown,
         pulldown_cmark::Options::ENABLE_TABLES
             | pulldown_cmark::Options::ENABLE_FOOTNOTES
-            | pulldown_cmark::Options::ENABLE_TASKLISTS,
+            | pulldown_cmark::Options::ENABLE_TASKLISTS
+            | pulldown_cmark::Options::ENABLE_STRIKETHROUGH,
     );
     let mut blocks: Vec<Block> = Vec::new();
     let mut current: Option<InlineBuffer> = None;
@@ -169,6 +170,11 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                     pulldown_cmark::Tag::Strong => {
                         if let Some(ref mut buf) = current {
                             buf.push_style_start(StyleModifier::BOLD_STYLE);
+                        }
+                    }
+                    pulldown_cmark::Tag::Strikethrough => {
+                        if let Some(ref mut buf) = current {
+                            buf.push_style_start(StyleModifier::STRIKE_STYLE);
                         }
                     }
                     pulldown_cmark::Tag::Link { dest_url, .. } => {
@@ -281,6 +287,11 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                 pulldown_cmark::TagEnd::Strong => {
                     if let Some(ref mut buf) = current {
                         buf.push_style_end(StyleModifier::BOLD_STYLE);
+                    }
+                }
+                pulldown_cmark::TagEnd::Strikethrough => {
+                    if let Some(ref mut buf) = current {
+                        buf.push_style_end(StyleModifier::STRIKE_STYLE);
                     }
                 }
                 pulldown_cmark::TagEnd::Link => {
@@ -421,8 +432,33 @@ impl<'a> ParseContext<'a> {
                     self.emit_inline_styles(inline_styles, bid);
                     self.emit_link(link_url, bid);
                 }
-                Block::CodeBlock { content } => {
-                    self.emit_block(BlockType::Code, root_id, None, &content);
+                Block::CodeBlock { content, language } => {
+                    let extra = language.as_deref().map(|lang| {
+                        let mut payload = vec![BlockType::Code as u8];
+                        let lang_bytes = lang.as_bytes();
+                        payload.extend_from_slice(&(lang_bytes.len() as u32).to_le_bytes());
+                        payload.extend_from_slice(lang_bytes);
+                        payload
+                    });
+                    let block_id = self.next_entity_id();
+                    let payload_offset = if let Some(ref p) = extra {
+                        self.doc.payload_mut().append(p)
+                    } else {
+                        self.doc.payload_mut().append(&[BlockType::Code as u8])
+                    };
+                    self.doc.push(SIRInstruction::new(
+                        SIROpcode::PushBlock,
+                        block_id,
+                        root_id,
+                        payload_offset,
+                    ));
+                    if !content.is_empty() {
+                        let content_id = self.next_entity_id();
+                        self.doc.push_with_payload(
+                            SIRInstruction::new(SIROpcode::SetContent, content_id, block_id, 0),
+                            content.as_bytes(),
+                        );
+                    }
                 }
                 Block::List { content } => {
                     self.emit_block(BlockType::List, root_id, None, &content);
@@ -653,6 +689,7 @@ enum Block {
     },
     CodeBlock {
         content: String,
+        language: Option<String>,
     },
     List {
         content: String,
@@ -710,11 +747,11 @@ struct InlineBuffer {
     link_urls: Vec<String>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum BlockKind {
     Heading { level: u32 },
     Paragraph,
-    CodeBlock,
+    CodeBlock { language: Option<String> },
     List,
     ListItem,
     BlockQuote,
@@ -739,10 +776,17 @@ impl InlineBuffer {
         }
     }
 
-    fn new_code_block(_kind: &pulldown_cmark::CodeBlockKind) -> Self {
+    fn new_code_block(kind: &pulldown_cmark::CodeBlockKind) -> Self {
+        let language = match kind {
+            pulldown_cmark::CodeBlockKind::Fenced(lang) => {
+                let s = lang.to_string();
+                if s.is_empty() { None } else { Some(s) }
+            }
+            pulldown_cmark::CodeBlockKind::Indented => None,
+        };
         Self {
             content: String::new(),
-            block_kind: BlockKind::CodeBlock,
+            block_kind: BlockKind::CodeBlock { language },
             inline_styles: Vec::new(),
             link_urls: Vec::new(),
         }
@@ -843,7 +887,7 @@ impl InlineBuffer {
                 inline_styles: self.inline_styles,
                 link_url,
             },
-            BlockKind::CodeBlock => Block::CodeBlock { content },
+            BlockKind::CodeBlock { language } => Block::CodeBlock { content, language },
             BlockKind::List => Block::List { content },
             BlockKind::ListItem => Block::Text {
                 content,
