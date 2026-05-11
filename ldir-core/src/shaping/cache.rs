@@ -49,6 +49,8 @@ impl ShapeCache {
     ///
     /// The `shaper` is only called on a cache miss.
     /// On hit: the entry is promoted to MRU via `swap_remove` + `push` (O(1) amortized).
+    ///   Returns a clone of the cached `Arc<ShapedRun>`, avoiding a deep clone of the
+    ///   underlying `ShapedRun` (which contains `Vec<ShapedGlyph>`).
     /// On miss + capacity overflow: the oldest entry (index 0) is evicted (O(1)).
     pub fn get_or_shape<F>(
         &mut self,
@@ -56,7 +58,7 @@ impl ShapeCache {
         font_id: u32,
         font_size: Fp266,
         shaper: F,
-    ) -> ShapedRun
+    ) -> Arc<ShapedRun>
     where
         F: FnOnce(&str, u32, Fp266) -> ShapedRun,
     {
@@ -69,7 +71,8 @@ impl ShapeCache {
         if let Some((idx, _, run)) = self.entries.get_full(&key) {
             // Cache hit: promote to MRU position.
             // swap_remove_index is O(1) for IndexMap (swaps with last element, pops).
-            let result = (**run).clone();
+            // Clone the Arc (cheap pointer increment), not the ShapedRun (expensive Vec clone).
+            let result = run.clone();
             let run = run.clone();
             self.entries.swap_remove_index(idx);
             self.entries.insert(key, run);
@@ -79,15 +82,14 @@ impl ShapeCache {
 
         self.misses += 1;
         let run = shaper(text, font_id, font_size);
+        let arc = Arc::new(run);
 
         if self.entries.len() >= self.capacity {
-            // Evict the oldest entry (index 0) in O(n) worst case but amortized O(1)
-            // with recent IndexMap versions using their shift_remove_index method.
             self.entries.shift_remove_index(0);
         }
 
-        self.entries.insert(key, Arc::new(run.clone()));
-        run
+        self.entries.insert(key, arc.clone());
+        arc
     }
 
     /// Number of entries currently in the cache.
@@ -146,13 +148,15 @@ impl ThreadSafeShapeCache {
     }
 
     /// Get a cached run or shape it using the provided shaper function.
+    ///
+    /// Returns `Arc<ShapedRun>` to avoid deep cloning on cache hits.
     pub fn get_or_shape<F>(
         &self,
         text: &str,
         font_id: u32,
         font_size: Fp266,
         shaper: F,
-    ) -> ShapedRun
+    ) -> Arc<ShapedRun>
     where
         F: FnOnce(&str, u32, Fp266) -> ShapedRun,
     {

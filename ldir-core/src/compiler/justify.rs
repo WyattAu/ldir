@@ -78,7 +78,7 @@ pub fn split_into_words(glyphs: &[ShapedGlyph], text_bytes: &[u8]) -> Vec<WordGr
             }
         } else {
             current_width += glyph.advance;
-            current_glyphs.push(glyph.clone());
+            current_glyphs.push(*glyph);
         }
     }
     if !current_glyphs.is_empty() {

@@ -17,6 +17,7 @@ pub mod indic;
 
 use crate::fp266::Fp266;
 use crate::shaping::cache::ThreadSafeShapeCache;
+use std::sync::Arc;
 
 /// OpenType feature to enable/disable during shaping.
 #[cfg(not(target_arch = "wasm32"))]
@@ -72,7 +73,7 @@ pub struct GlyphMetrics {
 }
 
 /// A single positioned glyph within a shaped run.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ShapedGlyph {
     /// Font-specific glyph identifier.
     pub glyph_id: u32,
@@ -194,6 +195,8 @@ fn font_data_hash(font_data: &[u8]) -> u32 {
 ///
 /// Uses the cache to avoid re-shaping identical (text, font_id, font_size) triples.
 /// Falls back to uncached shaping when font_data is not available.
+///
+/// Returns `Arc<ShapedRun>` -- callers can deref to access glyphs without cloning.
 #[inline]
 pub fn shape_text_cached(
     cache: &ThreadSafeShapeCache,
@@ -201,9 +204,9 @@ pub fn shape_text_cached(
     text: &str,
     font_size: Fp266,
     font_id: u32,
-) -> ShapedRun {
+) -> Arc<ShapedRun> {
     if text.is_empty() {
-        return ShapedRun::empty();
+        return Arc::new(ShapedRun::empty());
     }
     let stable_font_id = font_id;
     cache.get_or_shape(text, stable_font_id, font_size, |t, _fid, fs| {
@@ -215,15 +218,17 @@ pub fn shape_text_cached(
 ///
 /// Computes a font_id from font_data bytes so the same font data always
 /// produces the same cache key, regardless of the logical font_id.
+///
+/// Returns `Arc<ShapedRun>` -- callers can deref to access glyphs without cloning.
 #[inline]
 pub fn shape_text_cached_auto_font(
     cache: &ThreadSafeShapeCache,
     font_data: &[u8],
     text: &str,
     font_size: Fp266,
-) -> ShapedRun {
+) -> Arc<ShapedRun> {
     if text.is_empty() {
-        return ShapedRun::empty();
+        return Arc::new(ShapedRun::empty());
     }
     let stable_font_id = font_data_hash(font_data);
     cache.get_or_shape(text, stable_font_id, font_size, |t, _fid, fs| {

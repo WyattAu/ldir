@@ -59,6 +59,28 @@ fn compile_heading_produces_html() {
     if !result.contains("ldir-document") {
         missing.push("ldir-document wrapper");
     }
+    if !missing.is_empty() {
+        panic!("missing in output: {missing:?}");
+    }
+}
+
+#[wasm_bindgen_test]
+fn compile_md_to_html_basic() {
+    let result =
+        ldir_wasm::compile_and_render(&[("input.md".to_string(), "# Hello\nworld".to_string())]);
+    let mut missing = Vec::new();
+    if !result.contains("<h1") {
+        missing.push("<h1> heading");
+    }
+    if !result.contains("</p>") {
+        missing.push("</p>");
+    }
+    if !result.contains("Hello world") {
+        missing.push("text 'Hello world'");
+    }
+    if !missing.is_empty() {
+        panic!("missing in output: {missing:?}");
+    }
     if let Err(e) = (|| {
         if missing.is_empty() {
             Ok(())

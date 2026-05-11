@@ -1884,13 +1884,16 @@ fn emit_v2_styled_paragraph(
         let byte_offset = all_text.len();
         all_text.push_str(text);
 
-        let shaped = if let Some(data) = font_data_for_style {
+        let shaped: std::sync::Arc<_> = if let Some(data) = font_data_for_style {
             crate::shaping::shape_text_cached(&ctx.shape_cache, data, text, font_size, font_id)
         } else {
-            crate::shaping::fast_path::shape_ascii(text, font_size, font_id)
+            std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
+                text, font_size, font_id,
+            ))
         };
 
-        for mut g in shaped.glyphs {
+        for g in &shaped.glyphs {
+            let mut g = *g;
             g.cluster_id = g.cluster_id.saturating_add(byte_offset as u32);
             all_glyphs.push(g);
             all_font_ids.push(font_id);
@@ -2139,10 +2142,14 @@ fn emit_v2_paragraph_text(
         .get(ctx.font_id as usize)
         .and_then(|opt| opt.as_ref())
         .or(ctx.font_data.as_ref());
-    let shaped = if let Some(data) = font_data_for_style {
+    let shaped: std::sync::Arc<_> = if let Some(data) = font_data_for_style {
         crate::shaping::shape_text_cached(&ctx.shape_cache, data, text, font_size, ctx.font_id)
     } else {
-        crate::shaping::fast_path::shape_ascii(text, font_size, ctx.font_id)
+        std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
+            text,
+            font_size,
+            ctx.font_id,
+        ))
     };
 
     if shaped.glyphs.is_empty() {

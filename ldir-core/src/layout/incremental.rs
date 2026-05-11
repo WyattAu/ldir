@@ -16,6 +16,7 @@
 #![allow(dead_code)]
 
 use std::collections::{HashSet, VecDeque};
+use std::sync::Arc;
 
 use ldir_ir::lir::LIRDocument;
 use ldir_ir::sir::v2::SIRModuleV2;
@@ -76,21 +77,23 @@ impl DirtySet {
 /// Incremental layout tracker that associates an S-IR v2 module with a
 /// dirty set for selective recompilation.
 ///
-/// When no nodes are marked dirty, [`recompile_lir`](Self::recompile_lir)
-/// returns a clone of the old L-IR, preserving bit-identical output
-/// per INV-COMP-001.
+/// The S-IR module is stored behind an `Arc` to avoid deep cloning when
+/// shared across recompilation passes. When no nodes are marked dirty,
+/// [`recompile_lir`](Self::recompile_lir) returns a clone of the old L-IR
+/// wrapped in `Arc`, preserving bit-identical output per INV-COMP-001.
 pub struct IncrementalLayout {
-    sir: SIRModuleV2,
+    sir: Arc<SIRModuleV2>,
     dirty: DirtySet,
 }
 
 impl IncrementalLayout {
     /// Create a new incremental layout tracker for the given S-IR v2 module.
     ///
-    /// Initially, no nodes are marked dirty.
-    pub fn new(module: &SIRModuleV2) -> Self {
+    /// Initially, no nodes are marked dirty. The module is wrapped in `Arc`
+    /// to avoid cloning the full node tree.
+    pub fn new(module: Arc<SIRModuleV2>) -> Self {
         Self {
-            sir: module.clone(),
+            sir: module,
             dirty: DirtySet::new(),
         }
     }
@@ -149,13 +152,13 @@ impl IncrementalLayout {
     /// - If any nodes are dirty, recompiles from S-IR v2 via the L-IR compiler.
     pub fn recompile_lir(
         &self,
-        old_lir: &LIRDocument,
+        old_lir: &Arc<LIRDocument>,
         ctx: &CompileContext,
-    ) -> std::result::Result<LIRDocument, LirError> {
+    ) -> std::result::Result<Arc<LIRDocument>, LirError> {
         if self.dirty.is_empty() {
-            return Ok(old_lir.clone());
+            return Ok(Arc::clone(old_lir));
         }
-        compile_sir_to_lir(&self.sir, ctx)
+        compile_sir_to_lir(&self.sir, ctx).map(Arc::new)
     }
 
     /// Replace the underlying S-IR v2 module (e.g., after an edit).
@@ -163,7 +166,7 @@ impl IncrementalLayout {
     /// Automatically diffs old vs new node trees and marks changed
     /// nodes as dirty. When a node changes, all its descendants are
     /// also marked dirty.
-    pub fn update_sir(&mut self, module: &SIRModuleV2) {
+    pub fn update_sir(&mut self, module: Arc<SIRModuleV2>) {
         let old_nodes: Vec<_> = self.sir.body.iter().collect();
         let new_nodes: Vec<_> = module.body.iter().collect();
 
@@ -199,7 +202,7 @@ impl IncrementalLayout {
             }
         }
 
-        self.sir = module.clone();
+        self.sir = module;
 
         for id in changed_ids {
             self.mark_subtree_dirty(id);
@@ -303,7 +306,7 @@ mod tests {
     #[test]
     fn incremental_layout_new() {
         let module = make_simple_module();
-        let layout = IncrementalLayout::new(&module);
+        let layout = IncrementalLayout::new(Arc::new(module));
         assert!(layout.dirty_set().is_empty());
         assert!(!layout.is_dirty(0));
     }
@@ -311,7 +314,7 @@ mod tests {
     #[test]
     fn incremental_mark_dirty() {
         let module = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module);
+        let mut layout = IncrementalLayout::new(Arc::new(module));
         layout.mark_dirty(1);
         assert!(layout.is_dirty(1));
         assert!(!layout.is_dirty(0));
@@ -321,7 +324,7 @@ mod tests {
     #[test]
     fn incremental_clear_dirty() {
         let module = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module);
+        let mut layout = IncrementalLayout::new(Arc::new(module));
         layout.mark_dirty(1);
         layout.mark_dirty(2);
         layout.clear_dirty();
@@ -331,7 +334,7 @@ mod tests {
     #[test]
     fn incremental_mark_dirty_range() {
         let module = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module);
+        let mut layout = IncrementalLayout::new(Arc::new(module));
         layout.mark_dirty_range(3, 7);
         assert_eq!(layout.dirty_set().len(), 5);
         for id in 3..=7 {
@@ -343,13 +346,13 @@ mod tests {
 
     #[test]
     fn incremental_multiple_dirty() -> Result<(), Box<dyn std::error::Error>> {
-        let module = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module);
+        let module = Arc::new(make_simple_module());
+        let mut layout = IncrementalLayout::new(Arc::clone(&module));
         layout.mark_dirty(1);
         layout.mark_dirty(2);
         assert_eq!(layout.dirty_set().len(), 2);
         let ctx = make_ctx();
-        let old_lir = compile_sir_to_lir(&module, &ctx)?;
+        let old_lir = Arc::new(compile_sir_to_lir(&module, &ctx)?);
         let result = layout.recompile_lir(&old_lir, &ctx);
         assert!(result.is_ok());
         Ok(())
@@ -357,12 +360,12 @@ mod tests {
 
     #[test]
     fn determinism_same_input_same_output() -> Result<(), Box<dyn std::error::Error>> {
-        let module = make_simple_module();
-        let layout1 = IncrementalLayout::new(&module);
-        let layout2 = IncrementalLayout::new(&module);
+        let module = Arc::new(make_simple_module());
+        let layout1 = IncrementalLayout::new(Arc::clone(&module));
+        let layout2 = IncrementalLayout::new(Arc::clone(&module));
         let ctx = make_ctx();
-        let lir1 = compile_sir_to_lir(&module, &ctx)?;
-        let lir2 = compile_sir_to_lir(&module, &ctx)?;
+        let lir1 = Arc::new(compile_sir_to_lir(&module, &ctx)?);
+        let lir2 = Arc::new(compile_sir_to_lir(&module, &ctx)?);
         assert_eq!(
             layout1.recompile_lir(&lir1, &ctx)?,
             layout2.recompile_lir(&lir2, &ctx)?
@@ -374,10 +377,10 @@ mod tests {
 
     #[test]
     fn test_v2_unchanged_produces_same_lir() -> Result<(), Box<dyn std::error::Error>> {
-        let module = make_simple_module();
-        let layout = IncrementalLayout::new(&module);
+        let module = Arc::new(make_simple_module());
+        let layout = IncrementalLayout::new(Arc::clone(&module));
         let ctx = make_ctx();
-        let lir1 = compile_sir_to_lir(&module, &ctx)?;
+        let lir1 = Arc::new(compile_sir_to_lir(&module, &ctx)?);
         let lir2 = layout.recompile_lir(&lir1, &ctx)?;
         assert_eq!(lir1, lir2);
         Ok(())
@@ -385,11 +388,11 @@ mod tests {
 
     #[test]
     fn test_v2_dirty_triggers_recompile() -> Result<(), Box<dyn std::error::Error>> {
-        let module = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module);
+        let module = Arc::new(make_simple_module());
+        let mut layout = IncrementalLayout::new(Arc::clone(&module));
         layout.mark_dirty(2);
         let ctx = make_ctx();
-        let old_lir = compile_sir_to_lir(&module, &ctx)?;
+        let old_lir = Arc::new(compile_sir_to_lir(&module, &ctx)?);
         let new_lir = layout.recompile_lir(&old_lir, &ctx)?;
         assert_eq!(old_lir, new_lir);
         Ok(())
@@ -397,10 +400,10 @@ mod tests {
 
     #[test]
     fn test_v2_update_sir_identical() {
-        let module = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module);
+        let module1 = Arc::new(make_simple_module());
+        let mut layout = IncrementalLayout::new(Arc::clone(&module1));
         let module2 = make_simple_module();
-        layout.update_sir(&module2);
+        layout.update_sir(Arc::new(module2));
         assert!(
             layout.dirty_set().is_empty(),
             "identical S-IR v2 should not mark anything dirty"
@@ -409,8 +412,8 @@ mod tests {
 
     #[test]
     fn test_v2_update_sir_changed() {
-        let module1 = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module1);
+        let module1 = Arc::new(make_simple_module());
+        let mut layout = IncrementalLayout::new(module1);
 
         let mut module2 = SIRModuleV2::new();
         let doc_id = module2.body.push(Node::new(1, NodeType::Document));
@@ -433,7 +436,7 @@ mod tests {
             node.add_child(text_id);
         }
 
-        layout.update_sir(&module2);
+        layout.update_sir(Arc::new(module2));
         assert!(
             !layout.dirty_set().is_empty(),
             "changed node type should mark nodes dirty"
@@ -470,7 +473,7 @@ mod tests {
             node.add_child(text_id);
         }
 
-        let mut layout = IncrementalLayout::new(&module);
+        let mut layout = IncrementalLayout::new(Arc::new(module));
         layout.mark_subtree_dirty(sec_id);
         assert!(layout.is_dirty(sec_id), "section should be dirty");
         assert!(layout.is_dirty(para_id), "child paragraph should be dirty");
@@ -480,8 +483,8 @@ mod tests {
 
     #[test]
     fn test_v2_dirty_descendants() {
-        let module1 = make_simple_module();
-        let mut layout = IncrementalLayout::new(&module1);
+        let module1 = Arc::new(make_simple_module());
+        let mut layout = IncrementalLayout::new(Arc::clone(&module1));
 
         let mut module2 = SIRModuleV2::new();
         let doc_id = module2.body.push(Node::new(1, NodeType::Document));
@@ -521,7 +524,7 @@ mod tests {
             node.add_child(para_text_id);
         }
 
-        layout.update_sir(&module2);
+        layout.update_sir(Arc::new(module2));
         assert!(
             !layout.dirty_set().is_empty(),
             "structural change should be dirty"

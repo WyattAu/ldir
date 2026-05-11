@@ -8,8 +8,13 @@ use std::collections::HashMap;
 ///
 /// Returns a unique `u32` ID for each distinct string. Repeated calls with
 /// the same text return the same ID, avoiding duplicate allocations.
+///
+/// Lookup by ID is O(1) via a parallel `Vec<String>` index.
 pub struct StringInterner {
+    /// Maps string content to its assigned ID.
     strings: HashMap<String, u32>,
+    /// Reverse mapping: ID -> string content, enabling O(1) `get()`.
+    by_id: Vec<String>,
     total_unique_bytes: usize,
     duplicate_bytes_saved: usize,
 }
@@ -19,6 +24,7 @@ impl StringInterner {
     pub fn new() -> Self {
         Self {
             strings: HashMap::new(),
+            by_id: Vec::new(),
             total_unique_bytes: 0,
             duplicate_bytes_saved: 0,
         }
@@ -32,19 +38,18 @@ impl StringInterner {
             self.duplicate_bytes_saved += s.len();
             return id;
         }
-        let id = self.strings.len() as u32;
+        let id = self.by_id.len() as u32;
         self.total_unique_bytes += s.len();
+        self.by_id.push(s.to_string());
         self.strings.insert(s.to_string(), id);
         id
     }
 
     /// Get the string for an ID.
     ///
-    /// Returns `None` if the ID is out of range.
+    /// Returns `None` if the ID is out of range. O(1) lookup.
     pub fn get(&self, id: u32) -> Option<&str> {
-        self.strings
-            .iter()
-            .find_map(|(k, &v)| (v == id).then_some(k.as_str()))
+        self.by_id.get(id as usize).map(|s| s.as_str())
     }
 
     /// Number of interned strings.
