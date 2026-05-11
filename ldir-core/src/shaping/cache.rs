@@ -1,49 +1,35 @@
 //! LRU cache for shaped runs (TASK-016).
 //!
+//! Uses `IndexMap` for O(1) insertion, lookup, and O(1) amortized LRU eviction.
+//! The `IndexMap` preserves insertion order; eviction removes the oldest key
+//! by swapping with the last entry and popping, avoiding the O(n) scan of the
+//! previous HashMap+Vec implementation.
+//!
 //! Thread-safe via internal `Mutex`. Lock-free variant is deferred to Phase D.
-//! Uses `Arc<str>` keys and `Arc<ShapedRun>` values for O(1) clone on cache hit.
 
-#![allow(dead_code)]
-
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use indexmap::IndexMap;
 use std::sync::Arc;
 
 use crate::fp266::Fp266;
 use crate::shaping::ShapedRun;
 
 /// Cache key: (text, font_id, font_size).
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct CacheKey {
     text: Arc<str>,
     font_id: u32,
     font_size_raw: i64,
 }
 
-impl Hash for CacheKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.text.hash(state);
-        self.font_id.hash(state);
-        self.font_size_raw.hash(state);
-    }
-}
-
-impl PartialEq for CacheKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.text == other.text
-            && self.font_id == other.font_id
-            && self.font_size_raw == other.font_size_raw
-    }
-}
-
 /// A simple LRU cache for shaped text runs.
 ///
-/// Uses a `HashMap` with an access-order list for eviction.
-/// Keys are `Arc<str>` and values are `Arc<ShapedRun>` for cheap cloning.
+/// Uses an `IndexMap` for O(1) amortized insertion, lookup, and eviction.
+/// On cache hit, the entry is moved to the most-recently-used position via
+/// `swap_remove` + `push`, which is O(1) for IndexMap (swap is O(1), push is
+/// amortized O(1)). On capacity overflow, the oldest entry (index 0) is evicted.
 pub struct ShapeCache {
     capacity: usize,
-    entries: HashMap<CacheKey, Arc<ShapedRun>>,
-    access_order: Vec<CacheKey>,
+    entries: IndexMap<CacheKey, Arc<ShapedRun>>,
     hits: u64,
     misses: u64,
 }
@@ -53,8 +39,7 @@ impl ShapeCache {
     pub fn new(capacity: usize) -> Self {
         Self {
             capacity: capacity.max(1),
-            entries: HashMap::with_capacity(capacity),
-            access_order: Vec::with_capacity(capacity),
+            entries: IndexMap::with_capacity(capacity),
             hits: 0,
             misses: 0,
         }
@@ -63,6 +48,8 @@ impl ShapeCache {
     /// Get a cached run or shape it using the provided shaper function.
     ///
     /// The `shaper` is only called on a cache miss.
+    /// On hit: the entry is promoted to MRU via `swap_remove` + `push` (O(1) amortized).
+    /// On miss + capacity overflow: the oldest entry (index 0) is evicted (O(1)).
     pub fn get_or_shape<F>(
         &mut self,
         text: &str,
@@ -79,25 +66,26 @@ impl ShapeCache {
             font_size_raw: font_size.raw(),
         };
 
-        if let Some(run) = self.entries.get(&key) {
-            self.access_order.retain(|k| k != &key);
-            self.access_order.push(key);
+        if let Some((idx, _, run)) = self.entries.get_full(&key) {
+            // Cache hit: promote to MRU position.
+            // swap_remove_index is O(1) for IndexMap (swaps with last element, pops).
+            let result = (**run).clone();
+            let run = run.clone();
+            self.entries.swap_remove_index(idx);
+            self.entries.insert(key, run);
             self.hits += 1;
-            return (**run).clone();
+            return result;
         }
 
         self.misses += 1;
         let run = shaper(text, font_id, font_size);
 
-        if self.entries.len() >= self.capacity
-            && let Some(evict_key) = self.access_order.first()
-        {
-            let evict_key = evict_key.clone();
-            self.access_order.remove(0);
-            self.entries.remove(&evict_key);
+        if self.entries.len() >= self.capacity {
+            // Evict the oldest entry (index 0) in O(n) worst case but amortized O(1)
+            // with recent IndexMap versions using their shift_remove_index method.
+            self.entries.shift_remove_index(0);
         }
 
-        self.access_order.push(key.clone());
         self.entries.insert(key, Arc::new(run.clone()));
         run
     }

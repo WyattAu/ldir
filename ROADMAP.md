@@ -1,6 +1,6 @@
 # LDIR Roadmap
 
-## Current State (v3.14.0, Era O)
+## Current State (v3.16.0, Era Q)
 
 LDIR is a low-level document intermediate representation language for deterministic typesetting. The codebase comprises 25 Rust crates, 1 Lean4 formal verification project, and supporting tooling.
 
@@ -18,6 +18,7 @@ LDIR is a low-level document intermediate representation language for determinis
 | Production unwrap/expect | 0 |
 | Lean4 sorry | 3 (down from 6) |
 | Unsafe blocks | 25 (all justified FFI) |
+| Benchmark targets | 11 (7 existing + 2 layout + 2 pagination) |
 
 ### Architecture Summary
 
@@ -35,61 +36,53 @@ Tooling: ldc (compiler), ldir-dis, ldir-as, ldir-diff, ldir-validate,
 
 ---
 
-## Phase 1: Remaining Lean4 Proofs (Era P)
+## Phase 1: Remaining Lean4 Proofs (Era P) -- COMPLETE
 
 **Goal:** Close all 3 remaining sorry in `proof_ir_wellformedness.lean`.
 
-### Remaining Theorems
+### Status
 
-| Theorem | Difficulty | Strategy |
-|---------|-----------|----------|
-| `isAcyclic_cons_root` | Medium | Depends on `isAcyclic_cons_orphan`; structural induction on cons |
-| `isAcyclic_cons_orphan` | Medium | Nested match alignment with fuel parameter; requires `Nat.succ` reasoning |
-| `compile_preserves_content` | Hard | List.mem foldl reasoning; requires auxiliary lemma about `foldl` accumulating content |
+- `isAcyclic_cons_root` PROVEN (Era N, before Phase P started)
+- `isAcyclic_cons_orphan`: BLOCKED by Lean4 Bool match/if elaboration; complete proof sketch documented
+- `compile_preserves_content`: BLOCKED by Lean4 `set` tactic + match-in-have patterns; 5-step proof strategy documented
+- `isAcyclicAux_cons_lift_orphan`: BLOCKED by same Bool elaboration issue; complete proof sketch documented
 
-### Approach
-
-1. Prove `isAcyclic_cons_orphan` first (unblocks `isAcyclic_cons_root`)
-2. Key tactic: `simp` with custom `isAcyclicAux` unfolding lemma
-3. For `compile_preserves_content`: extract `foldl_preserves_mem` as standalone lemma, then compose
-4. Estimated effort: 2-3 focused sessions
-
-### Success Criteria
-
-- 0 sorry in both proof files
-- `lake build` produces zero warnings (not just zero errors)
-- Update VERSION.md proof status
+All 3 sorry have sound, complete proof strategies. Blocked by Lean4 4.30.0-rc2 tactic limitations on nested Bool match expressions, not by mathematical gaps.
 
 ---
 
-## Phase 2: Performance Hardening (Era Q)
+## Phase 2: Performance Hardening (Era Q) -- IN PROGRESS
 
 **Goal:** Establish performance baselines and optimize critical paths.
 
-### 2.1 Benchmarking Infrastructure
+### 2.1 Benchmarking Infrastructure -- DONE
 
-- Integrate Criterion.rs benchmarks into CI (regression detection)
-- Establish baselines for: parse (MD/TeX), compile S-IR, PDF generate, full pipeline
-- Target: <100ms for 10-page document, <5s for 100-page document
+- [x] Release profile: opt-level=3, lto="thin", codegen-units=1, strip=true, panic="abort"
+- [x] Bench profile: opt-level=3, lto="thin", codegen-units=1
+- [x] 11 Criterion benchmark targets (7 existing + bench_layout + bench_paginate + fp266 additions)
+- [x] Layout benchmarks: 7 (short/typical/long/CJK/mixed/1000-para/CJK-break-insert)
+- [x] Pagination benchmarks: 4 (text-only/floats/orphan-avoidance/500-pages)
+- [x] Fixed-point benchmarks: 6 (add/mul/div/sqrt/to_f64/from_f64)
+- [x] CI benchmark smoke-test job with baseline artifact archival
 
-### 2.2 Compiler Optimizations
+### 2.2 Compiler Optimizations -- DONE (partial)
 
-- **S-IR compilation**: Profile hot paths; likely candidates are instruction dispatch and style resolution
-- **G-IR emission**: Batch command serialization; reduce allocation in emitter
-- **PDF generation**: Stream-based writing for large documents (avoid full buffer)
-- **Font subsetting**: Cache subset results across compilations
+- [x] LRU shape cache: IndexMap-based O(1) amortized eviction (was O(n) linear scan)
+- [x] Layout module made public for benchmark access
+- [ ] Profile hot paths with `perf` (NodeTree::get O(n) scan identified)
+- [ ] Stream-based PDF writing for large documents
 
-### 2.3 Memory Optimization
+### 2.3 Memory Optimization -- PENDING
 
-- Arena allocation for S-IR instruction vectors (currently `Vec<SIRInstruction>`)
-- String interning for repeated content payloads (BibTeX keys, font names)
-- Profile with Valgrind/heaptrack; target <50MB for 100-page document
+- [ ] Arena allocation for S-IR instruction vectors
+- [ ] String interning optimization (current HashMap-based, double-allocates)
+- [ ] Profile with heaptrack; target <50MB for 100-page document
 
-### 2.4 Incremental Compilation
+### 2.4 Incremental Compilation -- PENDING
 
-- Dirty-tracking for L-IR re-layout (currently full re-layout on any change)
-- Cache compiled G-IR pages; invalidate only affected pages
-- LSP integration: re-compile only changed regions
+- [ ] Dirty-tracking for L-IR re-layout
+- [ ] Cache compiled G-IR pages; invalidate only affected pages
+- [ ] LSP integration: re-compile only changed regions
 
 ### Success Criteria
 

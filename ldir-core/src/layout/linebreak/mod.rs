@@ -1,7 +1,7 @@
 //! Line-breaking algorithm modules.
 
 mod badness;
-pub(crate) mod cjk;
+pub mod cjk;
 mod knuth_plass;
 mod optical_margin;
 mod rtl;

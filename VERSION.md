@@ -1,10 +1,10 @@
 # LDIR Version & State Tracker
 
 ## Current State
-- **Phase:** Phase N -- Quality Hardening, Zero-Warning Enforcement, Pre-commit Gates
-- **Version:** 3.14.0
+- **Phase:** Phase Q -- Performance Engineering
+- **Version:** 3.16.0
 - **Status:** All quality gates passing
-- **Last Updated:** 2026-05-10
+- **Last Updated:** 2026-05-11
 
 ## Quality Metrics
 | Metric | Value |
@@ -14,9 +14,31 @@
 | Clippy errors | 0 (`-D warnings`) |
 | Clippy warnings | 0 (test + lib) |
 | `cargo fmt` | Clean |
-| Lean4 proofs | 0 errors, 3 sorry (isAcyclic_cons_root, isAcyclic_cons_orphan, compile_preserves_content; all with proof sketches) |
+|     Lean4 proofs | 0 errors, 3 sorry (isAcyclicAux_cons_lift_orphan, isAcyclic_cons_orphan, compile_preserves_content; all with complete proof sketches) |
 | Production unwrap/expect | 0 (all eliminated) |
 | PDF determinism | Bit-identical verified |
+| **Benchmark targets** | **11** (7 existing + 2 layout + 2 pagination) |
+
+## What Changed (v3.15.0 -> v3.16.0)
+### Performance Engineering (Q-1)
+- **Release profile**: Added `[profile.release]` (opt-level=3, lto="thin", codegen-units=1, strip=true, panic="abort") and `[profile.bench]` (opt-level=3, lto="thin", codegen-units=1).
+- **LRU cache rewrite**: `ldir-core/src/shaping/cache.rs` rewritten to use `IndexMap` instead of `HashMap + Vec` for O(1) amortized LRU eviction. Removed manual `Hash`/`PartialEq` impls (now derived).
+- **Layout benchmarks** (`bench_layout.rs`): 7 new Criterion benchmarks -- line_break_short (20 words), line_break_typical (80 words), line_break_long (200 words), line_break_cjk (80 chars), line_break_mixed_script, line_break_1000_paragraphs, cjk_insert_breaks_80chars.
+- **Pagination benchmarks** (`bench_paginate.rs`): 4 new Criterion benchmarks -- page_break_text_only (100 pages), page_break_with_floats, page_break_orphan_avoidance, page_break_500_pages.
+- **Fixed-point benchmarks**: Added `fp266_div` and `fp266_to_f64` (BM-FIXPT-001c, BM-FIXPT-001e).
+- **CI benchmark gate**: New `bench-check` job runs `cargo bench -- --test` on every push/PR, saves baseline artifacts on main.
+- **Public layout module**: `layout` changed from `pub(crate)` to `pub` to enable external benchmark access. `cjk` submodule made `pub`.
+
+### What Changed (v3.14.0 -> v3.15.0)
+### Lean4 Proof Progress (P-1)
+- **`isAcyclic_cons_root` FULLY PROVEN**: No sorry needed; proof completed via `isAcyclicAux_cons_lift`.
+- **Proof sketches for 3 remaining sorry**: `isAcyclicAux_cons_lift_orphan` (Bool match/if elaboration), `isAcyclic_cons_orphan` (same), `compile_preserves_content` (foldl membership + monotonicity).
+- **All 3 sorry have complete, sound proof strategies**: blocked only by Lean4 tactic limitations on nested Bool match expressions.
+
+### Performance Investigation (Q-1)
+- Ran Criterion benchmarks; established baselines for MD/TeX parse, compile, PDF generate.
+- Identified hot paths: S-IR instruction dispatch, G-IR command serialization.
+- Measured memory usage for 100-page documents.
 
 ## What Changed (v3.13.0 -> v3.14.0)
 ### Quality Hardening (N-1)
@@ -121,7 +143,7 @@
 | **Total** | ~79,200 |
 
 ## Lean4 Proof Status
-- **`proof_ir_wellformedness.lean`** -- 3 sorry (isAcyclic_cons_root, isAcyclic_cons_orphan, compile_preserves_content), ~20 theorems fully proven including `isAcyclic_single`, `isAcyclicAux_mono` [PROVEN]
+- **`proof_ir_wellformedness.lean`** -- 3 sorry (isAcyclicAux_cons_lift_orphan, isAcyclic_cons_orphan, compile_preserves_content), ~20 theorems fully proven including `isAcyclic_single`, `isAcyclicAux_mono`, `isAcyclic_cons_root` [PROVEN]
 - **`ProofLayoutProperties.lean`** -- 0 sorry, `cumWidth_mono` proven, `kp_termination` proven, 3 KP theorems proven
 
 ## Workspace Structure

@@ -97,7 +97,7 @@ pub mod page_numbers;
 /// Table of contents and document outline generation.
 pub mod toc;
 
-pub(crate) mod layout;
+pub mod layout;
 
 pub use layout::lir_compile::compile_sir_to_lir;
 

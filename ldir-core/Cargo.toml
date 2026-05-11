@@ -67,6 +67,14 @@ harness = false
 name = "benchmarks"
 harness = false
 
+[[bench]]
+name = "bench_layout"
+harness = false
+
+[[bench]]
+name = "bench_paginate"
+harness = false
+
 [[example]]
 name = "hello-world"
 path = "../docs/examples/hello-world.rs"
