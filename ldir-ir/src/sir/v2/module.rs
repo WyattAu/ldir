@@ -54,7 +54,7 @@ impl Default for ModuleHeader {
 ///     body: NodeTree,
 /// }
 /// ```
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct SIRModuleV2 {
     pub header: ModuleHeader,
     pub metadata: DocumentMetadata,
@@ -62,19 +62,6 @@ pub struct SIRModuleV2 {
     pub styles: StyleDecls,
     pub annotations: Annotations,
     pub body: NodeTree,
-}
-
-impl Default for SIRModuleV2 {
-    fn default() -> Self {
-        Self {
-            header: ModuleHeader::default(),
-            metadata: DocumentMetadata::default(),
-            resources: ResourceDecls::default(),
-            styles: StyleDecls::default(),
-            annotations: Annotations::default(),
-            body: NodeTree::new(),
-        }
-    }
 }
 
 impl SIRModuleV2 {

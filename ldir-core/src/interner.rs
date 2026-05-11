@@ -10,7 +10,6 @@ use std::collections::HashMap;
 /// the same text return the same ID, avoiding duplicate allocations.
 pub struct StringInterner {
     strings: HashMap<String, u32>,
-    values: Vec<String>,
     total_unique_bytes: usize,
     duplicate_bytes_saved: usize,
 }
@@ -20,7 +19,6 @@ impl StringInterner {
     pub fn new() -> Self {
         Self {
             strings: HashMap::new(),
-            values: Vec::new(),
             total_unique_bytes: 0,
             duplicate_bytes_saved: 0,
         }
@@ -34,10 +32,9 @@ impl StringInterner {
             self.duplicate_bytes_saved += s.len();
             return id;
         }
-        let id = self.values.len() as u32;
+        let id = self.strings.len() as u32;
         self.total_unique_bytes += s.len();
         self.strings.insert(s.to_string(), id);
-        self.values.push(s.to_string());
         id
     }
 
@@ -45,17 +42,19 @@ impl StringInterner {
     ///
     /// Returns `None` if the ID is out of range.
     pub fn get(&self, id: u32) -> Option<&str> {
-        self.values.get(id as usize).map(|s| s.as_str())
+        self.strings
+            .iter()
+            .find_map(|(k, &v)| (v == id).then_some(k.as_str()))
     }
 
     /// Number of interned strings.
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.strings.len()
     }
 
     /// Check if the interner is empty.
     pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
+        self.strings.is_empty()
     }
 
     /// Total bytes of all unique strings stored.

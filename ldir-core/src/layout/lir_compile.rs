@@ -24,6 +24,8 @@ use crate::compiler::context::{
     FONT_ID_BOLD, FONT_ID_BOLD_ITALIC, FONT_ID_ITALIC, FONT_ID_MONO, FONT_ID_REGULAR,
 };
 use crate::fp266::Fp266;
+use bumpalo::collections::Vec as BumpVec;
+
 use crate::layout::linebreak::cjk::{insert_cjk_breaks, is_cjk_text};
 use crate::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
 
@@ -318,10 +320,8 @@ impl<'a> LirCompiler<'a> {
         let lh = self.line_height(font_size_pt);
         let n = shaped.glyphs.len();
 
-        let items: Vec<LineBreakItem> = shaped
-            .glyphs
-            .iter()
-            .map(|g| {
+        let items: BumpVec<'_, LineBreakItem> = BumpVec::from_iter_in(
+            shaped.glyphs.iter().map(|g| {
                 let is_space = g.glyph_id == 0 || (g.advance == Fp266::from_int(4));
                 let stretch = if is_space {
                     g.advance.div(Fp266::from_int(2))
@@ -343,8 +343,9 @@ impl<'a> LirCompiler<'a> {
                     hyphen_width: Fp266::ZERO,
                     text: "",
                 }
-            })
-            .collect();
+            }),
+            &self.ctx.bump,
+        );
 
         let options = LineBreakOptions {
             line_width: available_width,

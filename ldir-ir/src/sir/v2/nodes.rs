@@ -3,6 +3,8 @@
 //! The document body is a tree of typed nodes. Each node has a unique ID,
 //! a type, type-specific properties, optional children, and optional annotations.
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::sir::v2::metadata::Dimension;
@@ -250,15 +252,26 @@ impl Node {
 }
 
 /// The document body — a collection of nodes forming a tree.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeTree {
     nodes: Vec<Node>,
     root_ids: Vec<u32>,
+    index: HashMap<u32, usize>,
+}
+
+impl Default for NodeTree {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NodeTree {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            nodes: Vec::new(),
+            root_ids: Vec::new(),
+            index: HashMap::new(),
+        }
     }
 
     pub fn push(&mut self, node: Node) -> u32 {
@@ -266,16 +279,17 @@ impl NodeTree {
         if node.parent_id.is_none() {
             self.root_ids.push(id);
         }
+        self.index.insert(id, self.nodes.len());
         self.nodes.push(node);
         id
     }
 
     pub fn get(&self, id: u32) -> Option<&Node> {
-        self.nodes.iter().find(|n| n.id == id)
+        self.index.get(&id).and_then(|&idx| self.nodes.get(idx))
     }
 
     pub fn get_mut(&mut self, id: u32) -> Option<&mut Node> {
-        self.nodes.iter_mut().find(|n| n.id == id)
+        self.index.get(&id).and_then(|&idx| self.nodes.get_mut(idx))
     }
 
     pub fn len(&self) -> usize {
@@ -304,11 +318,16 @@ impl NodeTree {
             node.child_ids.retain(|id| !removed.contains(id));
         }
         self.root_ids.retain(|id| !removed.contains(id));
+        self.index.clear();
+        for (i, node) in self.nodes.iter().enumerate() {
+            self.index.insert(node.id, i);
+        }
     }
 
     pub fn clear(&mut self) {
         self.nodes.clear();
         self.root_ids.clear();
+        self.index.clear();
     }
 
     pub fn rebuild_roots(&mut self) {
