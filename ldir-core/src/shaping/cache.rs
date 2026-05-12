@@ -5,7 +5,9 @@
 //! by swapping with the last entry and popping, avoiding the O(n) scan of the
 //! previous HashMap+Vec implementation.
 //!
-//! Thread-safe via internal `Mutex`. Lock-free variant is deferred to Phase D.
+//! Thread-safe via `DashMap` with epoch-based access tracking. Cache hits are
+//! lock-free (shard-level read lock). The shaper function runs outside any lock,
+//! so threads never block on HarfBuzz shaping during cache misses.
 
 use indexmap::IndexMap;
 use std::sync::Arc;
@@ -134,22 +136,44 @@ impl ShapeCache {
     }
 }
 
-/// Thread-safe wrapper around [`ShapeCache`].
+/// Thread-safe lock-free cache for shaped runs.
+///
+/// Uses `DashMap` for sharded concurrent access. The shaper function executes
+/// entirely outside any lock, so cache misses never block other threads.
+/// Approximate LRU eviction via epoch-based access tracking: each entry stores
+/// its last access epoch, and the entry with the oldest epoch is evicted when
+/// the cache exceeds capacity.
 pub struct ThreadSafeShapeCache {
-    inner: std::sync::Mutex<ShapeCache>,
+    entries: dashmap::DashMap<CacheKey, CacheEntry>,
+    capacity: usize,
+    epoch: std::sync::atomic::AtomicU64,
+    hits: std::sync::atomic::AtomicU64,
+    misses: std::sync::atomic::AtomicU64,
+}
+
+/// Internal entry wrapping a shaped run with access metadata.
+struct CacheEntry {
+    run: Arc<ShapedRun>,
+    last_access: std::sync::atomic::AtomicU64,
 }
 
 impl ThreadSafeShapeCache {
     /// Create a new thread-safe cache with the given capacity.
     pub fn new(capacity: usize) -> Self {
         Self {
-            inner: std::sync::Mutex::new(ShapeCache::new(capacity)),
+            entries: dashmap::DashMap::with_capacity(capacity),
+            capacity: capacity.max(1),
+            epoch: std::sync::atomic::AtomicU64::new(0),
+            hits: std::sync::atomic::AtomicU64::new(0),
+            misses: std::sync::atomic::AtomicU64::new(0),
         }
     }
 
     /// Get a cached run or shape it using the provided shaper function.
     ///
-    /// Returns `Arc<ShapedRun>` to avoid deep cloning on cache hits.
+    /// Cache hits are lock-free (shard read lock only). The shaper function
+    /// runs completely outside any lock. Returns `Arc<ShapedRun>` to avoid
+    /// deep cloning on cache hits.
     pub fn get_or_shape<F>(
         &self,
         text: &str,
@@ -160,42 +184,98 @@ impl ThreadSafeShapeCache {
     where
         F: FnOnce(&str, u32, Fp266) -> ShapedRun,
     {
-        let mut cache = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        cache.get_or_shape(text, font_id, font_size, shaper)
+        let key = CacheKey {
+            text: text.into(),
+            font_id,
+            font_size_raw: font_size.raw(),
+        };
+
+        // Fast path: lock-free cache hit.
+        if let Some(entry) = self.entries.get(&key) {
+            entry
+                .last_access
+                .store(self.epoch.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                std::sync::atomic::Ordering::Relaxed);
+            self.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            return entry.run.clone();
+        }
+
+        // Slow path: shape outside any lock.
+        self.misses.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let run = Arc::new(shaper(text, font_id, font_size));
+        let now = self.epoch.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+        // Insert (or pick up another thread's insert).
+        // Use get+insert to avoid entry API deadlocks.
+        let result = run.clone();
+        if let Some(existing) = self.entries.get(&key) {
+            // Another thread inserted while we were shaping. Use theirs.
+            existing
+                .last_access
+                .store(now, std::sync::atomic::Ordering::Relaxed);
+            return existing.run.clone();
+        }
+
+        self.entries.insert(key, CacheEntry {
+            run: result.clone(),
+            last_access: std::sync::atomic::AtomicU64::new(now),
+        });
+
+        // Evict if over capacity (lazy, approximate).
+        if self.entries.len() > self.capacity {
+            self.evict_oldest();
+        }
+
+        result
+    }
+
+    /// Evict the entry with the oldest `last_access` epoch.
+    /// O(n) scan but only runs when capacity is exceeded.
+    fn evict_oldest(&self) {
+        let oldest = self
+            .entries
+            .iter()
+            .min_by_key(|e| e.value().last_access.load(std::sync::atomic::Ordering::Relaxed))
+            .map(|r| r.key().clone());
+        if let Some(key) = oldest {
+            self.entries.remove(&key);
+        }
     }
 
     /// Number of entries currently in the cache.
     pub fn len(&self) -> usize {
-        self.inner.lock().unwrap_or_else(|e| e.into_inner()).len()
+        self.entries.len()
     }
 
     /// Check if the cache is empty.
     pub fn is_empty(&self) -> bool {
-        self.inner
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .is_empty()
+        self.entries.is_empty()
     }
 
     /// Get (hits, misses) statistics.
     pub fn stats(&self) -> (u64, u64) {
-        self.inner.lock().unwrap_or_else(|e| e.into_inner()).stats()
+        (
+            self.hits.load(std::sync::atomic::Ordering::Relaxed),
+            self.misses.load(std::sync::atomic::Ordering::Relaxed),
+        )
     }
 
     /// Reset hit/miss counters.
     pub fn reset_stats(&self) {
-        self.inner
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .reset_stats()
+        self.hits.store(0, std::sync::atomic::Ordering::Relaxed);
+        self.misses.store(0, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Cache hit rate as a value between 0.0 and 1.0.
     pub fn hit_rate(&self) -> f64 {
-        self.inner
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .hit_rate()
+        let hits = self.hits.load(std::sync::atomic::Ordering::Relaxed);
+        let misses = self.misses.load(std::sync::atomic::Ordering::Relaxed);
+        let total = hits + misses;
+        if total == 0 {
+            0.0
+        } else {
+            hits as f64 / total as f64
+        }
     }
 }
 

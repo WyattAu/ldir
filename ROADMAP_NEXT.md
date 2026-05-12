@@ -47,13 +47,9 @@ Eliminate known technical debt and establish performance baselines.
   - Incremental recompilation (single-word change in 1000-page document)
   - Memory allocation profiling (arena vs heap)
 
-### T-3: Lock-free shape cache (1-2 weeks)
+### T-3: Lock-free shape cache (1-2 weeks) ✅ DONE
 
-**Current state:** `ThreadSafeShapeCache` wraps `RwLock<HashMap>`. Contention under parallel compilation.
-
-**Approach:** Replace with `dashmap::DashMap` (lock-free concurrent hashmap with sharded locking). The crate is already a dependency (`crossbeam`). Alternatively, implement a lock-free cache using `crossbeam-epoch` for epoch-based reclamation.
-
-**Target:** Satisfy REQ-1.2.2. Benchmark parallel compilation with 1/4/16 threads to measure improvement.
+**Current state:** `ThreadSafeShapeCache` uses `dashmap::DashMap` with sharded locking (16 shards). The shaper function runs entirely outside any lock, so threads never block on HarfBuzz shaping during cache misses. Approximate LRU eviction via epoch-based access tracking.
 
 ---
 

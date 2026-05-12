@@ -11,6 +11,7 @@ categories = ["compilers", "text-processing"]
 
 [dependencies]
 indexmap = { workspace = true }
+dashmap = { workspace = true }
 ldir-ir = { workspace = true }
 rkyv = { workspace = true }
 thiserror = { workspace = true }

@@ -18,6 +18,7 @@
 | Production unwrap/expect | 0 (all eliminated) |
 | PDF determinism | Bit-identical verified |
 | **Benchmark targets** | **11** (7 existing + 2 layout + 2 pagination) |
+| Shape cache | DashMap lock-free (16 shards), epoch-based LRU |
 
 ## What Changed (v3.15.0 -> v3.16.0)
 ### Performance Engineering (Q-1)

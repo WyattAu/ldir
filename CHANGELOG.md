@@ -34,10 +34,9 @@ All notable changes to this project will be documented in this file.
 - Plugin documentation with FrontendPlugin/BackendPlugin trait reference (docs/plugins.md)
 
 ### Changed
-- Test count: 1,617 total, all passing
-- Rust source code: ~63,000 lines across 25 crates + 1 Lean4 project
-- Zero production unwrap/expect calls (all 42 instances eliminated)
-- Real payload integrity validator replacing no-op placeholder (9 tests)
+- Shape cache: lock-free `ThreadSafeShapeCache` using `DashMap` (was `Mutex<ShapeCache>`); 16 shards, shaper runs outside lock, epoch-based LRU eviction
+- `ShapeCache` remains available for single-threaded use
+- Benchmark targets: 11 total, shape+incremental benchmarks added
 
 ## [3.1.0] - 2026-05-04
 

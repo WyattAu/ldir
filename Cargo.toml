@@ -103,6 +103,7 @@ shipyard = "0.11"
 
 # Concurrency
 crossbeam = "0.8"
+dashmap = "5"
 
 # Deterministic ordered collections
 indexmap = "2"
