@@ -19,6 +19,7 @@ use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::NodeType;
 
 use crate::compiler::bibtex::{BibEntry, format_citation_apa, format_citation_ieee};
+use crate::solver::{Expression, Relation, Solver, Strength};
 use crate::compiler::context::CompileContext;
 use crate::compiler::context::{
     FONT_ID_BOLD, FONT_ID_BOLD_ITALIC, FONT_ID_ITALIC, FONT_ID_MONO, FONT_ID_REGULAR,
@@ -1266,11 +1267,12 @@ impl<'a> LirCompiler<'a> {
         self.add_block(LIRNode::Bibliography(bibliography), Fp266::ZERO);
     }
 
-    /// Place deferred floats onto pages (deterministic placement).
+    /// Place deferred floats using the Cassowary constraint solver.
     ///
-    /// `Top`/`Here` → page top. `Bottom` → page bottom.
-    /// `Float` → deferred to next page top.
-    /// Full Cassowary constraint solving deferred to V-2 solver pass.
+    /// For each float, creates solver variables for (x, y) position.
+    /// REQUIRED constraints: within page margins. STRONG constraints:
+    /// placement hint (Top→y≈margin_top, Bottom→y≈page_bottom-height).
+    /// Float placement: tries current page first, defers if infeasible.
     fn place_floats(&mut self) {
         if self.deferred_floats.is_empty() {
             return;
@@ -1280,9 +1282,10 @@ impl<'a> LirCompiler<'a> {
         let margin_top = self.ctx.margin_top;
         let margin_bottom = self.ctx.margin_bottom;
         let margin_left = self.ctx.margin_left;
+        let content_width = self.content_width();
 
-        let mut remaining: Vec<LIRFigure> = Vec::new();
-
+        // First pass: deterministic placement for explicit hints
+        let mut float_pool: Vec<LIRFigure> = Vec::new();
         for mut fig in self.deferred_floats.drain(..) {
             match fig.placement {
                 ldir_ir::lir::style::Placement::Top | ldir_ir::lir::style::Placement::Here => {
@@ -1297,13 +1300,75 @@ impl<'a> LirCompiler<'a> {
                     self.current_page_children.push(LIRNode::Figure(fig));
                 }
                 ldir_ir::lir::style::Placement::Float => {
-                    remaining.push(fig);
+                    float_pool.push(fig);
                 }
             }
         }
 
-        // Place remaining on next page top
-        for mut fig in remaining {
+        // Second pass: Cassowary solver for Float placement.
+        // Try to fit each float on the current page; defer if infeasible.
+        if float_pool.is_empty() {
+            return;
+        }
+
+        let mut deferred: Vec<LIRFigure> = Vec::new();
+
+        for mut fig in float_pool {
+            let fig_h = fp_lir_to_core(fig.geometry.height).to_f64();
+            let fig_w = fp_lir_to_core(fig.geometry.width).to_f64();
+            let page_bottom = (page_height - margin_bottom).to_f64();
+            let page_top = margin_top.to_f64();
+            let page_left = margin_left.to_f64();
+            let page_right = (margin_left + content_width).to_f64();
+
+            let mut solver = Solver::new();
+            let var_x = solver.add_variable();
+            let var_y = solver.add_variable();
+
+            // REQUIRED: within page bounds
+            solver.add_constraint(
+                Expression::from_var(var_x, 1.0).add_const(-page_left),
+                Strength::REQUIRED,
+                Relation::GEQ, // x >= margin_left
+            );
+            solver.add_constraint(
+                Expression::from_var(var_x, 1.0).add_const(-(page_right - fig_w)),
+                Strength::REQUIRED,
+                Relation::LEQ, // x + w <= page_right => x <= page_right - w
+            );
+            solver.add_constraint(
+                Expression::from_var(var_y, 1.0).add_const(-page_top),
+                Strength::REQUIRED,
+                Relation::GEQ, // y >= margin_top
+            );
+            solver.add_constraint(
+                Expression::from_var(var_y, 1.0).add_const(-(page_bottom - fig_h)),
+                Strength::REQUIRED,
+                Relation::LEQ, // y + h <= page_bottom
+            );
+
+            // STRONG: prefer left-aligned
+            solver.suggest_value(var_x, page_left);
+            // STRONG: prefer placed near bottom (typical float style)
+            solver.suggest_value(var_y, (page_bottom - fig_h).max(page_top));
+
+            match solver.resolve() {
+                Ok(values) => {
+                    let solved_x = values.get(&var_x).copied().unwrap_or(page_left);
+                    let solved_y = values.get(&var_y).copied().unwrap_or((page_bottom - fig_h).max(page_top));
+                    fig.geometry.x = LirFp::from_f64(solved_x);
+                    fig.geometry.y = LirFp::from_f64(solved_y);
+                    self.current_page_children.push(LIRNode::Figure(fig));
+                }
+                Err(_) => {
+                    // Infeasible: defer to next page
+                    deferred.push(fig);
+                }
+            }
+        }
+
+        // Place deferred floats on new pages (top-aligned)
+        for mut fig in deferred {
             if !self.current_page_children.is_empty() {
                 self.finish_page();
             }
