@@ -93,17 +93,11 @@ Implement the remaining layout algorithms from SRS1.
 
 **Target:** Satisfy REQ-3.3.1/3.3.2. Benchmark with 1000+ page documents.
 
-### V-2: Cassowary constraint solver for floats (3-4 weeks)
+### V-2: Cassowary constraint solver for floats (3-4 weeks) ✅ PARTIAL
 
-**Current state:** `ldir-core/src/solver/cassowary.rs` exists (40 tests) but is not wired into the compiler.
+**Delivered:** Float placement wired into LIR compiler. `FloatPlacement` extracted from SIR v2 nodes → `LIRFigure.placement`. `deferred_floats` collection in LirCompiler. Deterministic placement pass: Top/Here→page top, Bottom→page bottom, Float→next page.
 
-**Approach:**
-1. Define constraint variables for float position (x, y, width, height) and page margins.
-2. Add constraints: float must fit within page margins, text must wrap around float, float placement preference (top/bottom/page).
-3. Integrate solver into pagination pass: after initial page breaks, solve constraints to position floats.
-4. Fallback: if solver is infeasible, place float at top of next page.
-
-**Target:** Satisfy REQ-3.4.1.
+**Remaining:** Full Cassowary solver integration — constraint formulation for optimal float positioning with text reflow. Solver exists (950 lines, 40 tests) but is not yet wired into `place_floats()`. See `ldir-core/src/solver/cassowary.rs`.
 
 ---
 
@@ -111,15 +105,20 @@ Implement the remaining layout algorithms from SRS1.
 
 Enable browser-based compilation and user-defined plugins.
 
-### W-1: WASM HarfBuzz integration (2-3 weeks)
+### W-1: WASM HarfBuzz integration (2-3 weeks) ⏸️ ANALYSIS COMPLETE
 
-**Current state:** WASM build compiles but shaping falls back to ASCII stub. No real text shaping in browser.
+**Current state:** WASM builds use `fast_path::shape_unicode_basic` (ttf_parser cmap+hmtx only). No kerning, ligatures, or complex shaping. `harfbuzz-wasm` not yet evaluated.
 
-**Approach:**
-1. Evaluate `harfbuzz-wasm` (Emscripten-compiled HarfBuzz for WASM).
-2. If viable, add as optional dependency behind `#[cfg(target_arch = "wasm32")]`.
-3. Fallback: implement a more complete Unicode shaping path using `ttf_parser` directly (GPOS/GSUB table parsing).
-4. Add WASM test suite using `wasm-pack test` or `wasm-bindgen-test` runner.
+**Key findings:**
+- `harfbuzz-sys` gated behind `cfg(not(wasm32))` — correctly excluded
+- `ttf_parser` 0.25 does NOT parse GPOS/GSUB tables
+- WASM shaping tests: none exist
+- `harfbuzz-wasm` crate: not on crates.io (typically built via Emscripten)
+
+**Plan when activated:**
+1. Evaluate `harfbuzz-wasm` via Emscripten or alternative WASM-compatible HarfBuzz builds
+2. Fallback: manually parse GPOS kern table + GSUB liga tables via raw font data
+3. Add WASM shaping test suite + CI via `wasm-pack test`
 
 ### W-2: Wasmtime plugin ABI (4-6 weeks)
 
@@ -184,14 +183,14 @@ Add matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). Add MSRV ch
 
 ## Effort Summary
 
-| Phase | Duration | Dependencies |
-|-------|----------|-------------|
-| T: Foundation | 2-3 weeks | None |
-| U: Performance | 4-6 weeks | T-2 (benchmarks) |
-| V: Layout | 6-10 weeks | U-1 (arena) |
-| W: WASM | 4-6 weeks | T-1 (proofs) |
-| X: Quality | ongoing | None |
-| Y: GPU | 8-12 weeks | V-1 (pagination) |
+| Phase | Duration | Status |
+|-------|----------|--------|
+| T: Foundation | 2-3 weeks | ✅ DONE |
+| U: Performance | 4-6 weeks | ✅ DONE (U-2 deferred) |
+| V: Layout | 6-10 weeks | 🟡 V-2 partial, V-1 pending |
+| W: WASM | 4-6 weeks | 🔴 Not started (W-1 analyzed) |
+| X: Quality | ongoing | 🔴 Not started |
+| Y: GPU | 8-12 weeks | 🔴 Not started |
 
 **Critical path:** T -> U -> V -> Y (~20-31 weeks to GPU rendering)
 
