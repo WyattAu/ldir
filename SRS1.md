@@ -18,7 +18,7 @@ To achieve sub-millisecond latency per page, the engine must strictly adhere to 
 
 ### 2.1 Fixed-Point Geometry
 *   **REQ-2.1.1 (Coordinate System):** To guarantee cross-platform determinism (avoiding IEEE-754 floating-point drift), all geometric calculations in G-IR shall use **32-bit signed fixed-point integers**.
-*   **REQ-2.1.2 (Precision):** The system shall use $26.6$ fixed-point format (26 bits for whole numbers, 6 bits for fractions) matching the FreeType internal format, or TeX's scaled points (sp), equating to $1/65536$ of a printer's point.
+*   **REQ-2.1.2 (Precision):** The system shall use $26.6$ fixed-point format (26 bits for whole numbers, 6 bits for fractions) matching the FreeType internal format, providing precision of $1/2^6 = 1/64$ of a unit per ULP. TeX scaled points (sp) provide finer granularity at $1/65536$ of a printer's point; the system shall document which unit is used at each pipeline stage.
 
 ### 2.2 Semantic-IR (S-IR) Protocol
 *   **REQ-2.2.1 (Serialization):** S-IR must be serialized using a zero-copy protocol (`rkyv` or FlatBuffers). The engine must be able to `mmap` a 1GB S-IR file and begin layout in $O(1)$ time.

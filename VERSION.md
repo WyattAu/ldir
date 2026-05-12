@@ -113,9 +113,9 @@
 ## Test Summary
 | Category | Count |
 |----------|-------|
-| ldir-core | 827 |
+| ldir-core | 909 |
 | ldir-ir | 187 |
-| ldir-pdf | 163 |
+| ldir-pdf | 176 |
 | ldir-html | 42 |
 | ldir-tex | 56 |
 | ldir-md | 30 |
@@ -131,16 +131,20 @@
 | ldir-diff | 15 |
 | ldir-validate | 5 |
 | ldir-epub | 11 |
-| **Total** | **1,610** |
+| ldir-vello | 62 |
+| ldir-opt | 25 |
+| ldir-link | 16 |
+| ldir-lsp | 44 |
+| **Total** | **1,863** |
 
 ## Artifact Summary
 | Category | Lines |
 |----------|-------|
-| Rust source code | ~67,500 |
+| Rust source code | ~72,400 |
 | Lean4 proofs | ~1,000 |
 | Specs (Yellow/Blue papers, configs) | ~11,000 |
 | CI/CD configs | ~300 |
-| **Total** | ~79,200 |
+| **Total** | ~84,700 |
 
 ## Lean4 Proof Status
 - **`proof_ir_wellformedness.lean`** -- 3 sorry (isAcyclicAux_cons_lift_orphan, isAcyclic_cons_orphan, compile_preserves_content), ~20 theorems fully proven including `isAcyclic_single`, `isAcyclicAux_mono`, `isAcyclic_cons_root` [PROVEN]

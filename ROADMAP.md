@@ -9,7 +9,7 @@ LDIR is a low-level document intermediate representation language for determinis
 | Metric | Value |
 |--------|-------|
 | Rust source files | 178 |
-| Rust LOC | ~71,700 |
+| Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
 | Workspace crates | 25 |
 | Test count | 1,863 (all passing) |

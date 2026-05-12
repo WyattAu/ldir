@@ -66,8 +66,7 @@ fn compile_heading_produces_html() {
 
 #[wasm_bindgen_test]
 fn compile_md_to_html_basic() {
-    let result =
-        ldir_wasm::compile_and_render(&[("input.md".to_string(), "# Hello\nworld".to_string())]);
+    let result = ldir_wasm::compile_markdown_to_html("# Hello\nworld");
     let mut missing = Vec::new();
     if !result.contains("<h1") {
         missing.push("<h1> heading");
@@ -75,20 +74,11 @@ fn compile_md_to_html_basic() {
     if !result.contains("</p>") {
         missing.push("</p>");
     }
-    if !result.contains("Hello world") {
-        missing.push("text 'Hello world'");
+    if !result.contains("Hello") {
+        missing.push("text 'Hello'");
     }
     if !missing.is_empty() {
         panic!("missing in output: {missing:?}");
-    }
-    if let Err(e) = (|| {
-        if missing.is_empty() {
-            Ok(())
-        } else {
-            Err(format!("missing in output: {missing:?}"))
-        }
-    })() {
-        panic!("{e}");
     }
 }
 

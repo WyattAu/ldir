@@ -186,8 +186,8 @@ assert_eq!(doc, restored_doc);
   - `hello-world` — minimal document compilation
   - `custom-style` — style application with fonts and colors
   - `incremental-edit` — modifying and recompiling documents
-  - `markdown-to-pdf` — planned Markdown → PDF pipeline (design reference)
-  - `tex-basic` — planned TeX input support (design reference)
+  - `markdown-to-pdf` -- Markdown to PDF pipeline
+  - `tex-basic` -- TeX input support
 - **26.6 Fixed-Point**: See `ldir_core::fp266::Fp266` for coordinate arithmetic.
 - **ECS**: See `ldir_core::ecs::World` for the entity component system.
 
@@ -204,7 +204,7 @@ Input (MD/TeX)  →  S-IR  →  [validate]  →  [compile]  →  G-IR  →  [emi
 |-----------|-----------------------------------|
 | `ldir-ir` | S-IR and G-IR type definitions    |
 | `ldir-core` | Validator, compiler, emitter    |
-| `ldir-md` | Markdown parser (planned)         |
-| `ldir-tex` | TeX parser (planned)             |
-| `ldir-pdf` | PDF/A-4 backend (planned)        |
-| `ldir-vello` | GPU renderer (planned)         |
+| `ldir-md` | Markdown parser                   |
+| `ldir-tex` | TeX parser                       |
+| `ldir-pdf` | PDF/A-4 backend                  |
+| `ldir-vello` | GPU renderer                    |
