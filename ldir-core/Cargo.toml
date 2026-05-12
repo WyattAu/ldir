@@ -75,6 +75,14 @@ harness = false
 name = "bench_paginate"
 harness = false
 
+[[bench]]
+name = "bench_shape_cache"
+harness = false
+
+[[bench]]
+name = "bench_incremental"
+harness = false
+
 [[example]]
 name = "hello-world"
 path = "../docs/examples/hello-world.rs"

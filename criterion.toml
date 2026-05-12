@@ -1,0 +1,30 @@
+# Criterion configuration for LDIR benchmarks
+# https://bheisler.github.io/criterion.rs/book/configuration.html
+
+[[bench]]
+# CI-friendly settings: fast enough for PR checks, accurate enough for regression detection
+measurement_time = 5.0        # seconds per benchmark iteration (default 5)
+warm_up_time = 2.0            # seconds warm-up (default 3)
+sample_size = 50              # samples per benchmark (default 100)
+quick_mode = false            # disabled: full measurement for accuracy
+
+# Noise threshold: 5% — regressions smaller than this are noise, not signal.
+# GitHub Actions runners are noisy (shared CPU), so 5% prevents false positives.
+# Genuine regressions in compilation/pagination will exceed this.
+threshold = 0.05
+
+# Outlier detection: keep 'both' (default) — remove neither high nor low outliers
+# since both are informative on CI runners
+outliers = "both"
+
+# Plotting: disable HTML generation in CI (saves disk, speeds up artifact upload)
+# Set PLOT_GENERATION=false as env var in CI to skip plot generation.
+# Locally, plots are useful for analysis, so we don't hard-disable them here.
+
+# Bootstrap confidence: use 't distribution' (default) for small sample sizes
+# on CI runners where variance is high
+confidence_level = 0.95
+
+# No significance test: we handle regression detection ourselves via threshold comparison
+# in the GitHub Actions workflow, not via criterion's built-in comparison.
+significance_level = 0.05

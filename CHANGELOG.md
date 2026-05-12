@@ -4,7 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [3.2.0] - Unreleased
 
-### Added — Era D: Proof Alignment, Determinism, Performance, Backend Parity
+### Added — Era T: Foundation Hardening
+
+**Benchmark regression CI, new performance benchmarks, public shaping API.**
+
+- Benchmark regression CI: PR comparison against main baseline via Criterion, 5% noise threshold, weekly scheduled full runs, manual dispatch with quick/full/thorough profiles
+- `bench_shape_cache`: LRU cache hit/miss/eviction benchmarks (9 scenarios across 3 pool sizes)
+- `bench_incremental`: Zero-change vs single-edit recompilation benchmarks (100/500/1000 paragraph documents)
+- `criterion.toml`: CI-friendly configuration (5s measurement, 50 samples, 5% noise threshold, 95% confidence)
+- `benches/` workflow: standalone GitHub Actions workflow for manual and scheduled full benchmark runs
+- Public `shaping` module: `ShapeCache`, `ThreadSafeShapeCache`, `shape_ascii`, HarfBuzz FFI now accessible from external crates
+
+### Changed
+- Benchmark targets: 11 total (was 9), 2 new shape cache + incremental benchmarks
+- CI `bench-check` job: now downloads main baseline and compares on PRs (was smoke-test only)
+- CI concurrency: added `cancel-in-progress` to prevent redundant runs
+- Baseline artifact retention: 90 days (was 30 days)
 
 **Formal verification alignment, deterministic output guarantees, and backend consistency.**
 

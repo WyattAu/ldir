@@ -109,7 +109,8 @@ pub mod plugin;
 
 pub(crate) mod profiling;
 
-pub(crate) mod shaping;
+/// Text shaping: HarfBuzz FFI, LRU cache, fast ASCII path.
+pub mod shaping;
 
 pub(crate) mod solver;
 

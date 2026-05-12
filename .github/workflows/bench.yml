@@ -1,0 +1,84 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Benchmark profile"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - quick    # 10 samples, 2s measurement
+          - full     # 50 samples, 5s measurement (CI default)
+          - thorough # 100 samples, 10s measurement (release validation)
+  schedule:
+    # Run full benchmarks weekly (Sunday 06:00 UTC) for trend tracking
+    - cron: "0 6 * * 0"
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    name: Benchmark (${{ github.event.inputs.profile || 'full' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Set profile variables
+        id: profile
+        run: |
+          case "${{ github.event.inputs.profile || 'full' }}" in
+            quick)
+              echo "sample_size=10" >> "$GITHUB_OUTPUT"
+              echo "measurement_time=2" >> "$GITHUB_OUTPUT"
+              echo "warm_up_time=1" >> "$GITHUB_OUTPUT"
+              ;;
+            thorough)
+              echo "sample_size=100" >> "$GITHUB_OUTPUT"
+              echo "measurement_time=10" >> "$GITHUB_OUTPUT"
+              echo "warm_up_time=5" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "sample_size=50" >> "$GITHUB_OUTPUT"
+              echo "measurement_time=5" >> "$GITHUB_OUTPUT"
+              echo "warm_up_time=2" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Build benchmarks
+        run: cargo bench -p ldir-core --no-run
+
+      - name: Run benchmarks
+        env:
+          CRITERION_PLOT_GENERATION: "false"
+        run: |
+          export CRITERION_SAMPLE_SIZE=${{ steps.profile.outputs.sample_size }}
+          export CRITERION_MEASUREMENT_TIME=${{ steps.profile.outputs.measurement_time }}
+          export CRITERION_WARM_UP_TIME=${{ steps.profile.outputs.warm_up_time }}
+          cargo bench -p ldir-core -- --save-baseline scheduled 2>&1 | tee bench-output.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-scheduled-${{ github.sha }}
+          path: |
+            bench-output.txt
+            target/criterion/
+          retention-days: 90

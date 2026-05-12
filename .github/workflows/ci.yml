@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
 jobs:
   rust-check:
     name: Rust Check & Test
@@ -19,7 +27,7 @@ jobs:
         with:
           components: clippy, rustfmt
 
-      - name: Cache cargo registry
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
           path: |
@@ -39,16 +47,18 @@ jobs:
         run: cargo test --workspace
 
   bench-check:
-    name: Benchmark Smoke Test
+    name: Benchmark Regression
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo registry
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
           path: |
@@ -56,21 +66,66 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-bench-
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Download latest baseline
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: bench-baseline-main
+          path: target/criterion
 
       - name: Build benchmarks
         run: cargo bench -p ldir-core --no-run
 
-      - name: Smoke-test benchmarks
-        run: cargo bench -p ldir-core -- --test
+      - name: Run benchmarks (compare with baseline)
+        if: github.event_name == 'pull_request'
+        env:
+          CRITERION_PLOT_GENERATION: "false"
+        run: |
+          cargo bench -p ldir-core -- --baseline main 2>&1 | tee bench-output.txt
 
-      - name: Save baseline results
+      - name: Run benchmarks (save baseline)
+        if: github.ref == 'refs/heads/main'
+        env:
+          CRITERION_PLOT_GENERATION: "false"
+        run: |
+          cargo bench -p ldir-core -- --save-baseline main 2>&1 | tee bench-output.txt
+
+      - name: Check for performance regression
+        if: github.event_name == 'pull_request'
+        run: |
+          REGRESSION_THRESHOLD=5
+          if grep -qi "performance has regressed" bench-output.txt; then
+            echo "::warning::Performance regression detected. Check benchmark output for details."
+            # Extract regression lines for summary
+            grep -A1 "performance has regressed" bench-output.txt || true
+            # Count regressions exceeding threshold
+            REGRESSIONS=$(grep -c "performance has regressed" bench-output.txt || echo 0)
+            if [ "$REGRESSIONS" -gt 0 ]; then
+              echo "::notice::$REGRESSIONS benchmark(s) regressed. Review before merging."
+            fi
+          else
+            echo "No performance regressions detected."
+          fi
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-results-${{ github.sha }}
+          path: |
+            bench-output.txt
+            target/criterion/
+          retention-days: 14
+
+      - name: Save baseline artifact (main only)
         uses: actions/upload-artifact@v4
         if: github.ref == 'refs/heads/main'
         with:
-          name: bench-baseline-${{ github.sha }}
+          name: bench-baseline-main
           path: target/criterion/
-          retention-days: 30
+          retention-days: 90
 
   lean4-check:
     name: Lean 4 Build
