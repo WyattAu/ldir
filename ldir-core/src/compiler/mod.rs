@@ -788,7 +788,7 @@ fn emit_paragraph_inline(
             ..Default::default()
         };
 
-        let result = linebreak(&items, &options);
+        let result = linebreak(&items, &options, &ctx.bump);
 
         let mut ranges: Vec<(usize, usize)> = Vec::new();
         let mut prev = 0;
@@ -1795,7 +1795,7 @@ fn emit_drop_cap_paragraph(
             ..Default::default()
         };
 
-        let result = linebreak(&items, &options);
+        let result = linebreak(&items, &options, &ctx.bump);
 
         let mut ranges: Vec<(usize, usize)> = Vec::new();
         let mut prev = 0;
@@ -1922,7 +1922,7 @@ fn emit_paragraph(
             ..Default::default()
         };
 
-        let result = linebreak(&items, &options);
+        let result = linebreak(&items, &options, &ctx.bump);
 
         let mut ranges: Vec<(usize, usize)> = Vec::new();
         let mut prev = 0;

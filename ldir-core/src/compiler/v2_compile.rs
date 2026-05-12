@@ -1944,9 +1944,9 @@ fn emit_v2_styled_paragraph(
 
         let result = if is_cjk_text(&all_text) {
             let cjk_items = insert_cjk_breaks(&all_text, &items, &ctx.bump);
-            linebreak(&cjk_items, &options)
+            linebreak(&cjk_items, &options, &ctx.bump)
         } else {
-            linebreak(&items, &options)
+            linebreak(&items, &options, &ctx.bump)
         };
 
         let mut ranges: Vec<(usize, usize)> = Vec::new();
@@ -2196,9 +2196,9 @@ fn emit_v2_paragraph_text(
 
         let result = if is_cjk_text(text) {
             let cjk_items = insert_cjk_breaks(text, &items, &ctx.bump);
-            linebreak(&cjk_items, &options)
+            linebreak(&cjk_items, &options, &ctx.bump)
         } else {
-            linebreak(&items, &options)
+            linebreak(&items, &options, &ctx.bump)
         };
 
         let mut ranges: Vec<(usize, usize)> = Vec::new();

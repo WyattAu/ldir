@@ -220,28 +220,43 @@ fn bench_line_break_sizes(c: &mut Criterion) {
 
     let short = make_latin_paragraph(20);
     group.bench_function(BenchmarkId::new("line_break_short", "20_words"), |b| {
-        b.iter(|| black_box(linebreak(&short, &options)))
+        b.iter(|| {
+            let bump: Bump = Bump::new();
+            black_box(linebreak(&short, &options, &bump))
+        })
     });
 
     let typical = make_latin_paragraph(80);
     group.bench_function(BenchmarkId::new("line_break_typical", "80_words"), |b| {
-        b.iter(|| black_box(linebreak(&typical, &options)))
+        b.iter(|| {
+            let bump: Bump = Bump::new();
+            black_box(linebreak(&typical, &options, &bump))
+        })
     });
 
     let long = make_latin_paragraph(200);
     group.bench_function(BenchmarkId::new("line_break_long", "200_words"), |b| {
-        b.iter(|| black_box(linebreak(&long, &options)))
+        b.iter(|| {
+            let bump: Bump = Bump::new();
+            black_box(linebreak(&long, &options, &bump))
+        })
     });
 
     let cjk_items = make_cjk_paragraph(80);
     group.bench_function(BenchmarkId::new("line_break_cjk", "80_chars"), |b| {
-        b.iter(|| black_box(linebreak(&cjk_items, &options)))
+        b.iter(|| {
+            let bump: Bump = Bump::new();
+            black_box(linebreak(&cjk_items, &options, &bump))
+        })
     });
 
     let mixed_items = make_mixed_script_paragraph();
     group.bench_function(
         BenchmarkId::new("line_break_mixed_script", "latin+cjk+arabic"),
-        |b| b.iter(|| black_box(linebreak(&mixed_items, &options))),
+        |b| b.iter(|| {
+            let bump: Bump = Bump::new();
+            black_box(linebreak(&mixed_items, &options, &bump))
+        }),
     );
 
     group.finish();
@@ -254,7 +269,8 @@ fn bench_line_break_throughput(c: &mut Criterion) {
     c.bench_function("BM-LAYOUT-001f/line_break_1000_paragraphs", |b| {
         b.iter(|| {
             for _ in 0..1000 {
-                black_box(linebreak(&typical, &options));
+                let bump: Bump = Bump::new();
+                black_box(linebreak(&typical, &options, &bump));
             }
         })
     });

@@ -3,6 +3,9 @@
 //! Dynamic programming approach to find optimal line breaks in a paragraph.
 //! References: YP-LAYOUT-KNUTHPLASS-001, ALG-KP-BREAK, THM-KP-OPTIMALITY, THM-KP-TERMINATION.
 
+use bumpalo::Bump;
+use bumpalo::collections::Vec as BumpVec;
+
 use crate::fp266::Fp266;
 
 use super::badness::{compute_adjustment_ratio, compute_badness, compute_demerits};
@@ -41,7 +44,11 @@ struct ActiveNode {
 /// 5. Keep feasible breaks; deactivate infeasible nodes
 /// 6. At end, choose the active node with minimum total demerits
 /// 7. Trace back to recover break positions
-pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBreakResult {
+pub fn linebreak<'bump>(
+    items: &[LineBreakItem],
+    options: &LineBreakOptions,
+    bump: &'bump Bump,
+) -> LineBreakResult {
     if items.is_empty() {
         return LineBreakResult {
             breaks: vec![],
@@ -51,15 +58,17 @@ pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBre
 
     let n = items.len();
 
-    // Precompute prefix sums for O(1) line content queries
-    // prefix[i] = sum of items[0..i] (exclusive), so prefix[0] = 0
-    let mut prefix_w = vec![Fp266::ZERO; n + 1];
-    let mut prefix_s = vec![Fp266::ZERO; n + 1];
-    let mut prefix_h = vec![Fp266::ZERO; n + 1];
+    // Precompute prefix sums for O(1) line content queries (arena-allocated).
+    let mut prefix_w = BumpVec::with_capacity_in(n + 1, bump);
+    let mut prefix_s = BumpVec::with_capacity_in(n + 1, bump);
+    let mut prefix_h = BumpVec::with_capacity_in(n + 1, bump);
+    prefix_w.push(Fp266::ZERO);
+    prefix_s.push(Fp266::ZERO);
+    prefix_h.push(Fp266::ZERO);
     for i in 0..n {
-        prefix_w[i + 1] = prefix_w[i] + items[i].width;
-        prefix_s[i + 1] = prefix_s[i] + items[i].stretchability;
-        prefix_h[i + 1] = prefix_h[i] + items[i].shrinkability;
+        prefix_w.push(prefix_w[i] + items[i].width);
+        prefix_s.push(prefix_s[i] + items[i].stretchability);
+        prefix_h.push(prefix_h[i] + items[i].shrinkability);
     }
 
     // Quick check: if everything fits on one line AND there are no mandatory breaks, no breaks needed
@@ -80,11 +89,9 @@ pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBre
         }
     }
 
-    // Persistent node store (indices never change, enabling safe traceback)
-    let mut nodes: Vec<ActiveNode> = Vec::with_capacity(n + 1);
-
-    // Active indices into `nodes` — candidates for previous break
-    let mut active: Vec<usize> = Vec::with_capacity(n);
+    // Persistent node store (arena-allocated).
+    let mut nodes: BumpVec<'bump, ActiveNode> = BumpVec::with_capacity_in(n + 1, bump);
+    let mut active: BumpVec<'bump, usize> = BumpVec::with_capacity_in(n, bump);
 
     // Sentinel node at position 0 (break before first item)
     nodes.push(ActiveNode {
@@ -100,7 +107,7 @@ pub fn linebreak(items: &[LineBreakItem], options: &LineBreakOptions) -> LineBre
 
     // For each item, consider it as the end of a line (break after item i)
     for i in 0..n {
-        let mut new_active: Vec<usize> = Vec::new();
+        let mut new_active: BumpVec<'bump, usize> = BumpVec::with_capacity_in(active.len(), bump);
 
         // Handle mandatory breaks: force a break here
         if items[i].is_mandatory {
@@ -338,7 +345,14 @@ pub fn insert_hyphenation_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bumpalo::Bump;
     use crate::fp266::Fp266;
+
+    /// Test helper: runs linebreak with a fresh arena.
+    fn kp(items: &[LineBreakItem], opts: &LineBreakOptions) -> LineBreakResult {
+        let bump = Bump::new();
+        linebreak(items, opts, &bump)
+    }
 
     fn item(width: i32) -> LineBreakItem {
         LineBreakItem {
@@ -394,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_empty_input() {
-        let result = linebreak(&[], &LineBreakOptions::default());
+        let result = kp(&[], &LineBreakOptions::default());
         assert!(result.breaks.is_empty());
         assert!(result.total_demerits < 0.01);
     }
@@ -406,7 +420,7 @@ mod tests {
             line_width: Fp266::from_int(100),
             ..Default::default()
         };
-        let result = linebreak(&items, &opts);
+        let result = kp(&items, &opts);
         assert!(result.breaks.is_empty());
     }
 
@@ -417,7 +431,7 @@ mod tests {
             line_width: Fp266::from_int(100),
             ..Default::default()
         };
-        let result = linebreak(&items, &opts);
+        let result = kp(&items, &opts);
         assert!(result.breaks.is_empty());
     }
 
@@ -428,7 +442,7 @@ mod tests {
             line_width: Fp266::from_int(100),
             ..Default::default()
         };
-        let result = linebreak(&items, &opts);
+        let result = kp(&items, &opts);
         assert_eq!(result.breaks, vec![1]);
     }
 
@@ -439,7 +453,7 @@ mod tests {
             line_width: Fp266::from_int(100),
             ..Default::default()
         };
-        let result = linebreak(&items, &opts);
+        let result = kp(&items, &opts);
         assert!(result.breaks.contains(&2));
     }
 
@@ -450,7 +464,7 @@ mod tests {
             line_width: Fp266::from_int(60),
             ..Default::default()
         };
-        let result = linebreak(&items, &opts);
+        let result = kp(&items, &opts);
         assert_eq!(result.breaks, vec![1, 2]);
     }
 
@@ -468,8 +482,8 @@ mod tests {
             ..Default::default()
         };
 
-        let r1 = linebreak(&items, &opts);
-        let r2 = linebreak(&items, &opts);
+        let r1 = kp(&items, &opts);
+        let r2 = kp(&items, &opts);
         assert_eq!(r1.breaks, r2.breaks);
         assert_eq!(r1.total_demerits, r2.total_demerits);
     }
@@ -481,7 +495,7 @@ mod tests {
             line_width: Fp266::from_int(100),
             ..Default::default()
         };
-        let result = linebreak(&items, &opts);
+        let result = kp(&items, &opts);
         assert!(result.breaks.is_empty());
         assert!(result.total_demerits < 0.01);
     }
@@ -498,7 +512,7 @@ mod tests {
             hyphen_penalty: 50.0,
             ..Default::default()
         };
-        let result = linebreak(&items, &opts);
+        let result = kp(&items, &opts);
         // Break after item 0 or 1 — both feasible
         assert!(!result.breaks.is_empty());
     }
@@ -518,8 +532,8 @@ mod tests {
             ..Default::default()
         };
 
-        let r_normal = linebreak(&items_normal, &opts);
-        let r_hyphen = linebreak(&items_hyphen, &opts);
+        let r_normal = kp(&items_normal, &opts);
+        let r_hyphen = kp(&items_hyphen, &opts);
 
         assert_eq!(r_normal.breaks, r_hyphen.breaks);
         assert!(
@@ -565,9 +579,9 @@ mod tests {
             ..Default::default()
         };
 
-        let r_off = linebreak(&items_period, &opts_off);
-        let r_on = linebreak(&items_period, &opts_on);
-        let r_no_period = linebreak(&items_no_period, &opts_on);
+        let r_off = kp(&items_period, &opts_off);
+        let r_on = kp(&items_period, &opts_on);
+        let r_no_period = kp(&items_no_period, &opts_on);
 
         // With optical margins on, period-ending text should have lower or equal demerits
         assert!(r_on.total_demerits <= r_off.total_demerits);

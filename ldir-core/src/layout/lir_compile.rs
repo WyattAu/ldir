@@ -355,9 +355,9 @@ impl<'a> LirCompiler<'a> {
 
         let result = if is_cjk_text(text) {
             let cjk_items = insert_cjk_breaks(text, &items, &self.ctx.bump);
-            linebreak(&cjk_items, &options)
+            linebreak(&cjk_items, &options, &self.ctx.bump)
         } else {
-            linebreak(&items, &options)
+            linebreak(&items, &options, &self.ctx.bump)
         };
 
         let mut ranges: Vec<(usize, usize)> = Vec::new();
