@@ -21,19 +21,13 @@
 
 Eliminate known technical debt and establish performance baselines.
 
-### T-1: Eliminate Lean4 sorry (1-2 weeks)
+### T-1: Eliminate Lean4 sorry (1-2 weeks) ✅ DONE (2 of 3 eliminated)
 
-**Blocker:** Lean4's `Bool` match/if elaboration of `List.find?` produces nested `ite` expressions that resist `simp`/`rewrite` tactics.
+**Proven:** `isAcyclicAux_not_found` (Line 491) and `isAcyclicAux_cons_lift_orphan` (Line 527) using Mathlib's `List.find?_eq_none` and `List.find?_cons` lemmas. Key technique: `split` on `Option` + `if`-`Bool` match, case-split on `Nat.eq_zero_or_pos` for induction fuel.
 
-**Approach options (in order of preference):**
-1. Refactor `isAcyclicAux` to use `Decidable` predicates instead of `Bool` functions, enabling `decide`/`native_decide` automation.
-2. Define a custom `find?` lemma that directly states the membership property without going through match elaboration.
-3. Use `Lean.Elab.Tactic.omega` or `bv_omega` for bit-vector reasoning on `Bool` expressions.
-4. Port the 3 theorems to a separate file with `set_option` pragmas to force specific elaboration strategies.
+**Remaining:** 1 sorry (`compile_preserves_content`, line 761). Requires proving membership preservation through `List.foldl` — deferred to Phase X-1 (real compiler model).
 
-**Target:** 0 sorry across all proof files.
-
-### T-2: Benchmark regression CI (1 week)
+### T-2: Benchmark regression CI (1 week) ✅ DONE
 
 **Current state:** Criterion benchmarks exist (11 targets) but CI only smoke-tests them. No baseline comparison.
 
@@ -70,18 +64,12 @@ Achieve SRS1 performance targets through systematic optimization.
 
 **Target:** Satisfy REQ-1.1.1 (zero heap allocation in hot path). Measure with `jemalloc` stats.
 
-### U-2: SIMD Knuth-Plass (3-4 weeks)
+### U-2: SIMD Knuth-Plass (3-4 weeks) ⏸️ PENDING PROFILING
 
-**Current state:** Penalty calculation is a scalar loop. Badness formula: $b = 100 \times (w - t)^3 / s^3$.
+**Current state:** Penalty functions are scalar (1 div, powi(3)). Benchmarks show linebreak throughput is not the bottleneck — content serialization and PDF output dominate. Deferred until profiling confirms penalty calculation is >10% of compile time on 1000+ page documents.
 
-**Approach:**
-1. Profile to confirm penalty calculation is the bottleneck (likely not for typical documents).
-2. Implement AVX2 path using `std::arch::x86_64` intrinsics for batch penalty evaluation.
-3. Implement NEON path using `std::arch::aarch64` for ARM targets.
-4. Add `cfg(target_feature)` dispatch with scalar fallback.
-5. Branchless demerit comparison using `simd_lt`/`simd_gt`.
-
-**Target:** Satisfy REQ-3.2.1 (vectorized penalty) and REQ-3.2.2 (branchless inner loop). Benchmark 1000-paragraph documents.
+**Approach when activated:** Batch penalty evaluations in the DP inner loop using AVX2/NEON
+`simd_lt`/`simd_gt` for branchless demerit comparison. Scalar fallback for non-x86/ARM targets.
 
 ### U-3: Parallel Deflate for PDF (1-2 weeks) ✅ DONE
 
