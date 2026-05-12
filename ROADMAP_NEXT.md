@@ -83,16 +83,9 @@ Achieve SRS1 performance targets through systematic optimization.
 
 **Target:** Satisfy REQ-3.2.1 (vectorized penalty) and REQ-3.2.2 (branchless inner loop). Benchmark 1000-paragraph documents.
 
-### U-3: Parallel Deflate for PDF (1-2 weeks)
+### U-3: Parallel Deflate for PDF (1-2 weeks) ✅ DONE
 
-**Current state:** PDF content streams compressed with single-threaded `flate2`.
-
-**Approach:**
-1. Compress each page's content stream independently using Rayon.
-2. Compress font subsets in parallel with page streams.
-3. Merge compressed streams into the final PDF sequentially (PDF requires sequential object numbering).
-
-**Target:** Satisfy REQ-6.2.2. Benchmark 100-page PDF generation.
+**Current state:** Content stream compression parallelized via `rayon::par_iter()`. Each page's content is independently compressed, then written sequentially to the PDF buffer. Font subsetting and image compression remain sequential (lower ROI for typical documents).
 
 ---
 

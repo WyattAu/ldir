@@ -7,6 +7,7 @@
 
 use pdf_writer::types::{AnnotationType, CidFontType, FontFlags, SystemInfo, UnicodeCmap};
 use pdf_writer::{Content, Filter, Name, Pdf, Rect, Ref, Str, TextStr};
+use rayon::prelude::*;
 
 use crate::color::{IccProfile, icc_alternate_name};
 use crate::conformance::PdfConformance;
@@ -696,10 +697,14 @@ impl PdfDocumentBuilder {
             }
         }
 
-        // Write content streams (compressed with FlateDecode)
+        // Write content streams (compressed with FlateDecode).
+        // Compress all pages in parallel, then write sequentially.
+        let compressed_content: Vec<Vec<u8>> = content_data
+            .par_iter()
+            .map(|data| compress(data))
+            .collect();
         for i in 0..self.pages.len() {
-            let compressed = compress(&content_data[i]);
-            pdf.stream(content_ids[i], &compressed)
+            pdf.stream(content_ids[i], &compressed_content[i])
                 .filter(Filter::FlateDecode);
         }
 
