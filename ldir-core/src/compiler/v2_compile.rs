@@ -1943,7 +1943,7 @@ fn emit_v2_styled_paragraph(
         };
 
         let result = if is_cjk_text(&all_text) {
-            let cjk_items = insert_cjk_breaks(&all_text, &items);
+            let cjk_items = insert_cjk_breaks(&all_text, &items, &ctx.bump);
             linebreak(&cjk_items, &options)
         } else {
             linebreak(&items, &options)
@@ -2195,7 +2195,7 @@ fn emit_v2_paragraph_text(
         };
 
         let result = if is_cjk_text(text) {
-            let cjk_items = insert_cjk_breaks(text, &items);
+            let cjk_items = insert_cjk_breaks(text, &items, &ctx.bump);
             linebreak(&cjk_items, &options)
         } else {
             linebreak(&items, &options)

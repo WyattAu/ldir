@@ -354,7 +354,7 @@ impl<'a> LirCompiler<'a> {
         };
 
         let result = if is_cjk_text(text) {
-            let cjk_items = insert_cjk_breaks(text, &items);
+            let cjk_items = insert_cjk_breaks(text, &items, &self.ctx.bump);
             linebreak(&cjk_items, &options)
         } else {
             linebreak(&items, &options)

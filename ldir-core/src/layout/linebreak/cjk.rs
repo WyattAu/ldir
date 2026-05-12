@@ -8,6 +8,8 @@
 #![warn(clippy::unwrap_used, clippy::expect_used)]
 
 use crate::fp266::Fp266;
+use bumpalo::Bump;
+use bumpalo::collections::Vec as BumpVec;
 
 use super::types::LineBreakItem;
 
@@ -64,17 +66,21 @@ pub fn is_prohibited_at_line_end(ch: char) -> bool {
     matches!(ch, '（' | '【' | '「' | '『' | '《' | '(' | '[' | '{')
 }
 
-pub fn insert_cjk_breaks(text: &str, items: &[LineBreakItem]) -> Vec<LineBreakItem> {
+pub fn insert_cjk_breaks<'bump>(
+    text: &str,
+    items: &[LineBreakItem],
+    bump: &'bump Bump,
+) -> BumpVec<'bump, LineBreakItem> {
     if !is_cjk_text(text) || items.is_empty() {
-        return items.to_vec();
+        return BumpVec::from_iter_in(items.iter().copied(), bump);
     }
 
     let chars: Vec<char> = text.chars().collect();
     if chars.len() != items.len() {
-        return items.to_vec();
+        return BumpVec::from_iter_in(items.iter().copied(), bump);
     }
 
-    let mut result = Vec::with_capacity(items.len() * 2);
+    let mut result = BumpVec::with_capacity_in(items.len() * 2, bump);
     for (i, &item) in items.iter().enumerate() {
         result.push(item);
         if i + 1 < chars.len() {
@@ -104,7 +110,13 @@ pub fn insert_cjk_breaks(text: &str, items: &[LineBreakItem]) -> Vec<LineBreakIt
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fp266::Fp266;
+
+    use bumpalo::Bump;
+
+    /// Test helper: arena-backed CJK break insertion.
+    fn cjk_breaks<'a>(text: &str, items: &[LineBreakItem], bump: &'a Bump) -> BumpVec<'a, LineBreakItem> {
+        insert_cjk_breaks(text, items, bump)
+    }
 
     fn item(width: i32) -> LineBreakItem {
         LineBreakItem {
@@ -272,7 +284,8 @@ mod tests {
     fn test_insert_cjk_breaks_basic() {
         let text = "你好世界";
         let items = vec![item(10), item(10), item(10), item(10)];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 7); // 4 items + 3 breaks
     }
 
@@ -280,7 +293,8 @@ mod tests {
     fn test_insert_cjk_breaks_no_cjk() {
         let text = "Hello";
         let items = vec![item(7), item(7), item(7), item(7), item(7)];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 5);
     }
 
@@ -291,7 +305,8 @@ mod tests {
         // but ， CAN end a line so ，|世 is allowed)
         let text = "你好，世界";
         let items = vec![item(10), item(10), item(10), item(10), item(10)];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 8); // 5 items + 3 breaks
     }
 
@@ -302,7 +317,8 @@ mod tests {
         // No break: （|世 （is prohibited at line end)
         let text = "你（世界";
         let items = vec![item(10), item(10), item(10), item(10)];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 6); // 4 items + 2 breaks
     }
 
@@ -310,7 +326,8 @@ mod tests {
     fn test_insert_cjk_breaks_empty() {
         let text = "";
         let items: Vec<LineBreakItem> = vec![];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert!(result.is_empty());
     }
 
@@ -318,7 +335,8 @@ mod tests {
     fn test_insert_cjk_breaks_single_char() {
         let text = "你";
         let items = vec![item(10)];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 1);
     }
 
@@ -326,7 +344,8 @@ mod tests {
     fn test_insert_cjk_breaks_mismatched_lengths() {
         let text = "你好";
         let items = vec![item(10)]; // 1 item vs 2 chars (e.g., ligature)
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 1); // No breaks when lengths don't match
     }
 
@@ -344,7 +363,8 @@ mod tests {
             item(10),
             item(10),
         ];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 8); // 7 items + 1 break
     }
 
@@ -352,7 +372,8 @@ mod tests {
     fn test_insert_cjk_breaks_break_items_are_zero_width() {
         let text = "你好";
         let items = vec![item(10), item(10)];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result.len(), 3);
         assert_eq!(result[0].width, Fp266::from_int(10));
         assert_eq!(result[1].width, Fp266::ZERO);
@@ -363,7 +384,8 @@ mod tests {
     fn test_insert_cjk_breaks_preserves_original_items() {
         let text = "你好";
         let items = vec![item(10), item(10)];
-        let result = insert_cjk_breaks(text, &items);
+        let bump = Bump::new();
+        let result = cjk_breaks(text, &items, &bump);
         assert_eq!(result[0].width, items[0].width);
         assert_eq!(result[2].width, items[1].width);
     }

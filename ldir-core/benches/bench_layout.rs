@@ -1,4 +1,6 @@
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use bumpalo::Bump;
+
 use ldir_core::fp266::Fp266;
 use ldir_core::layout::linebreak::cjk::insert_cjk_breaks;
 use ldir_core::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
@@ -267,7 +269,10 @@ fn bench_cjk_insert_breaks(c: &mut Criterion) {
         .collect();
 
     c.bench_function("BM-LAYOUT-001/cjk_insert_breaks_80chars", |b| {
-        b.iter(|| black_box(insert_cjk_breaks(&cjk_text, &cjk_items)))
+        b.iter(|| {
+            let bump = Bump::new();
+            black_box(insert_cjk_breaks(&cjk_text, &cjk_items, &bump))
+        })
     });
 }
 
