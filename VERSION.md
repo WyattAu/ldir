@@ -14,7 +14,7 @@
 | Clippy errors | 0 (`-D warnings`) |
 | Clippy warnings | 0 (test + lib) |
 | `cargo fmt` | Clean |
-|     Lean4 proofs | 0 errors, 3 sorry (isAcyclicAux_not_found, isAcyclicAux_cons_lift_orphan, compile_preserves_content; all with complete proof sketches) |
+|     Lean4 proofs | 0 errors, 1 sorry (compile_preserves_content; deferred to Phase X-1) |
 | Production unwrap/expect | 0 (all eliminated) |
 | PDF determinism | Bit-identical verified |
 | **Benchmark targets** | **11** (7 existing + 2 layout + 2 pagination) |

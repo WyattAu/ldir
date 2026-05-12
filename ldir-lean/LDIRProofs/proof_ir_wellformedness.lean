@@ -496,9 +496,21 @@ private theorem isAcyclicAux_not_found (doc : SIRDocument) (id : EntityID) (fuel
   | zero => omega
   | succ n _ih =>
     unfold isAcyclicAux
-    -- find? = none because no element in doc has entity_id = id.
-    -- The BEq (==) matches Eq (=) via beq_iff_eq.
-    sorry
+    -- Goal: match find? with | none => true | ...
+    -- By find?_eq_none: find? p l = none ↔ ∀ x ∈ l, ¬p x = true
+    -- We prove find? = none, then the match reduces to true.
+    have h_find_none : doc.find? (fun i => i.entity_id == id) = none := by
+      rw [List.find?_eq_none]
+      intro x hx
+      have h_ne : x.entity_id ≠ id := by
+        intro h_eq
+        have : id ∈ doc.map SIRInstruction.entity_id := by
+          have := @List.mem_map_of_mem _ _ _ _ SIRInstruction.entity_id hx
+          rw [h_eq] at this
+          exact this
+        exact h_not_in this
+      exact mt beq_iff_eq.mp h_ne
+    simp [h_find_none]
 
 /-- Helper: instr.parent_id is not in (instr :: rest) entity_ids. -/
 private theorem orphan_parent_not_in_cons (instr : SIRInstruction) (rest : SIRDocument) :
@@ -532,10 +544,49 @@ private theorem isAcyclicAux_cons_lift_orphan (instr : SIRInstruction) (rest : S
     n > 0 →
     ∀ id, isAcyclicAux rest id n = true →
     isAcyclicAux (instr :: rest) id (n + 1) = true := by
-  intro h_not_root h_not_self h_not_in h_id_not_in h_n_pos id h_rest
+  intro h_not_root h_not_self h_not_in h_id_not_in
   induction n with
-  | zero => exact absurd h_n_pos (by decide)
-  | succ n _ih => sorry
+  | zero => intro _h_n_pos id _h_rest; exact absurd _h_n_pos (by decide)
+  | succ n ih =>
+    intro h_n_pos id h_rest
+    unfold isAcyclicAux
+    match h : (fun i => i.entity_id == id) instr with
+    | true =>
+      have h_parent_false : (instr.parent_id == rootSentinel) = false := by
+        exact Bool.of_not_eq_true (mt beq_iff_eq.mp h_not_root)
+      simp only [List.find?_cons, h, h_parent_false]
+      exact isAcyclicAux_not_found (instr :: rest) instr.parent_id (n + 1)
+        (orphan_parent_not_in_cons instr rest h_not_self h_not_in)
+        (by omega)
+    | false =>
+      simp only [List.find?_cons, h]
+      unfold isAcyclicAux at h_rest
+      split
+      · rfl
+      · rename_i found_instr heq
+        have h_rest_some : (if found_instr.parent_id == rootSentinel then true
+            else isAcyclicAux rest found_instr.parent_id n) = true := by
+          have : rest.find? (fun i => i.entity_id == id) = some found_instr := heq
+          simp only [this] at h_rest
+          exact h_rest
+        split
+        · rfl
+        · next h_parent_ne =>
+          have h_rest_rec : isAcyclicAux rest found_instr.parent_id n = true := by
+            have : (found_instr.parent_id == rootSentinel) = false :=
+              Bool.of_not_eq_true h_parent_ne
+            simp only [this] at h_rest_some
+            exact h_rest_some
+          -- h_rest_rec : isAcyclicAux rest found_instr.parent_id n = true
+          -- ih : ∀ (_ : n > 0) id, isAcyclicAux rest id n = true → ...
+          -- Case split: n = 0 (contradiction) or n > 0 (use ih)
+          cases n with
+          | zero =>
+            exfalso
+            unfold isAcyclicAux at h_rest_rec
+            exact absurd h_rest_rec (by decide)
+          | succ n' =>
+            exact ih (Nat.succ_pos n') found_instr.parent_id h_rest_rec
 
 /-- An instruction whose parent_id is not rootSentinel, not a self-loop,
     and whose parent_id and entity_id are not in rest, cannot create a
@@ -699,8 +750,14 @@ def girSemanticContent (doc : GIRDocument) : List (GIROpcode × List Int) :=
        so compileReal returns [cmds] (else branch).
     5. Therefore ∃ page ∈ [cmds], ∃ cmd ∈ page, cmd.opcode = putGlyph.
 
-    Formalization blocked by: match expressions in have/bindings generate
-    opaque terms that resist simp/rewrite tactics in current Lean4 version. -/
+    Formalization requires:
+    1. A lemma: ∀ (f : β → α → β) (b : β) (a : α) (l : List α) (x : β),
+       x ∈ f b a → x ∈ List.foldl f b (a :: l)
+       (membership is preserved through foldl steps).
+    2. A lemma: for setContent, f acc instr = acc ++ [putGlyph],
+       so putGlyph ∈ f acc instr when instr.opcode = setContent.
+    3. Induction on doc.instructions to connect the target instr to the final foldl result.
+    This is the core of Phase X-1 (real compiler model) and deferred to that phase. -/
 theorem compile_preserves_content (doc : SIRDocumentWithPayload) :
     wellFormedSIRWithPayload doc = true →
     ∀ instr ∈ doc.instructions,
