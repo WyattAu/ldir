@@ -106,6 +106,8 @@ struct LirCompiler<'a> {
     pending_footnotes: Vec<(u32, String)>,
     footnote_counter: u32,
     figure_counter: u32,
+    /// Figures/Tables deferred from inline flow for float placement.
+    deferred_floats: Vec<LIRFigure>,
     eq_counter: u32,
     style_table: LIRStyleTable,
     bibliography: Option<&'a HashMap<String, BibEntry>>,
@@ -147,6 +149,7 @@ impl<'a> LirCompiler<'a> {
             pending_footnotes: Vec::new(),
             footnote_counter: 0,
             figure_counter: 0,
+            deferred_floats: Vec::new(),
             eq_counter: 0,
             style_table,
             bibliography,
@@ -866,11 +869,19 @@ impl<'a> LirCompiler<'a> {
 
             NodeType::TableRow { .. } | NodeType::TableCell { .. } => Ok(Vec::new()),
 
-            NodeType::Figure { .. } => {
+            NodeType::Figure { placement } => {
                 self.figure_counter += 1;
                 let mut fig = LIRFigure::new();
                 fig.id = self.alloc_id();
                 fig.source_node_id = source_id;
+                // Map SIR FloatPlacement to LIR Placement
+                fig.placement = match placement {
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Here => ldir_ir::lir::style::Placement::Here,
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Top => ldir_ir::lir::style::Placement::Top,
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Bottom => ldir_ir::lir::style::Placement::Bottom,
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Page => ldir_ir::lir::style::Placement::Float,
+                    ldir_ir::sir::v2::nodes::FloatPlacement::ForceHere => ldir_ir::lir::style::Placement::Here,
+                };
 
                 for child_id in &child_ids {
                     let child_info = NodeInfo::from_tree(&self.module.body, *child_id)?;
@@ -902,18 +913,30 @@ impl<'a> LirCompiler<'a> {
                     }
                 }
 
-                let fig_height = Fp266::from_int(200);
-                self.ensure_space(fig_height);
+                // Defer non-here floats for post-pagination placement pass.
+                if fig.placement == ldir_ir::lir::style::Placement::Here {
+                    let fig_height = Fp266::from_int(200);
+                    self.ensure_space(fig_height);
 
-                fig.geometry = LIRGeometry::new(
-                    fp_core_to_lir(self.cursor_x),
-                    fp_core_to_lir(self.cursor_y),
-                    fp_core_to_lir(self.content_width()),
-                    fp_core_to_lir(fig_height),
-                );
+                    fig.geometry = LIRGeometry::new(
+                        fp_core_to_lir(self.cursor_x),
+                        fp_core_to_lir(self.cursor_y),
+                        fp_core_to_lir(self.content_width()),
+                        fp_core_to_lir(fig_height),
+                    );
 
-                self.cursor_y += fig_height + Fp266::from_int(6);
-                self.add_block(LIRNode::Figure(fig), fig_height + Fp266::from_int(6));
+                    self.cursor_y += fig_height + Fp266::from_int(6);
+                    self.add_block(LIRNode::Figure(fig), fig_height + Fp266::from_int(6));
+                } else {
+                    // Defer: position will be set by float placement pass.
+                    fig.geometry = LIRGeometry::new(
+                        fp_core_to_lir(Fp266::ZERO),
+                        fp_core_to_lir(Fp266::ZERO),
+                        fp_core_to_lir(self.content_width()),
+                        fp_core_to_lir(Fp266::from_int(200)),
+                    );
+                    self.deferred_floats.push(fig);
+                }
                 Ok(Vec::new())
             }
 
@@ -1243,7 +1266,55 @@ impl<'a> LirCompiler<'a> {
         self.add_block(LIRNode::Bibliography(bibliography), Fp266::ZERO);
     }
 
+    /// Place deferred floats onto pages (deterministic placement).
+    ///
+    /// `Top`/`Here` → page top. `Bottom` → page bottom.
+    /// `Float` → deferred to next page top.
+    /// Full Cassowary constraint solving deferred to V-2 solver pass.
+    fn place_floats(&mut self) {
+        if self.deferred_floats.is_empty() {
+            return;
+        }
+
+        let page_height = self.ctx.page_height;
+        let margin_top = self.ctx.margin_top;
+        let margin_bottom = self.ctx.margin_bottom;
+        let margin_left = self.ctx.margin_left;
+
+        let mut remaining: Vec<LIRFigure> = Vec::new();
+
+        for mut fig in self.deferred_floats.drain(..) {
+            match fig.placement {
+                ldir_ir::lir::style::Placement::Top | ldir_ir::lir::style::Placement::Here => {
+                    fig.geometry.y = fp_core_to_lir(margin_top);
+                    fig.geometry.x = fp_core_to_lir(margin_left);
+                    self.current_page_children.push(LIRNode::Figure(fig));
+                }
+                ldir_ir::lir::style::Placement::Bottom => {
+                    let fig_h_core = fp_lir_to_core(fig.geometry.height);
+                    fig.geometry.y = fp_core_to_lir(page_height - margin_bottom - fig_h_core);
+                    fig.geometry.x = fp_core_to_lir(margin_left);
+                    self.current_page_children.push(LIRNode::Figure(fig));
+                }
+                ldir_ir::lir::style::Placement::Float => {
+                    remaining.push(fig);
+                }
+            }
+        }
+
+        // Place remaining on next page top
+        for mut fig in remaining {
+            if !self.current_page_children.is_empty() {
+                self.finish_page();
+            }
+            fig.geometry.y = fp_core_to_lir(margin_top);
+            fig.geometry.x = fp_core_to_lir(margin_left);
+            self.current_page_children.push(LIRNode::Figure(fig));
+        }
+    }
+
     fn build_document(mut self) -> LIRDocument {
+        self.place_floats();
         self.emit_bibliography_section();
 
         if !self.current_page_children.is_empty() {

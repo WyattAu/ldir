@@ -112,7 +112,8 @@ pub(crate) mod profiling;
 /// Text shaping: HarfBuzz FFI, LRU cache, fast ASCII path.
 pub mod shaping;
 
-pub(crate) mod solver;
+/// Cassowary constraint solver for float placement and layout.
+pub mod solver;
 
 #[doc(hidden)]
 pub mod source_map;
