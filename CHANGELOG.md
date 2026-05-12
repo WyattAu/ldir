@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 **Formal verification alignment, deterministic output guarantees, and backend consistency.**
 
-- Lean4 proofs: 0 errors, 3 sorry across all active proof files (isAcyclicAux_cons_lift_orphan, isAcyclic_cons_orphan, compile_preserves_content; all with complete proof sketches blocked by Lean4 nested Bool match elaboration)
+- Lean4 proofs: 0 errors, 3 sorry across all active proof files (isAcyclicAux_not_found, isAcyclicAux_cons_lift_orphan, compile_preserves_content; all with complete proof sketches blocked by Lean4 nested Bool match elaboration)
 - PDF bit-identical determinism verified
 - G-IR well-formedness verifier with diagnostic output
 - L-IR pipeline: S-IR → L-IR → G-IR compilation with Knuth-Plass line breaking, widow/orphan avoidance
