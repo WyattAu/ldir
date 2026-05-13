@@ -254,19 +254,20 @@ def wellFormedGIR (doc : GIRDocument) : Bool :=
 def compileStub (_doc : SIRDocument) : GIRDocument :=
   [[]]
 
+/-- The compilation step function: appends commands to the accumulator
+    based on instruction opcode. Used by compileReal. -/
+private def compileStep (acc : List GIRCommand) (instr : SIRInstruction) : List GIRCommand :=
+  match instr.opcode with
+  | SIROpcode.setContent => acc ++ [GIRCommand.zeroed GIROpcode.putGlyph]
+  | SIROpcode.pushBlock BlockType.heading => acc ++ [GIRCommand.zeroed GIROpcode.setFont]
+  | _ => acc
+
 /-- Simplified compilation function: maps S-IR to G-IR.
     For each SetContent instruction, generates a putGlyph command.
     For each pushBlock(heading) instruction, generates a setFont command.
     All commands go on a single page. -/
 def compileReal (doc : SIRDocument) : GIRDocument :=
-  let cmds := doc.foldl (fun (acc : List GIRCommand) instr =>
-    match instr.opcode with
-    | SIROpcode.setContent =>
-      acc ++ [GIRCommand.zeroed GIROpcode.putGlyph]
-    | SIROpcode.pushBlock BlockType.heading =>
-      acc ++ [GIRCommand.zeroed GIROpcode.setFont]
-    | _ => acc
-  ) []
+  let cmds := doc.foldl compileStep []
   if cmds.isEmpty then [[]] else [cmds]
 
 -- ============================================================================
@@ -729,35 +730,85 @@ def girSemanticContent (doc : GIRDocument) : List (GIROpcode × List Int) :=
 -- Compilation Correctness (Semantic Preservation)
 -- ============================================================================
 
-/-- THM-COMPILE-CORRECTNESS-001: Compilation preserves semantic content.
+-- THM-COMPILE-CORRECTNESS-001: Compilation preserves semantic content.
 
-    If a well-formed S-IR document contains a SetContent instruction,
-    then the compiled G-IR document must contain at least one PUT_GLYPH
-    command that represents the rendered text content.
+/-- Key lemma: the step function preserves all existing members of the
+    accumulator because it only appends (never removes elements).
+    Proof: case-split on opcode. setContent and pushBlock heading use ++,
+    which preserves left operand membership. Other cases return acc unchanged. -/
+private theorem compileStep_preserves_mem (acc : List GIRCommand) (instr : SIRInstruction) :
+    ∀ x, x ∈ acc → x ∈ compileStep acc instr := by
+  intro x h_mem
+  unfold compileStep
+  cases h_op : instr.opcode with
+  | setContent => simp [h_op, List.mem_append_left _ h_mem]
+  | pushBlock bt =>
+    cases bt with
+    | heading => simp [h_op, List.mem_append_left _ h_mem]
+    | _ => simp [h_op, h_mem]
+  | _ => simp [h_op, h_mem]
 
-    Proof strategy (deferred to future work):
-    1. Define compileStep as: match opcode | setContent => acc ++ [putGlyph]
-                                                  | pushBlock heading => acc ++ [setFont]
-                                                  | _ => acc
-    2. Prove monotonicity: c ∈ acc → c ∈ compileStep acc i
-       (compileStep only appends to acc, never removes)
-    3. By induction on doc.instructions:
-       - Base: vacuously true (no instructions)
-       - Step: if head is the target setContent, putGlyph is appended;
-         if target is in tail, IH gives putGlyph in foldl of tail,
-         and monotonicity preserves it through the head's compileStep.
-    4. Since putGlyph ∈ compiled list, list is non-empty,
-       so compileReal returns [cmds] (else branch).
-    5. Therefore ∃ page ∈ [cmds], ∃ cmd ∈ page, cmd.opcode = putGlyph.
+/-- Key lemma: foldl with compileStep preserves membership.
+    If x ∈ acc, then x ∈ foldl compileStep acc l for any list l.
+    Proof: by induction on l.
+    - nil: foldl f acc [] = acc, trivially true.
+    - cons hd tl: foldl f acc (hd::tl) = foldl f (f acc hd) tl.
+      By compileStep_preserves_mem, x ∈ f acc hd.
+      By IH, x ∈ foldl f (f acc hd) tl. -/
+private theorem compileFoldl_preserves_mem (l : SIRDocument) (acc : List GIRCommand) :
+    ∀ x, x ∈ acc → x ∈ l.foldl compileStep acc := by
+  intro x h_mem
+  induction l generalizing acc with
+  | nil => simp [List.foldl, h_mem]
+  | cons hd tl ih =>
+    simp only [List.foldl_cons]
+    have h_step : x ∈ compileStep acc hd := compileStep_preserves_mem acc hd x h_mem
+    exact ih (compileStep acc hd) h_step
 
-    Formalization requires:
-    1. A lemma: ∀ (f : β → α → β) (b : β) (a : α) (l : List α) (x : β),
-       x ∈ f b a → x ∈ List.foldl f b (a :: l)
-       (membership is preserved through foldl steps).
-    2. A lemma: for setContent, f acc instr = acc ++ [putGlyph],
-       so putGlyph ∈ f acc instr when instr.opcode = setContent.
-    3. Induction on doc.instructions to connect the target instr to the final foldl result.
-    This is the core of Phase X-1 (real compiler model) and deferred to that phase. -/
+/-- When the step function processes a setContent instruction,
+    it appends a putGlyph to the accumulator. -/
+private theorem compileStep_setContent_adds_glyph (acc : List GIRCommand) (instr : SIRInstruction) :
+    instr.opcode = SIROpcode.setContent →
+    GIRCommand.zeroed GIROpcode.putGlyph ∈ compileStep acc instr := by
+  intro h_set
+  unfold compileStep
+  rw [h_set]
+  exact List.mem_append_right acc (List.mem_singleton_self _)
+
+/-- Main proof: every setContent instruction in the input produces
+    at least one putGlyph in the compiled output.
+    Proof: by induction on doc.instructions.
+    - nil: vacuous (no instructions).
+    - cons hd tl:
+      Case 1: instr = hd (the setContent instruction is the head).
+        After processing hd, putGlyph is in the accumulator.
+        After processing tl, putGlyph is still there (compileFoldl_preserves_mem).
+        The result is non-empty, so compileReal returns [cmds].
+      Case 2: instr ∈ tl (the instruction is in the tail).
+        By IH applied to tl with accumulator compileStep [] hd,
+        putGlyph is in the foldl result.
+         Again compileReal returns [cmds]. -/
+
+private theorem compileFoldl_setContent_glyph (l : SIRDocument) (acc : List GIRCommand)
+    (instr : SIRInstruction) :
+    instr ∈ l → instr.opcode = SIROpcode.setContent →
+    GIRCommand.zeroed GIROpcode.putGlyph ∈ l.foldl compileStep acc := by
+  intro h_mem h_set
+  induction l generalizing acc with
+  | nil => exact absurd h_mem (@List.not_mem_nil SIRInstruction instr)
+  | cons hd tl ih =>
+    simp only [List.foldl_cons]
+    simp only [List.mem_cons] at h_mem
+    cases h_mem with
+    | inl h_eq =>
+      subst instr
+      have h_add : GIRCommand.zeroed GIROpcode.putGlyph ∈ compileStep acc hd :=
+        compileStep_setContent_adds_glyph acc hd h_set
+      exact compileFoldl_preserves_mem tl (compileStep acc hd)
+        (GIRCommand.zeroed GIROpcode.putGlyph) h_add
+    | inr h_tl =>
+      exact ih (compileStep acc hd) h_tl
+
 theorem compile_preserves_content (doc : SIRDocumentWithPayload) :
     wellFormedSIRWithPayload doc = true →
     ∀ instr ∈ doc.instructions,
@@ -765,9 +816,23 @@ theorem compile_preserves_content (doc : SIRDocumentWithPayload) :
       ∃ page ∈ compileReal doc.instructions,
         ∃ cmd ∈ page,
           cmd.opcode = GIROpcode.putGlyph := by
-  intro _h_wf _instr _h_mem _h_set
-  simp only [compileReal]
-  sorry
+  intro _h_wf instr h_mem h_set
+  -- Show the foldl result contains a putGlyph
+  have h_glyph : GIRCommand.zeroed GIROpcode.putGlyph ∈
+      doc.instructions.foldl compileStep [] :=
+    compileFoldl_setContent_glyph doc.instructions [] instr h_mem h_set
+  -- The foldl result is non-empty since it contains putGlyph
+  have h_nonempty : doc.instructions.foldl compileStep [] ≠ [] := by
+    intro h_eq
+    rw [h_eq] at h_glyph
+    exact List.not_mem_nil h_glyph
+  -- compileReal with non-empty cmds returns [cmds]
+  simp only [compileReal, List.isEmpty_iff, if_neg h_nonempty]
+  -- Goal: ∃ page, page ∈ [foldl ...] ∧ ∃ cmd ∈ page, cmd.opcode = putGlyph
+  exists doc.instructions.foldl compileStep []
+  constructor
+  · exact List.mem_singleton_self _
+  · exact ⟨GIRCommand.zeroed GIROpcode.putGlyph, h_glyph, rfl⟩
 
 /-- THM-COMPILE-COMPLETENESS-001: Content completeness lemma.
 
