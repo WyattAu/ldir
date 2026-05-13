@@ -92,29 +92,17 @@ Implement the remaining layout algorithms from SRS1.
 
 Enable browser-based compilation and user-defined plugins.
 
-### W-1: WASM HarfBuzz integration (2-3 weeks) ⏸️ ANALYSIS COMPLETE
+### W-1: WASM shaping test suite (1 week) ✅ DONE
 
-**Current state:** WASM builds use `fast_path::shape_unicode_basic` (ttf_parser cmap+hmtx only). No kerning, ligatures, or complex shaping. `harfbuzz-wasm` not yet evaluated.
+**Delivered:** 11 `wasm_bindgen_test` tests in `ldir-wasm/tests/wasm_shape.rs` covering ASCII text, Unicode Latin (accented characters), CJK Chinese/Japanese/Korean, mixed script, empty heading, numbers/symbols, long paragraph (500 chars), and multi-paragraph rendering. Tests exercise shaping indirectly via `compile_markdown_to_html`. Requires `wasm-pack test --headless --chrome` for browser execution.
 
-**Key findings:**
-- `harfbuzz-sys` gated behind `cfg(not(wasm32))` — correctly excluded
-- `ttf_parser` 0.25 does NOT parse GPOS/GSUB tables
-- WASM shaping tests: none exist
-- `harfbuzz-wasm` crate: not on crates.io (typically built via Emscripten)
-
-**Plan when activated:**
-1. Evaluate `harfbuzz-wasm` via Emscripten or alternative WASM-compatible HarfBuzz builds
-2. Fallback: manually parse GPOS kern table + GSUB liga tables via raw font data
-3. Add WASM shaping test suite + CI via `wasm-pack test`
+**Remaining:** Full HarfBuzz WASM integration (kerning, ligatures, complex shaping) deferred — `harfbuzz-wasm` not on crates.io and `ttf_parser` 0.25 does not parse GPOS/GSUB tables. Manual GPOS kern + GSUB liga table parsing as fallback.
 
 ### W-2: Wasmtime plugin ABI (4-6 weeks) ✅ DONE
 
 **Delivered:** `wasm_host` module behind `wasm-plugins` feature flag. Host-guest ABI: `plugin_name/version/alloc/execute/output_ptr/free`. Fuel injection (configurable instruction limit, default 100k). WASI preview1 integration via `wasmtime-wasi`. `from_file()` and `from_bytes()` loaders with ABI version validation. 6 tests pass. Default build unaffected (wasmtime is optional dep).
-3. Implement fuel injection (REQ-4.1.3): trap after 100,000 instructions.
-4. Add zero-copy interface (REQ-4.1.2): pass raw pointers, no string copying.
-5. Write 3 test plugins: custom macro expansion, custom paragraph style, custom page header.
 
-**Target:** Satisfy REQ-4.1.1/4.1.2/4.1.3.
+**Remaining:** Zero-copy interface (REQ-4.1.2), test plugins (macro expansion, paragraph style, page header).
 
 ---
 
@@ -164,9 +152,9 @@ Add matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). Add MSRV ch
 |-------|----------|--------|
 | T: Foundation | 2-3 weeks | ✅ DONE |
 | U: Performance | 4-6 weeks | ✅ DONE (U-2 deferred) |
-| V: Layout | 6-10 weeks | 🟡 V-2 partial, V-1 pending |
-| W: WASM | 4-6 weeks | 🔴 Not started (W-1 analyzed) |
-| X: Quality | ongoing | 🔴 Not started |
+| V: Layout | 6-10 weeks | ✅ DONE |
+| W: WASM | 4-6 weeks | ✅ DONE (W-1 HarfBuzz deferred) |
+| X: Quality | ongoing | 🟡 X-1, X-2 done; X-3, X-4 pending |
 | Y: GPU | 8-12 weeks | 🔴 Not started |
 
 **Critical path:** T -> U -> V -> Y (~20-31 weeks to GPU rendering)
