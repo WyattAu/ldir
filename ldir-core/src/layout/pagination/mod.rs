@@ -62,6 +62,18 @@ impl PaginationOptions {
     pub fn usable_height(&self) -> Fp266 {
         self.page_height - self.margin_top - self.margin_bottom
     }
+
+    /// Demerit for empty space on a page (tightness penalty).
+    /// Returns 100 * (remaining / usable) — less empty space = better.
+    pub fn tightness_demerits(&self, used: Fp266) -> f64 {
+        let usable = self.usable_height();
+        if usable <= Fp266::ZERO {
+            return 0.0;
+        }
+        let remaining = (usable - used).to_f64();
+        let usable_f = usable.to_f64();
+        100.0 * (remaining / usable_f).abs()
+    }
 }
 
 /// A page break record: the range of paragraph indices assigned to a page.
@@ -209,6 +221,123 @@ pub fn paginate(items: &[ParagraphBlock], options: &PaginationOptions) -> Pagina
             end_index: items.len() - 1,
             demerits: 0.0,
         });
+    }
+
+    PaginatedDocument {
+        pages,
+        total_demerits,
+    }
+}
+
+/// Global pagination via dynamic programming (branch-and-bound).
+///
+/// Finds the optimal page breaks that minimize total demerits across the
+/// entire document. Demerits include:
+/// - Tightness penalty: 100 * (empty_space / usable_height)
+/// - Widow/orphan penalties for single-line paragraphs at page boundaries
+/// - Page break penalty (base cost per page)
+///
+/// # Algorithm
+///
+/// 1. Precompute prefix sums of paragraph heights for O(1) range queries.
+/// 2. For each candidate page (i..=j), compute feasibility and demerits.
+/// 3. DP: dp[j+1] = min_{i ≤ j, para[i..=j] fit} dp[i] + cost(i, j)
+/// 4. Trace back to recover break positions.
+///
+/// Time: O(n²) where n is paragraph count. Memory: O(n).
+pub fn paginate_global(items: &[ParagraphBlock], options: &PaginationOptions) -> PaginatedDocument {
+    if items.is_empty() {
+        return PaginatedDocument::empty();
+    }
+
+    let usable = options.usable_height();
+    if usable <= Fp266::ZERO {
+        return PaginatedDocument::empty();
+    }
+
+    let n = items.len();
+
+    // Prefix sums of paragraph heights (prefix[i] = sum of heights[0..i))
+    let mut prefix = vec![Fp266::ZERO; n + 1];
+    for i in 0..n {
+        prefix[i + 1] = prefix[i] + items[i].height;
+    }
+
+    // DP: dp[i] = minimum demerits to cover paragraphs[0..i)
+    let mut dp: Vec<f64> = vec![f64::INFINITY; n + 1];
+    let mut prev: Vec<usize> = vec![0; n + 1];
+    dp[0] = 0.0;
+
+    // Page break base cost
+    let break_cost: f64 = 1.0;
+
+    for j in 1..=n {
+        // Branch-and-bound: only consider i where paragraphs[i..j) fit
+        for i in 0..j {
+            let segment_height = prefix[j] - prefix[i];
+            if segment_height > usable {
+                // Overflows — infeasible
+                continue;
+            }
+
+            // Compute demerits for this page
+            let tightness = options.tightness_demerits(segment_height);
+
+            // Widow/orphan check: paragraphs[i] spans a page boundary
+            // (simplified: check first/last paragraph line counts)
+            let mut widow_pen = 0.0;
+            let mut orphan_pen = 0.0;
+            if j > i + 1 {
+                // More than one paragraph on page — check last paragraph on previous page
+                // (this is a simplification; full widow/orphan needs line-level analysis)
+                if items[j - 1].lines.len() == 1 && j > i + 1 {
+                    orphan_pen = options.orphan_penalty;
+                }
+                if i + 1 < j && items[i].lines.len() == 1 && i > 0 {
+                    widow_pen = options.widow_penalty;
+                }
+            }
+
+            let cost = tightness + widow_pen + orphan_pen + break_cost;
+
+            if dp[i] + cost < dp[j] {
+                dp[j] = dp[i] + cost;
+                prev[j] = i;
+            }
+        }
+    }
+
+    // Trace back
+    let total_demerits = dp[n];
+    if total_demerits.is_infinite() {
+        // Fallback: one page per paragraph (shouldn't happen with usable > 0)
+        return paginate(items, options);
+    }
+
+    let mut breaks: Vec<usize> = Vec::new();
+    let mut cur = n;
+    while cur > 0 {
+        breaks.push(cur - 1);
+        cur = prev[cur];
+    }
+    breaks.reverse();
+
+    let mut pages = Vec::new();
+    let mut start = 0;
+    for &end in &breaks {
+        let mut demerits = 0.0;
+        let seg_h = prefix[end + 1] - prefix[start];
+        demerits += options.tightness_demerits(seg_h);
+        demerits += break_cost;
+        if end > start && items[end].lines.len() == 1 {
+            demerits += options.orphan_penalty;
+        }
+        pages.push(PageBreak {
+            start_index: start,
+            end_index: end,
+            demerits,
+        });
+        start = end + 1;
     }
 
     PaginatedDocument {
@@ -367,5 +496,47 @@ mod tests {
             Fp266::from_int(72),
         );
         assert_eq!(opts.usable_height(), Fp266::from_int(648));
+    }
+
+    #[test]
+    fn global_paginate_single_page() {
+        let items = vec![make_paragraph(3, 12), make_paragraph(2, 12)];
+        let opts = default_options(792);
+        let result = paginate_global(&items, &opts);
+        assert_eq!(result.page_count(), 1);
+        assert_eq!(result.pages[0].start_index, 0);
+        assert_eq!(result.pages[0].end_index, 1);
+    }
+
+    #[test]
+    fn global_paginate_multi_page() {
+        let items = vec![
+            make_paragraph(30, 12), // 360pt
+            make_paragraph(30, 12), // 360pt → overflow
+            make_paragraph(20, 12), // 240pt
+        ];
+        let opts = default_options(792);
+        let result = paginate_global(&items, &opts);
+        assert!(result.page_count() >= 2);
+        // Total demerits should be finite
+        assert!(result.total_demerits.is_finite());
+    }
+
+    #[test]
+    fn global_paginate_empty() {
+        let items: Vec<ParagraphBlock> = vec![];
+        let opts = default_options(792);
+        let result = paginate_global(&items, &opts);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn global_paginate_deterministic() {
+        let items = vec![make_paragraph(5, 12), make_paragraph(5, 12), make_paragraph(5, 12)];
+        let opts = default_options(300);
+        let r1 = paginate_global(&items, &opts);
+        let r2 = paginate_global(&items, &opts);
+        assert_eq!(r1.page_count(), r2.page_count());
+        assert_eq!(r1.total_demerits, r2.total_demerits);
     }
 }
