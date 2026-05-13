@@ -5,7 +5,7 @@
 //!   - Cache miss path: unique strings force shaping on every lookup.
 //!   - Cache hit path: repeated strings return cached ShapedRun.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 use ldir_core::fp266::Fp266;
 use ldir_core::shaping::cache::ShapeCache;
@@ -34,11 +34,12 @@ fn bench_cache_miss(c: &mut Criterion) {
                 || ShapeCache::new(n * 2),
                 |mut cache| {
                     for t in &texts {
-                        black_box(
-                            cache.get_or_shape(t.as_str(), 0, Fp266::from_int(12), |text, fid, fs| {
-                                shape_ascii(text, fs, fid)
-                            }),
-                        );
+                        black_box(cache.get_or_shape(
+                            t.as_str(),
+                            0,
+                            Fp266::from_int(12),
+                            |text, fid, fs| shape_ascii(text, fs, fid),
+                        ));
                     }
                     cache
                 },
@@ -73,11 +74,12 @@ fn bench_cache_hit(c: &mut Criterion) {
                 |mut cache| {
                     for i in 0..lookups {
                         let t = &texts[i % pool_size];
-                        black_box(
-                            cache.get_or_shape(t.as_str(), 0, Fp266::from_int(12), |_, _, _| {
-                                unreachable!("should always hit")
-                            }),
-                        );
+                        black_box(cache.get_or_shape(
+                            t.as_str(),
+                            0,
+                            Fp266::from_int(12),
+                            |_, _, _| unreachable!("should always hit"),
+                        ));
                     }
                     cache
                 },
@@ -101,11 +103,12 @@ fn bench_cache_lru_eviction(c: &mut Criterion) {
                 |mut cache| {
                     // Iterate through pool twice: first pass fills+evicts, second pass hits
                     for t in texts.iter().chain(texts.iter()) {
-                        black_box(
-                            cache.get_or_shape(t.as_str(), 0, Fp266::from_int(12), |text, fid, fs| {
-                                shape_ascii(text, fs, fid)
-                            }),
-                        );
+                        black_box(cache.get_or_shape(
+                            t.as_str(),
+                            0,
+                            Fp266::from_int(12),
+                            |text, fid, fs| shape_ascii(text, fs, fid),
+                        ));
                     }
                     cache
                 },
@@ -117,5 +120,10 @@ fn bench_cache_lru_eviction(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_cache_miss, bench_cache_hit, bench_cache_lru_eviction);
+criterion_group!(
+    benches,
+    bench_cache_miss,
+    bench_cache_hit,
+    bench_cache_lru_eviction
+);
 criterion_main!(benches);

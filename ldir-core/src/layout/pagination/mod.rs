@@ -532,7 +532,11 @@ mod tests {
 
     #[test]
     fn global_paginate_deterministic() {
-        let items = vec![make_paragraph(5, 12), make_paragraph(5, 12), make_paragraph(5, 12)];
+        let items = vec![
+            make_paragraph(5, 12),
+            make_paragraph(5, 12),
+            make_paragraph(5, 12),
+        ];
         let opts = default_options(300);
         let r1 = paginate_global(&items, &opts);
         let r2 = paginate_global(&items, &opts);

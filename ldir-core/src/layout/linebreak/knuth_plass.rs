@@ -345,8 +345,8 @@ pub fn insert_hyphenation_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bumpalo::Bump;
     use crate::fp266::Fp266;
+    use bumpalo::Bump;
 
     /// Test helper: runs linebreak with a fresh arena.
     fn kp(items: &[LineBreakItem], opts: &LineBreakOptions) -> LineBreakResult {

@@ -699,10 +699,8 @@ impl PdfDocumentBuilder {
 
         // Write content streams (compressed with FlateDecode).
         // Compress all pages in parallel, then write sequentially.
-        let compressed_content: Vec<Vec<u8>> = content_data
-            .par_iter()
-            .map(|data| compress(data))
-            .collect();
+        let compressed_content: Vec<Vec<u8>> =
+            content_data.par_iter().map(|data| compress(data)).collect();
         for i in 0..self.pages.len() {
             pdf.stream(content_ids[i], &compressed_content[i])
                 .filter(Filter::FlateDecode);

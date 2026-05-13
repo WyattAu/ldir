@@ -1,5 +1,5 @@
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use bumpalo::Bump;
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 use ldir_core::fp266::Fp266;
 use ldir_core::layout::linebreak::cjk::insert_cjk_breaks;
@@ -253,10 +253,12 @@ fn bench_line_break_sizes(c: &mut Criterion) {
     let mixed_items = make_mixed_script_paragraph();
     group.bench_function(
         BenchmarkId::new("line_break_mixed_script", "latin+cjk+arabic"),
-        |b| b.iter(|| {
-            let bump: Bump = Bump::new();
-            black_box(linebreak(&mixed_items, &options, &bump))
-        }),
+        |b| {
+            b.iter(|| {
+                let bump: Bump = Bump::new();
+                black_box(linebreak(&mixed_items, &options, &bump))
+            })
+        },
     );
 
     group.finish();

@@ -192,18 +192,22 @@ impl ThreadSafeShapeCache {
 
         // Fast path: lock-free cache hit.
         if let Some(entry) = self.entries.get(&key) {
-            entry
-                .last_access
-                .store(self.epoch.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                std::sync::atomic::Ordering::Relaxed);
+            entry.last_access.store(
+                self.epoch
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                std::sync::atomic::Ordering::Relaxed,
+            );
             self.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             return entry.run.clone();
         }
 
         // Slow path: shape outside any lock.
-        self.misses.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.misses
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let run = Arc::new(shaper(text, font_id, font_size));
-        let now = self.epoch.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let now = self
+            .epoch
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         // Insert (or pick up another thread's insert).
         // Use get+insert to avoid entry API deadlocks.
@@ -216,10 +220,13 @@ impl ThreadSafeShapeCache {
             return existing.run.clone();
         }
 
-        self.entries.insert(key, CacheEntry {
-            run: result.clone(),
-            last_access: std::sync::atomic::AtomicU64::new(now),
-        });
+        self.entries.insert(
+            key,
+            CacheEntry {
+                run: result.clone(),
+                last_access: std::sync::atomic::AtomicU64::new(now),
+            },
+        );
 
         // Evict if over capacity (lazy, approximate).
         if self.entries.len() > self.capacity {
@@ -235,7 +242,11 @@ impl ThreadSafeShapeCache {
         let oldest = self
             .entries
             .iter()
-            .min_by_key(|e| e.value().last_access.load(std::sync::atomic::Ordering::Relaxed))
+            .min_by_key(|e| {
+                e.value()
+                    .last_access
+                    .load(std::sync::atomic::Ordering::Relaxed)
+            })
             .map(|r| r.key().clone());
         if let Some(key) = oldest {
             self.entries.remove(&key);

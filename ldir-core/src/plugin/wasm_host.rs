@@ -117,8 +117,8 @@ impl WasmPlugin {
         let engine = wasmtime::Engine::new(&engine_config)
             .map_err(|e| WasmHostError::LoadFailed(e.to_string()))?;
 
-        let module =
-            wasmtime::Module::new(&engine, bytes).map_err(|e| WasmHostError::LoadFailed(e.to_string()))?;
+        let module = wasmtime::Module::new(&engine, bytes)
+            .map_err(|e| WasmHostError::LoadFailed(e.to_string()))?;
 
         let name = Self::validate_abi(&engine, &module, config)?;
 
@@ -155,8 +155,11 @@ impl WasmPlugin {
         let mut linker = wasmtime::Linker::new(engine);
 
         if config.enable_wasi {
-            wasmtime_wasi::preview1::add_to_linker_sync(&mut linker, |s: &mut wasmtime_wasi::preview1::WasiP1Ctx| s)
-                .map_err(|e| WasmHostError::LoadFailed(format!("WASI setup failed: {e}")))?;
+            wasmtime_wasi::preview1::add_to_linker_sync(
+                &mut linker,
+                |s: &mut wasmtime_wasi::preview1::WasiP1Ctx| s,
+            )
+            .map_err(|e| WasmHostError::LoadFailed(format!("WASI setup failed: {e}")))?;
         }
 
         let wasi_ctx = wasmtime_wasi::WasiCtxBuilder::new().build_p1();
@@ -277,16 +280,11 @@ mod tests {
         let err = WasmHostError::MissingExport("plugin_name".to_string());
         assert!(err.to_string().contains("plugin_name"));
 
-        let err = WasmHostError::AbiVersionMismatch {
-            guest: 0,
-            host: 1,
-        };
+        let err = WasmHostError::AbiVersionMismatch { guest: 0, host: 1 };
         assert!(err.to_string().contains("guest=0"));
         assert!(err.to_string().contains("host=1"));
 
-        let err = WasmHostError::FuelExhausted {
-            limit: 100_000,
-        };
+        let err = WasmHostError::FuelExhausted { limit: 100_000 };
         assert!(err.to_string().contains("100000"));
     }
 

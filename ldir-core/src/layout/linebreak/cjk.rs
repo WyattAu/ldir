@@ -114,7 +114,11 @@ mod tests {
     use bumpalo::Bump;
 
     /// Test helper: arena-backed CJK break insertion.
-    fn cjk_breaks<'a>(text: &str, items: &[LineBreakItem], bump: &'a Bump) -> BumpVec<'a, LineBreakItem> {
+    fn cjk_breaks<'a>(
+        text: &str,
+        items: &[LineBreakItem],
+        bump: &'a Bump,
+    ) -> BumpVec<'a, LineBreakItem> {
         insert_cjk_breaks(text, items, bump)
     }
 

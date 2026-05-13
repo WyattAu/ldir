@@ -121,7 +121,12 @@ pub fn compute_demerits_batch(
     fitness_changed: [bool; 4],
 ) -> [f64; 4] {
     std::array::from_fn(|i| {
-        compute_demerits(badness[i], fitness_penalty, line_penalty, fitness_changed[i])
+        compute_demerits(
+            badness[i],
+            fitness_penalty,
+            line_penalty,
+            fitness_changed[i],
+        )
     })
 }
 
@@ -164,12 +169,28 @@ pub unsafe fn compute_demerits_batch_simd(
         // Note: _mm_set_pd(a, b) stores a in high bits, b in low bits.
         // Memory order is [low, high] = [b, a].
         let fd_lo = _mm_set_pd(
-            if fitness_changed[1] { fitness_penalty } else { 0.0 },
-            if fitness_changed[0] { fitness_penalty } else { 0.0 },
+            if fitness_changed[1] {
+                fitness_penalty
+            } else {
+                0.0
+            },
+            if fitness_changed[0] {
+                fitness_penalty
+            } else {
+                0.0
+            },
         );
         let fd_hi = _mm_set_pd(
-            if fitness_changed[3] { fitness_penalty } else { 0.0 },
-            if fitness_changed[2] { fitness_penalty } else { 0.0 },
+            if fitness_changed[3] {
+                fitness_penalty
+            } else {
+                0.0
+            },
+            if fitness_changed[2] {
+                fitness_penalty
+            } else {
+                0.0
+            },
         );
 
         // fitness_demerit^2
@@ -298,9 +319,7 @@ mod tests {
         let badness = [0.0, 0.5, 1.0, 0.25];
         let fitness_changed = [false, true, false, true];
         let scalar = compute_demerits_batch(badness, 100.0, 10.0, fitness_changed);
-        let simd = unsafe {
-            compute_demerits_batch_simd(badness, 100.0, 10.0, fitness_changed)
-        };
+        let simd = unsafe { compute_demerits_batch_simd(badness, 100.0, 10.0, fitness_changed) };
         for i in 0..4 {
             assert!(
                 (simd[i] - scalar[i]).abs() < 1e-10,
@@ -316,9 +335,7 @@ mod tests {
     fn test_batch_simd_infeasible() {
         let badness = [f64::INFINITY, f64::NEG_INFINITY, 0.0, 1e6];
         let fitness_changed = [false, false, false, false];
-        let result = unsafe {
-            compute_demerits_batch_simd(badness, 10.0, 5.0, fitness_changed)
-        };
+        let result = unsafe { compute_demerits_batch_simd(badness, 10.0, 5.0, fitness_changed) };
         // infinity handling: (5 + inf)^2 = inf, (5 - inf)^2 = inf
         assert!(result[0].is_infinite());
         assert!(result[1].is_infinite());

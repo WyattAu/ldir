@@ -270,8 +270,14 @@ Future work will extend this to handle larger inputs.
     let pdf = compile_to_pdf(input, "md").unwrap();
     assert!(pdf.starts_with(b"%PDF"), "must be valid PDF");
     let pages = pdf_page_count(&pdf);
-    assert!(pages >= 1, "academic paper should have at least 1 page, got {pages}");
-    assert!(pages <= 3, "5-section paper should fit in ≤3 pages, got {pages}");
+    assert!(
+        pages >= 1,
+        "academic paper should have at least 1 page, got {pages}"
+    );
+    assert!(
+        pages <= 3,
+        "5-section paper should fit in ≤3 pages, got {pages}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -307,7 +313,10 @@ fn test_golden_list_document() {
     assert!(pdf.starts_with(b"%PDF"));
     let pages = pdf_page_count(&pdf);
     assert!(pages >= 1, "list document should have at least 1 page");
-    assert!(pages <= 2, "list document should fit in ≤2 pages, got {pages}");
+    assert!(
+        pages <= 2,
+        "list document should fit in ≤2 pages, got {pages}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -320,7 +329,10 @@ fn test_golden_single_page() {
     let pdf = compile_to_pdf(input, "md").unwrap();
     assert!(pdf.starts_with(b"%PDF"));
     let pages = pdf_page_count(&pdf);
-    assert_eq!(pages, 1, "short document should be exactly 1 page, got {pages}");
+    assert_eq!(
+        pages, 1,
+        "short document should be exactly 1 page, got {pages}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +368,10 @@ The system is deployed using containers.
     let pdf = compile_to_pdf(input, "md").unwrap();
     assert!(pdf.starts_with(b"%PDF"));
     // Verify PDF has substantial content (not just headers)
-    assert!(pdf.len() > 800, "PDF with nested structure should be >800 bytes");
+    assert!(
+        pdf.len() > 800,
+        "PDF with nested structure should be >800 bytes"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -386,7 +401,10 @@ fn test_golden_inline_formatting() {
     let pdf = compile_to_pdf(input, "md").unwrap();
     assert!(pdf.starts_with(b"%PDF"));
     // PDF should be larger than a bare minimum (content was rendered)
-    assert!(pdf.len() > 500, "PDF with formatted text should be >500 bytes");
+    assert!(
+        pdf.len() > 500,
+        "PDF with formatted text should be >500 bytes"
+    );
 }
 
 // ---------------------------------------------------------------------------

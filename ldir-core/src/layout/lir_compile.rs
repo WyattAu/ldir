@@ -19,12 +19,12 @@ use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::NodeType;
 
 use crate::compiler::bibtex::{BibEntry, format_citation_apa, format_citation_ieee};
-use crate::solver::{Expression, Relation, Solver, Strength};
 use crate::compiler::context::CompileContext;
 use crate::compiler::context::{
     FONT_ID_BOLD, FONT_ID_BOLD_ITALIC, FONT_ID_ITALIC, FONT_ID_MONO, FONT_ID_REGULAR,
 };
 use crate::fp266::Fp266;
+use crate::solver::{Expression, Relation, Solver, Strength};
 use bumpalo::collections::Vec as BumpVec;
 
 use crate::layout::linebreak::cjk::{insert_cjk_breaks, is_cjk_text};
@@ -877,11 +877,21 @@ impl<'a> LirCompiler<'a> {
                 fig.source_node_id = source_id;
                 // Map SIR FloatPlacement to LIR Placement
                 fig.placement = match placement {
-                    ldir_ir::sir::v2::nodes::FloatPlacement::Here => ldir_ir::lir::style::Placement::Here,
-                    ldir_ir::sir::v2::nodes::FloatPlacement::Top => ldir_ir::lir::style::Placement::Top,
-                    ldir_ir::sir::v2::nodes::FloatPlacement::Bottom => ldir_ir::lir::style::Placement::Bottom,
-                    ldir_ir::sir::v2::nodes::FloatPlacement::Page => ldir_ir::lir::style::Placement::Float,
-                    ldir_ir::sir::v2::nodes::FloatPlacement::ForceHere => ldir_ir::lir::style::Placement::Here,
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Here => {
+                        ldir_ir::lir::style::Placement::Here
+                    }
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Top => {
+                        ldir_ir::lir::style::Placement::Top
+                    }
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Bottom => {
+                        ldir_ir::lir::style::Placement::Bottom
+                    }
+                    ldir_ir::sir::v2::nodes::FloatPlacement::Page => {
+                        ldir_ir::lir::style::Placement::Float
+                    }
+                    ldir_ir::sir::v2::nodes::FloatPlacement::ForceHere => {
+                        ldir_ir::lir::style::Placement::Here
+                    }
                 };
 
                 for child_id in &child_ids {
@@ -1355,7 +1365,10 @@ impl<'a> LirCompiler<'a> {
             match solver.resolve() {
                 Ok(values) => {
                     let solved_x = values.get(&var_x).copied().unwrap_or(page_left);
-                    let solved_y = values.get(&var_y).copied().unwrap_or((page_bottom - fig_h).max(page_top));
+                    let solved_y = values
+                        .get(&var_y)
+                        .copied()
+                        .unwrap_or((page_bottom - fig_h).max(page_top));
                     fig.geometry.x = LirFp::from_f64(solved_x);
                     fig.geometry.y = LirFp::from_f64(solved_y);
                     self.current_page_children.push(LIRNode::Figure(fig));

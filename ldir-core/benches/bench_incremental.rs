@@ -7,12 +7,12 @@
 
 use std::sync::Arc;
 
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
+use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 
 use ldir_core::compiler::context::CompileContext;
 use ldir_core::layout::incremental::IncrementalLayout;
-use ldir_ir::sir::v2::nodes::{Node, NodeType};
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::nodes::{Node, NodeType};
 
 /// Build a V2 document with `n` paragraphs of realistic text.
 fn make_n_paragraph_doc(n: u32) -> SIRModuleV2 {
@@ -80,8 +80,7 @@ fn make_edited_doc(n: u32, edit_idx: u32) -> SIRModuleV2 {
         let content = if i == edit_idx {
             format!(
                 "Paragraph {p}: MODIFIED TEXT HERE. The quick brown fox jumps over the lazy dog. \
-                 This paragraph was changed to simulate a single-word edit in a large document."
-                    ,
+                 This paragraph was changed to simulate a single-word edit in a large document.",
                 p = i + 1,
             )
         } else {
@@ -121,9 +120,8 @@ fn bench_incremental_no_change(c: &mut Criterion) {
         let ctx = CompileContext::default();
 
         // Initial compile to get baseline L-IR
-        let initial_lir = Arc::new(
-            ldir_core::compile_sir_to_lir(&module, &ctx).expect("initial compile failed"),
-        );
+        let initial_lir =
+            Arc::new(ldir_core::compile_sir_to_lir(&module, &ctx).expect("initial compile failed"));
 
         group.bench_function(format!("{n}_paras"), |b| {
             let layout = IncrementalLayout::new(Arc::clone(&module));
@@ -147,9 +145,8 @@ fn bench_incremental_single_edit(c: &mut Criterion) {
         let module = Arc::new(make_n_paragraph_doc(n));
         let ctx = CompileContext::default();
 
-        let initial_lir = Arc::new(
-            ldir_core::compile_sir_to_lir(&module, &ctx).expect("initial compile failed"),
-        );
+        let initial_lir =
+            Arc::new(ldir_core::compile_sir_to_lir(&module, &ctx).expect("initial compile failed"));
 
         // Edit the middle paragraph
         let edit_idx = n / 2;
