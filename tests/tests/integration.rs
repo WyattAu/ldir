@@ -216,3 +216,201 @@ fn test_code_block() {
     let pdf = compile_to_pdf(input, "md").unwrap();
     assert!(pdf.starts_with(b"%PDF"));
 }
+
+// ---------------------------------------------------------------------------
+// Golden Master Tests (X-2)
+// ---------------------------------------------------------------------------
+
+/// Helper: count occurrences of a byte pattern in a byte slice.
+fn count_pattern(haystack: &[u8], needle: &[u8]) -> usize {
+    haystack
+        .windows(needle.len())
+        .filter(|w| *w == needle)
+        .count()
+}
+
+/// Helper: extract page count from PDF by counting /Type /Page entries.
+fn pdf_page_count(pdf: &[u8]) -> usize {
+    let pdf_str = String::from_utf8_lossy(pdf);
+    // Count /Type /Page (not /Pages) to get leaf page objects
+    pdf_str.matches("/Type /Page\n").count()
+}
+
+// ---------------------------------------------------------------------------
+// 13. Academic paper structure
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_academic_paper() {
+    let input = r#"# Introduction
+
+This is the introduction section of an academic paper. It provides
+background information and motivates the research problem.
+
+## Related Work
+
+Previous approaches have addressed this problem using various methods.
+Smith et al. proposed a technique based on linear algebra.
+
+## Methodology
+
+Our approach uses a novel algorithm that processes data efficiently.
+The key insight is that the problem can be decomposed into subproblems.
+
+## Results
+
+We evaluated our method on three benchmark datasets. The results
+demonstrate significant improvements over prior work.
+
+## Conclusion
+
+In this paper, we presented a new approach to the problem.
+Future work will extend this to handle larger inputs.
+"#;
+    let pdf = compile_to_pdf(input, "md").unwrap();
+    assert!(pdf.starts_with(b"%PDF"), "must be valid PDF");
+    let pages = pdf_page_count(&pdf);
+    assert!(pages >= 1, "academic paper should have at least 1 page, got {pages}");
+    assert!(pages <= 3, "5-section paper should fit in ≤3 pages, got {pages}");
+}
+
+// ---------------------------------------------------------------------------
+// 14. List-heavy document
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_list_document() {
+    let input = r#"# Shopping List
+
+## Fruits
+- Apple
+- Banana
+- Cherry
+- Date
+- Elderberry
+
+## Vegetables
+- Asparagus
+- Broccoli
+- Carrot
+- Daikon
+- Endive
+
+## Grains
+- Rice
+- Wheat
+- Oats
+- Barley
+- Corn
+"#;
+    let pdf = compile_to_pdf(input, "md").unwrap();
+    assert!(pdf.starts_with(b"%PDF"));
+    let pages = pdf_page_count(&pdf);
+    assert!(pages >= 1, "list document should have at least 1 page");
+    assert!(pages <= 2, "list document should fit in ≤2 pages, got {pages}");
+}
+
+// ---------------------------------------------------------------------------
+// 15. Multi-paragraph single page
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_single_page() {
+    let input = "# Single Page\n\nA short document that fits on one page.";
+    let pdf = compile_to_pdf(input, "md").unwrap();
+    assert!(pdf.starts_with(b"%PDF"));
+    let pages = pdf_page_count(&pdf);
+    assert_eq!(pages, 1, "short document should be exactly 1 page, got {pages}");
+}
+
+// ---------------------------------------------------------------------------
+// 16. Nested structure (headings + lists + code)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_nested_structure() {
+    let input = r#"# System Architecture
+
+## Components
+
+### Frontend
+- User interface
+- State management
+
+### Backend
+- API server
+- Database
+
+## Code Example
+
+```
+fn process(data: &[u8]) -> Result<Output> {
+    parse(data).and_then(transform).and_then(validate)
+}
+```
+
+## Deployment
+
+The system is deployed using containers.
+"#;
+    let pdf = compile_to_pdf(input, "md").unwrap();
+    assert!(pdf.starts_with(b"%PDF"));
+    // Verify PDF has substantial content (not just headers)
+    assert!(pdf.len() > 800, "PDF with nested structure should be >800 bytes");
+}
+
+// ---------------------------------------------------------------------------
+// 17. Deterministic page count
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_deterministic_page_count() {
+    let input = "# Test\n\nA paragraph.\n\nAnother paragraph.\n\nThird paragraph.";
+    let pdf1 = compile_to_pdf(input, "md").unwrap();
+    let pdf2 = compile_to_pdf(input, "md").unwrap();
+    assert_eq!(pdf1, pdf2, "PDFs must be byte-identical");
+    assert_eq!(
+        pdf_page_count(&pdf1),
+        pdf_page_count(&pdf2),
+        "page counts must match"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 18. Bold and italic text
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_inline_formatting() {
+    let input = "# Formatting Test\n\nThis has **bold** and *italic* and ***both*** text.";
+    let pdf = compile_to_pdf(input, "md").unwrap();
+    assert!(pdf.starts_with(b"%PDF"));
+    // PDF should be larger than a bare minimum (content was rendered)
+    assert!(pdf.len() > 500, "PDF with formatted text should be >500 bytes");
+}
+
+// ---------------------------------------------------------------------------
+// 19. Typst golden master
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_typst_document() {
+    let input = "= Title\n\n== Section\n\nA paragraph with *emphasis*.\n\n== Another\n\nMore text.";
+    let pdf = compile_to_pdf(input, "typ").unwrap();
+    assert!(pdf.starts_with(b"%PDF"));
+    let pages = pdf_page_count(&pdf);
+    assert!(pages >= 1, "typst document should have at least 1 page");
+}
+
+// ---------------------------------------------------------------------------
+// 20. LaTeX golden master
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_golden_latex_document() {
+    let input = "\\documentclass{article}\n\\begin{document}\n\\section{First}\nContent here.\n\n\\section{Second}\nMore content.\n\\end{document}";
+    let pdf = compile_to_pdf(input, "tex").unwrap();
+    assert!(pdf.starts_with(b"%PDF"));
+    let pages = pdf_page_count(&pdf);
+    assert!(pages >= 1, "latex document should have at least 1 page");
+}
