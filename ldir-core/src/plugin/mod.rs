@@ -4,6 +4,12 @@
 //! - Input parsers (frontends) that convert file formats to S-IR v2
 //! - Output generators (backends) that convert S-IR v2 to target formats
 //!
+//! ## Wasm Plugins
+//!
+//! When the `wasm-plugins` feature is enabled, a Wasmtime-based sandboxed
+//! plugin host is available via the [`wasm_host`] module. Wasm plugins
+//! export a defined ABI and run with fuel injection (instruction limits).
+//!
 //! ## Usage
 //!
 //! ```rust,ignore
@@ -13,6 +19,9 @@
 //! registry.register_frontend(MyFrontend);
 //! registry.register_backend(MyBackend);
 //! ```
+
+#[cfg(feature = "wasm-plugins")]
+pub mod wasm_host;
 
 use ldir_ir::sir::v2::SIRModuleV2;
 use std::path::Path;

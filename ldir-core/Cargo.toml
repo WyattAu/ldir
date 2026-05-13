@@ -9,6 +9,10 @@ readme = "README.md"
 keywords = ["document", "compiler", "typesetting", "layout", "text-shaping"]
 categories = ["compilers", "text-processing"]
 
+[features]
+default = []
+wasm-plugins = ["wasmtime", "wasmtime-wasi"]
+
 [dependencies]
 indexmap = { workspace = true }
 dashmap = { workspace = true }
@@ -22,6 +26,8 @@ fontdb = { workspace = true }
 bumpalo = { version = "3.16", features = ["collections"] }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
+wasmtime = { workspace = true, optional = true }
+wasmtime-wasi = { version = "28", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 harfbuzz-sys = { workspace = true }
