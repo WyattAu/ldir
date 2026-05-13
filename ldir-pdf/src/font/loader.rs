@@ -102,7 +102,7 @@ impl FontFace {
         // This is safe because:
         // 1. `data_owned` is stored in the same struct
         // 2. Both are dropped together
-        // 3. FontFace is not Clone
+        // 3. Clone re-parses from owned data (see impl Clone above)
         #[allow(unsafe_code)]
         let face: ttf_parser::Face<'static> =
             unsafe { std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(face) };

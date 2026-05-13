@@ -198,10 +198,13 @@ impl SIRDocument {
     /// Note: Payload region is NOT included. Use [`Self::to_bytes_with_payload`]
     /// for full round-trip fidelity including payload data.
     pub fn to_bytes(&self) -> Vec<u8> {
+        // INVARIANT: SIRInstruction is a plain enum-of-primitives with no
+        // custom Serialize impl, so rkyv serialization cannot fail for
+        // well-formed data. Panicking here is intentional — a failure
+        // indicates a bug in instruction construction.
+        #[allow(clippy::expect_used)]
         rkyv::to_bytes::<rkyv::rancor::Error>(&self.instructions)
-            .unwrap_or_else(|e| {
-                unreachable!("rkyv serialization of SIR instructions should not fail: {e}")
-            })
+            .expect("rkyv serialization of SIR instructions should not fail")
             .into_vec()
     }
 
@@ -223,10 +226,11 @@ impl SIRDocument {
     /// Format: `[u32 payload_len][payload bytes][rkyv instruction bytes]`
     pub fn to_bytes_with_payload(&self) -> Vec<u8> {
         let payload_bytes = self.payload.as_bytes();
+        // INVARIANT: SIRInstruction is a plain enum-of-primitives; rkyv
+        // serialization cannot fail for well-formed data.
+        #[allow(clippy::expect_used)]
         let instr_bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&self.instructions)
-            .unwrap_or_else(|e| {
-                unreachable!("rkyv serialization of SIR instructions should not fail: {e}")
-            })
+            .expect("rkyv serialization of SIR instructions should not fail")
             .into_vec();
         let payload_len = payload_bytes.len() as u32;
         let mut out = Vec::with_capacity(4 + payload_bytes.len() + instr_bytes.len());

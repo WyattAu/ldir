@@ -47,13 +47,11 @@ fn is_letter(c: char) -> bool {
 
 pub struct TeXLexer<'a> {
     input: &'a str,
-    #[allow(dead_code)]
-    pos: usize,
 }
 
 impl<'a> TeXLexer<'a> {
     pub fn new(input: &'a str) -> Self {
-        Self { input, pos: 0 }
+        Self { input }
     }
 
     pub fn tokenize(&mut self) -> Vec<Token> {

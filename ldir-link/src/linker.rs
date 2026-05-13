@@ -32,7 +32,9 @@ pub fn link_modules(modules: Vec<SIRModuleV2>) -> Result<SIRModuleV2, LinkError>
         return Err(LinkError::NoInputModules);
     }
     if modules.len() == 1 {
-        return Ok(modules.into_iter().next().unwrap_or_else(|| unreachable!()));
+        // SAFETY: we just checked len() == 1, so next() returns Some.
+        #[allow(clippy::unwrap_used)]
+        return Ok(modules.into_iter().next().unwrap());
     }
 
     let mut linker = ModuleLinker::new();

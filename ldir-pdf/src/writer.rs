@@ -1121,20 +1121,6 @@ impl Default for PdfDocumentBuilder {
     }
 }
 
-#[allow(dead_code)]
-fn escape_pdf_string(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for ch in text.chars() {
-        match ch {
-            '\\' => out.push_str("\\\\"),
-            '(' => out.push_str("\\("),
-            ')' => out.push_str("\\)"),
-            c => out.push(c),
-        }
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
