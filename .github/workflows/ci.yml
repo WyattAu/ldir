@@ -28,7 +28,7 @@ jobs:
 
       - name: Install system dependencies (Ubuntu)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
@@ -60,6 +60,9 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --check
+
+      - name: Build documentation
+        run: cargo doc --workspace --exclude ldir-wasm --no-deps 2>&1 | grep -E "^error" || true
 
       - name: Test
         run: cargo test --workspace --exclude ldir-wasm
@@ -100,7 +103,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -178,10 +181,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache elan toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+          key: lean-elan-${{ runner.os }}-${{ hashFiles('ldir-lean/lean-toolchain') }}
+          restore-keys: lean-elan-
+
+      - name: Cache Lake build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ldir-lean/.lake
+            ldir-lean/lake-packages
+            ldir-lean/.lake/build/lib
+          key: lean-lake-${{ runner.os }}-${{ hashFiles('ldir-lean/lakefile.lean', 'ldir-lean/lake-manifest.json', 'ldir-lean/lean-toolchain') }}
+          restore-keys: lean-lake-
+
       - name: Install elan (Lean 4 toolchain)
         run: |
-          curl -sSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o /tmp/elan-init.sh
-          sh /tmp/elan-init.sh -y
+          if [ ! -d "$HOME/.elan" ]; then
+            curl -sSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o /tmp/elan-init.sh
+            sh /tmp/elan-init.sh -y
+          fi
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Build Lean project
@@ -212,7 +235,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -247,7 +270,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core verapdf
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -261,12 +284,6 @@ jobs:
             target
           key: pdfa-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: pdfa-cargo-
-
-      - name: Install veraPDF
-        run: |
-          wget -q https://github.com/veraPDF/veraPDF-apps/releases/download/v1.26.1/verapdf-1.26.1-installer.zip
-          unzip -q verapdf-1.26.1-installer.zip
-          mv verapdf-1.26.1 /opt/verapdf
 
       - name: Build test binary
         run: cargo build -p ldir-core --release
@@ -283,7 +300,7 @@ jobs:
           for pdf in /tmp/pdfa-tests/*.pdf; do
             if [ -f "$pdf" ]; then
               echo "Validating: $pdf"
-              /opt/verapdf/verapdf --format mrr "$pdf" > "${pdf}.xml" 2>&1
+              verapdf --format mrr "$pdf" > "${pdf}.xml" 2>&1
               if grep -q 'compliance="PASS"' "${pdf}.xml" 2>/dev/null; then
                 echo "  PASS: $pdf"
               else
