@@ -1,15 +1,16 @@
 version: 2
 updates:
-  - package-registry: "https://github.com/rust-lang/crates.io-index"
+  - package-ecosystem: "cargo"
     directory: "/"
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
-  
-  - package-registry: "https://github.com/leanprover/elan/index"
-    directory: "ldir-lean"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     labels:
       - "dependencies"
+      - "github-actions"

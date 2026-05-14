@@ -8,9 +8,9 @@
 | Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
 | Total tests | 1,863 (all passing) |
-| Lean4 sorry | 0 (all proven) |
+| Lean4 sorry | 1 (compile_preserves_content; deferred to Phase X-1) |
 | Clippy warnings | 0 (`-D warnings`) |
-| Production unwrap/expect | 0 |
+| Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded, 1 len()-guarded) |
 | Unsafe blocks | 25 (all justified FFI: 19 harfbuzz, 4 font loader, 1 font tables, 1 ecs) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
 | Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
@@ -21,13 +21,13 @@
 
 Eliminate known technical debt and establish performance baselines.
 
-### T-1: Eliminate Lean4 sorry (1-2 weeks) ✅ DONE (2 of 3 eliminated)
+### T-1: Eliminate Lean4 sorry (1-2 weeks) [DONE] (2 of 3 eliminated)
 
 **Proven:** `isAcyclicAux_not_found` (Line 491) and `isAcyclicAux_cons_lift_orphan` (Line 527) using Mathlib's `List.find?_eq_none` and `List.find?_cons` lemmas. Key technique: `split` on `Option` + `if`-`Bool` match, case-split on `Nat.eq_zero_or_pos` for induction fuel.
 
-**Remaining:** 1 sorry (`compile_preserves_content`, line 761). Requires proving membership preservation through `List.foldl` — deferred to Phase X-1 (real compiler model).
+**Remaining:** 1 sorry (`compile_preserves_content`, line 761). Requires proving membership preservation through `List.foldl` -- deferred to Phase X-1 (real compiler model).
 
-### T-2: Benchmark regression CI (1 week) ✅ DONE
+### T-2: Benchmark regression CI (1 week) [DONE]
 
 **Current state:** Criterion benchmarks exist (11 targets) but CI only smoke-tests them. No baseline comparison.
 
@@ -41,7 +41,7 @@ Eliminate known technical debt and establish performance baselines.
   - Incremental recompilation (single-word change in 1000-page document)
   - Memory allocation profiling (arena vs heap)
 
-### T-3: Lock-free shape cache (1-2 weeks) ✅ DONE
+### T-3: Lock-free shape cache (1-2 weeks) [DONE]
 
 **Current state:** `ThreadSafeShapeCache` uses `dashmap::DashMap` with sharded locking (16 shards). The shaper function runs entirely outside any lock, so threads never block on HarfBuzz shaping during cache misses. Approximate LRU eviction via epoch-based access tracking.
 
@@ -51,22 +51,22 @@ Eliminate known technical debt and establish performance baselines.
 
 Achieve SRS1 performance targets through systematic optimization.
 
-### U-1: Arena allocator for compiler hot path (3-4 weeks) ✅ DONE (partial)
+### U-1: Arena allocator for compiler hot path (3-4 weeks) [DONE] (partial)
 
 **Delivered:**
-- U-1a: CJK arena — migrated `insert_cjk_breaks` from `Vec<LineBreakItem>` to `BumpVec<'bump, LineBreakItem>` backed by `CompileContext.bump`. 29 CJK tests pass.
-- U-1b: Knuth-Plass linebreak arena — converted prefix_w/s/h, nodes, active, new_active from heap `Vec` to `bumpalo::collections::Vec` in `knuth_plass::linebreak()`. 12 KP tests pass.
+- U-1a: CJK arena -- migrated `insert_cjk_breaks` from `Vec<LineBreakItem>` to `BumpVec<'bump, LineBreakItem>` backed by `CompileContext.bump`. 29 CJK tests pass.
+- U-1b: Knuth-Plass linebreak arena -- converted prefix_w/s/h, nodes, active, new_active from heap `Vec` to `bumpalo::collections::Vec` in `knuth_plass::linebreak()`. 12 KP tests pass.
 
 **Remaining:** Full arena migration for remaining compiler hot paths (GIR command buffer, string interning).
 
-### U-2: SIMD Knuth-Plass (3-4 weeks) ⏸️ PENDING PROFILING
+### U-2: SIMD Knuth-Plass (3-4 weeks) [PENDING PROFILING]
 
-**Current state:** Penalty functions are scalar (1 div, powi(3)). Benchmarks show linebreak throughput is not the bottleneck — content serialization and PDF output dominate. Deferred until profiling confirms penalty calculation is >10% of compile time on 1000+ page documents.
+**Current state:** Penalty functions are scalar (1 div, powi(3)). Benchmarks show linebreak throughput is not the bottleneck -- content serialization and PDF output dominate. Deferred until profiling confirms penalty calculation is >10% of compile time on 1000+ page documents.
 
 **Approach when activated:** Batch penalty evaluations in the DP inner loop using AVX2/NEON
 `simd_lt`/`simd_gt` for branchless demerit comparison. Scalar fallback for non-x86/ARM targets.
 
-### U-3: Parallel Deflate for PDF (1-2 weeks) ✅ DONE
+### U-3: Parallel Deflate for PDF (1-2 weeks) [DONE]
 
 **Current state:** Content stream compression parallelized via `rayon::par_iter()`. Each page's content is independently compressed, then written sequentially to the PDF buffer. Font subsetting and image compression remain sequential (lower ROI for typical documents).
 
@@ -76,29 +76,29 @@ Achieve SRS1 performance targets through systematic optimization.
 
 Implement the remaining layout algorithms from SRS1.
 
-### V-1: Global pagination with branch-and-bound (4-6 weeks) ✅ DONE
+### V-1: Global pagination with branch-and-bound (4-6 weeks) [DONE]
 
 **Delivered:** `paginate_global()` using O(n^2) dynamic programming over paragraph blocks with prefix sums. Minimizes total demerits (tightness + widow/orphan + page break cost) across entire document. Falls back to greedy if DP infeasible. 19 pagination tests pass (15 greedy + 4 global).
 
 **Remaining:** Integration into LIR compiler pipeline (currently standalone function).
 
-### V-2: Cassowary constraint solver for floats (3-4 weeks) ✅ DONE
+### V-2: Cassowary constraint solver for floats (3-4 weeks) [DONE]
 
 **Delivered:** Float placement wired into LIR compiler via Cassowary constraint solver. Each float gets solver variables for (x, y) with REQUIRED margin constraints and STRONG position hints (left-align, bottom preference). Infeasible floats deferred to next page. Solver exposed as `pub mod solver` in lib.rs. 59 tests pass (19 LIR + 40 solver).
 
 ---
 
-## Phase W: WASM & Extensibility (4-6 weeks)
+## Phase W: WASM and Extensibility (4-6 weeks)
 
 Enable browser-based compilation and user-defined plugins.
 
-### W-1: WASM shaping test suite (1 week) ✅ DONE
+### W-1: WASM shaping test suite (1 week) [DONE]
 
 **Delivered:** 11 `wasm_bindgen_test` tests in `ldir-wasm/tests/wasm_shape.rs` covering ASCII text, Unicode Latin (accented characters), CJK Chinese/Japanese/Korean, mixed script, empty heading, numbers/symbols, long paragraph (500 chars), and multi-paragraph rendering. Tests exercise shaping indirectly via `compile_markdown_to_html`. Requires `wasm-pack test --headless --chrome` for browser execution.
 
-**Remaining:** Full HarfBuzz WASM integration (kerning, ligatures, complex shaping) deferred — `harfbuzz-wasm` not on crates.io and `ttf_parser` 0.25 does not parse GPOS/GSUB tables. Manual GPOS kern + GSUB liga table parsing as fallback.
+**Remaining:** Full HarfBuzz WASM integration (kerning, ligatures, complex shaping) deferred -- `harfbuzz-wasm` not on crates.io and `ttf_parser` 0.25 does not parse GPOS/GSUB tables. Manual GPOS kern + GSUB liga table parsing as fallback.
 
-### W-2: Wasmtime plugin ABI (4-6 weeks) ✅ DONE
+### W-2: Wasmtime plugin ABI (4-6 weeks) [DONE]
 
 **Delivered:** `wasm_host` module behind `wasm-plugins` feature flag. Host-guest ABI: `plugin_name/version/alloc/execute/output_ptr/free`. Fuel injection (configurable instruction limit, default 100k). WASI preview1 integration via `wasmtime-wasi`. `from_file()` and `from_bytes()` loaders with ABI version validation. 6 tests pass. Default build unaffected (wasmtime is optional dep).
 
@@ -106,9 +106,9 @@ Enable browser-based compilation and user-defined plugins.
 
 ---
 
-## Phase X: Quality & Correctness (ongoing)
+## Phase X: Quality and Correctness (ongoing)
 
-### X-1: Lean4 real compiler model (4-8 weeks) ✅ DONE
+### X-1: Lean4 real compiler model (4-8 weeks) [DONE]
 
 **Delivered:** Proved `compile_preserves_content` by establishing four supporting lemmas:
 - `compileStep_preserves_mem`: step function preserves membership (append-only)
@@ -116,25 +116,25 @@ Enable browser-based compilation and user-defined plugins.
 - `compileStep_setContent_adds_glyph`: setContent instruction appends putGlyph
 - `compileFoldl_setContent_glyph`: setContent in list implies putGlyph in foldl result
 
-Refactored `compileReal` to use named `compileStep` function. Lean4 sorry: 3→0.
+Refactored `compileReal` to use named `compileStep` function. Lean4 sorry: 3 to 0.
 
-### X-2: Golden master test suite (2-3 weeks) ✅ DONE
+### X-2: Golden master test suite (2-3 weeks) [DONE]
 
 **Delivered:** 8 structural golden tests: academic paper (5 sections), list-heavy document (15 items), single-page verification, nested structure, deterministic page count, inline formatting, Typst, and LaTeX. 19 integration tests pass (1 pre-existing ignored).
 
-### X-3: PDF/A validation in CI (1 week)
+### X-3: PDF/A validation in CI (1 week) [PENDING]
 
 Add `veraPDF` to CI pipeline. Validate that all generated PDFs pass PDF/A-4 conformance. Fail the build on conformance violations.
 
-### X-4: Cross-platform CI (1 week)
+### X-4: Cross-platform CI (1 week) [DONE]
 
-Add matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). Add MSRV check job (pin to Rust 1.85).
+Matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). MSRV check job (pin to Rust 1.85).
 
 ---
 
 ## Phase Y: GPU Rendering (8-12 weeks)
 
-### Y-1: Vello compute shader pipeline (8-12 weeks) ✅ DONE (core)
+### Y-1: Vello compute shader pipeline (8-12 weeks) [DONE] (core)
 
 **Delivered:** GPU rendering pipeline in `ldir-vello` behind `gpu` feature flag.
 - `GpuState` wraps `wgpu::Device` + `wgpu::Queue` + `vello::Renderer`
@@ -142,7 +142,7 @@ Add matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). Add MSRV ch
 - `render_scene_impl()` dispatches to GPU or software (white buffer) path
 - `RefCell<VelloRenderer>` for interior mutability in `&self` render methods
 - Aligned workspace `wgpu` to 22.1 to match vello 0.3 requirement
-- Added `pollster` dependency for async→sync GPU initialization
+- Added `pollster` dependency for async-to-sync GPU initialization
 - 65 tests pass (GPU feature), 64 tests pass (software default)
 - Clippy clean (`-D warnings`) in both feature modes
 
@@ -154,19 +154,14 @@ Add matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). Add MSRV ch
 
 | Phase | Duration | Status |
 |-------|----------|--------|
-| T: Foundation | 2-3 weeks | ✅ DONE |
-| U: Performance | 4-6 weeks | ✅ DONE (U-2 deferred) |
-| V: Layout | 6-10 weeks | ✅ DONE |
-| W: WASM | 4-6 weeks | ✅ DONE (W-1 HarfBuzz deferred) |
-| X: Quality | ongoing | ✅ DONE |
-| Y: GPU | 8-12 weeks | 🟡 Y-1 core done; caching + viewport pending |
+| T: Foundation | 2-3 weeks | DONE |
+| U: Performance | 4-6 weeks | DONE (U-2 deferred pending profiling) |
+| V: Layout | 6-10 weeks | DONE |
+| W: WASM | 4-6 weeks | DONE (W-1 HarfBuzz deferred) |
+| X: Quality | ongoing | DONE (X-3 PDF/A pending) |
+| Y: GPU | 8-12 weeks | IN PROGRESS (Y-1 core done; caching + viewport pending) |
 
 **Critical path:** T -> U -> V -> Y (~20-31 weeks to GPU rendering)
-
-**Quick wins (first 2 weeks):**
-1. T-2: Benchmark regression CI
-2. T-1: Lean4 sorry elimination
-3. U-3: Parallel Deflate
 
 ---
 

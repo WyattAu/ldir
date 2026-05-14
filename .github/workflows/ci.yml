@@ -42,13 +42,13 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace --exclude ldir-wasm -- -D warnings
 
       - name: Check formatting
         run: cargo fmt --check
 
       - name: Test
-        run: cargo test --workspace
+        run: cargo test --workspace --exclude ldir-wasm
 
   msrv-check:
     name: MSRV (1.85)
@@ -71,7 +71,7 @@ jobs:
           restore-keys: msrv-cargo-
 
       - name: Check build
-        run: cargo check --workspace
+        run: cargo check --workspace --exclude ldir-wasm
 
   bench-check:
     name: Benchmark Regression

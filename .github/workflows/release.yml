@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-release:
     name: Build ${{ matrix.target }}
@@ -42,3 +45,30 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: target/${{ matrix.target }}/release/ldc${{ matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+
+  create-release:
+    name: Create GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Generate SHA256 checksums
+        working-directory: release-artifacts
+        run: |
+          find . -type f -name 'ldc*' -exec sha256sum {} \; > ../checksums-sha256.txt
+          cat ../checksums-sha256.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-artifacts/*
+            checksums-sha256.txt
+          generate_release_notes: true

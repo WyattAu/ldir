@@ -15,7 +15,7 @@
 | Clippy warnings | 0 (test + lib) |
 | `cargo fmt` | Clean |
 |     Lean4 proofs | 0 errors, 1 sorry (compile_preserves_content; deferred to Phase X-1) |
-| Production unwrap/expect | 0 (all eliminated) |
+| Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded in SIRDocument, 1 len()-guarded in linker) |
 | PDF determinism | Bit-identical verified |
 | **Benchmark targets** | **11** (7 existing + 2 layout + 2 pagination) |
 | Shape cache | DashMap lock-free (16 shards), epoch-based LRU |

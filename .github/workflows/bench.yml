@@ -46,19 +46,13 @@ jobs:
         run: |
           case "${{ github.event.inputs.profile || 'full' }}" in
             quick)
-              echo "sample_size=10" >> "$GITHUB_OUTPUT"
-              echo "measurement_time=2" >> "$GITHUB_OUTPUT"
-              echo "warm_up_time=1" >> "$GITHUB_OUTPUT"
+              echo "bench_args=--quick" >> "$GITHUB_OUTPUT"
               ;;
             thorough)
-              echo "sample_size=100" >> "$GITHUB_OUTPUT"
-              echo "measurement_time=10" >> "$GITHUB_OUTPUT"
-              echo "warm_up_time=5" >> "$GITHUB_OUTPUT"
+              echo "bench_args=" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "sample_size=50" >> "$GITHUB_OUTPUT"
-              echo "measurement_time=5" >> "$GITHUB_OUTPUT"
-              echo "warm_up_time=2" >> "$GITHUB_OUTPUT"
+              echo "bench_args=" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -69,10 +63,7 @@ jobs:
         env:
           CRITERION_PLOT_GENERATION: "false"
         run: |
-          export CRITERION_SAMPLE_SIZE=${{ steps.profile.outputs.sample_size }}
-          export CRITERION_MEASUREMENT_TIME=${{ steps.profile.outputs.measurement_time }}
-          export CRITERION_WARM_UP_TIME=${{ steps.profile.outputs.warm_up_time }}
-          cargo bench -p ldir-core -- --save-baseline scheduled 2>&1 | tee bench-output.txt
+          cargo bench -p ldir-core ${{ steps.profile.outputs.bench_args }} -- --save-baseline scheduled 2>&1 | tee bench-output.txt
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
