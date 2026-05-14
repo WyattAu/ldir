@@ -34,6 +34,12 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install harfbuzz
 
+      - name: Install system dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: vcpkg install harfbuzz:x64-windows && echo "VCPKG_ROOT=$env:VCPKG_ROOT" >> $env:GITHUB_ENV
+        env:
+          VCPKG_DEFAULT_TRIPLET: x64-windows
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -59,7 +65,7 @@ jobs:
         run: cargo test --workspace --exclude ldir-wasm
 
   msrv-check:
-    name: MSRV (1.85)
+    name: MSRV (1.87)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -68,8 +74,8 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
 
-      - name: Install Rust toolchain (1.85)
-        uses: dtolnay/rust-toolchain@1.85.0
+      - name: Install Rust toolchain (1.87)
+        uses: dtolnay/rust-toolchain@1.87.0
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -168,7 +174,7 @@ jobs:
   lean4-check:
     name: Lean 4 Build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 

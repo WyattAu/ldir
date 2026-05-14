@@ -97,6 +97,7 @@ pub fn compute_demerits(
 ///
 /// Returns `[b0, b1, b2, b3]` where `bi = 100 * |ri|^3`.
 #[inline]
+#[cfg(target_arch = "x86_64")]
 #[allow(dead_code, clippy::unnecessary_cast)]
 #[target_feature(enable = "sse2")]
 pub unsafe fn compute_badness_batch_simd(r0: f64, r1: f64, r2: f64, r3: f64) -> [f64; 4] {
