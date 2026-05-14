@@ -215,3 +215,61 @@ jobs:
         run: |
           cargo test -p ldir-core -p ldir-pdf -p ldir-ir --all-features
           cargo clippy -p ldir-core -p ldir-pdf -p ldir-ir --all-features -- -D warnings
+
+  pdfa-check:
+    name: PDF/A Conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: pdfa-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: pdfa-cargo-
+
+      - name: Install veraPDF
+        run: |
+          wget -q https://github.com/veraPDF/veraPDF-apps/releases/download/v1.26.1/verapdf-1.26.1-installer.zip
+          unzip -q verapdf-1.26.1-installer.zip
+          mv verapdf-1.26.1 /opt/verapdf
+
+      - name: Build test binary
+        run: cargo build -p ldir-core --release
+
+      - name: Generate test PDFs
+        run: |
+          mkdir -p /tmp/pdfa-tests
+          cargo test -p ldir-core --test integration -- --ignored 2>/dev/null || true
+          # Generate PDFs programmatically for validation
+          cargo test -p ldir-core pdfa_generate -- --nocapture 2>/dev/null || true
+
+      - name: Validate PDF/A conformance
+        run: |
+          PASS=true
+          for pdf in /tmp/pdfa-tests/*.pdf; do
+            if [ -f "$pdf" ]; then
+              echo "Validating: $pdf"
+              /opt/verapdf/verapdf --format mrr "$pdf" > "${pdf}.xml" 2>&1
+              if grep -q 'compliance="PASS"' "${pdf}.xml" 2>/dev/null; then
+                echo "  PASS: $pdf"
+              else
+                echo "  WARN: $pdf (PDF/A conformance issues — non-blocking for now)"
+                PASS=false
+              fi
+            fi
+          done
+          if [ "$PASS" = "true" ]; then
+            echo "All PDFs passed PDF/A conformance."
+          else
+            echo "::warning::Some PDFs have PDF/A conformance issues. This is informational — full PDF/A support is tracked in X-3."
+          fi
+        continue-on-error: true
