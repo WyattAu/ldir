@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["fp266_to_scene","fp266_to_scene_fp","gir_doc_to_scenes","gir_page_to_scene","gir_page_to_scene_with_fonts","gir_to_scene"],"struct":["FontEntry","FontMap"]};

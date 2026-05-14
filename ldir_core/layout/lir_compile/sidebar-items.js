@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["LirError"],"fn":["compile_sir_to_lir","compile_sir_to_lir_with_bib"]};

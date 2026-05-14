@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["GIR_COMMAND_ARGS"],"enum":["GIROpcode","ImageFormat"],"struct":["GIRCommand","GIRDocument","GIRImage","GIRLink","GIRPage","GIRStyle","StyleTable"]};

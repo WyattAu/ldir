@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CALT","KERN","LIGA","LNUM","ONUM","TNUM"],"fn":["shape_harfbuzz"],"struct":["Feature"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_citation_apa","format_citation_ieee","parse_bib"],"struct":["BibEntry"]};

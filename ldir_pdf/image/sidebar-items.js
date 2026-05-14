@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ColorSpace","Error","ImageFormat"],"fn":["decode_image","decode_jpeg","decode_png","detect_format","detect_jpeg_dimensions","detect_png_dimensions","load_image","scale_to_fit"],"struct":["ImageData","ImageDimensions"]};

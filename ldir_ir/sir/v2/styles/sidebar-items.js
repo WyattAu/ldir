@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TextAlign"],"struct":["StyleDecl","StyleDecls","StyleProperties"]};

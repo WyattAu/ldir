@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["gir_to_scene","renderer","viewport"]};

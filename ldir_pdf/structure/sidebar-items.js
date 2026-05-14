@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["StructureType"],"fn":["artifact_node","figure_with_caption","footnote_pair","heading","language_span_node","list_item","paragraph","table_row","table_with_header"],"struct":["BBox","HeadingLevel","LanguageSpan","StructureNode"]};

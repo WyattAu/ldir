@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["shape_text","shape_text_cached","shape_text_cached_auto_font","shape_text_with_features"],"mod":["cache","fast_path","harfbuzz","indic"],"struct":["GlyphMetrics","ShapedGlyph","ShapedRun"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["emit_attach_metadata","emit_balance_stack","emit_draw_rule","emit_move_xy","emit_paragraph_spacing","emit_pop_stack","emit_push_stack","emit_set_font","emit_text_content"]};

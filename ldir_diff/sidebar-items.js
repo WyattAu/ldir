@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compute_diff","load_module","main","print_diff_count","print_diff_text"],"mod":["parser"],"struct":["Cli","DiffResult","NodeChange"]};

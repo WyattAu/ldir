@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["INSTRUCTION_WIRE_SIZE","ROOT_SENTINEL"],"enum":["BlockType","SIROpcode"],"mod":["serde","style","v2"],"struct":["PayloadRegion","SIRDocument","SIRInstruction"],"type":["EntityId"]};

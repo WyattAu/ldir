@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["COMMAND_SIZE","GIR_MAGIC","HEADER_SIZE","PAGE_HEADER_SIZE"],"fn":["emit_gir","parse_gir"]};

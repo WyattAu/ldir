@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["RefType"],"fn":["resolve_ref"],"struct":["LabelEntry","LabelRegistry","ResolvedRef"]};

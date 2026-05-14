@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compile_v2_document","compile_v2_document_with_bib"]};

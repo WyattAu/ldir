@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["all_passes","default_pass_manager"],"struct":["CounterPropagation","DeadNodeElimination","DeadResourceElimination","DeadStyleElimination","EmptyBlockCollapse","LabelDeduplication","OptimizationReport","PassManager","PassResult","StyleInlining","TextNodeMerging"],"trait":["Pass"]};

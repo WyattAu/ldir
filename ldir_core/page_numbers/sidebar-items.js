@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PageNumberStyle"],"fn":["format_page_number","page_x_of_y","to_alpha","to_lower_roman","to_upper_roman"]};

@@ -1,0 +1,34 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="ldir-md"><title>ldir_md - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="ldir_md" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0 (59807616e 2026-04-14)" data-channel="1.95.0" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../static.files/storage-41dd4d93.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Crate ldir_md</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../ldir_md/index.html">ldir_md</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#ldir-md" title="ldir-md">ldir-md</a><ul><li><a href="#key-types" title="Key Types">Key Types</a></li><li><a href="#quick-start" title="Quick Start">Quick Start</a></li><li><a href="#supported-markdown" title="Supported Markdown">Supported Markdown</a></li><li><a href="#references" title="References">References</a></li></ul></li></ul><h3><a href="#functions">Crate Items</a></h3><ul class="block"><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1>Crate <span>ldir_md</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/ldir_md/lib.rs.html#1-1397">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="ldir-md"><a class="doc-anchor" href="#ldir-md">§</a>ldir-md</h2>
+<p>Markdown to S-IR parser for the LDIR document pipeline. Converts
+CommonMark Markdown (with GFM extensions) into an S-IR document tree
+suitable for compilation by <code>ldir-core</code>.</p>
+<h3 id="key-types"><a class="doc-anchor" href="#key-types">§</a>Key Types</h3>
+<ul>
+<li><a href="fn.parse_markdown.html" title="fn ldir_md::parse_markdown"><code>parse_markdown</code></a> — Main entry point: Markdown string to S-IR document</li>
+</ul>
+<h3 id="quick-start"><a class="doc-anchor" href="#quick-start">§</a>Quick Start</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ldir_md::parse_markdown;
+
+<span class="kw">let </span>doc = parse_markdown(<span class="string">"# Hello\n\nThis has **bold** text."</span>);
+<span class="macro">println!</span>(<span class="string">"Parsed {} S-IR instructions"</span>, doc.len());</code></pre></div><h3 id="supported-markdown"><a class="doc-anchor" href="#supported-markdown">§</a>Supported Markdown</h3><div><table><thead><tr><th>Element</th><th>S-IR Mapping</th></tr></thead><tbody>
+<tr><td>Document</td><td><code>PushBlock(Document)</code> root</td></tr>
+<tr><td>Paragraph</td><td><code>PushBlock(Paragraph)</code> + <code>SetContent</code></td></tr>
+<tr><td>Heading h1-h6</td><td><code>PushBlock(Heading)</code> + level</td></tr>
+<tr><td>Code block</td><td><code>PushBlock(Code)</code> + <code>SetContent</code></td></tr>
+<tr><td>List (ul/ol)</td><td><code>PushBlock(List)</code></td></tr>
+<tr><td>Blockquote</td><td><code>PushBlock(BlockQuote)</code> + <code>SetContent</code></td></tr>
+<tr><td>Thematic break</td><td><code>PushBlock(ThematicBreak)</code></td></tr>
+<tr><td>Bold (<strong>text</strong>)</td><td><code>ApplyStyle(BOLD)</code> + <code>SetContent</code></td></tr>
+<tr><td>Italic (<em>text</em>)</td><td><code>ApplyStyle(ITALIC)</code> + <code>SetContent</code></td></tr>
+<tr><td>Inline code</td><td><code>ApplyStyle(MONO)</code> + <code>SetContent</code></td></tr>
+<tr><td>Links [t](url)</td><td><code>LinkData</code> + <code>SetContent</code></td></tr>
+<tr><td>GFM Tables</td><td><code>PushBlock(Table)</code> + rows/cells</td></tr>
+<tr><td>Task lists</td><td><code>SetContent</code> with <code>[x]</code> / <code>[ ]</code> prefix</td></tr>
+<tr><td>Footnotes</td><td><code>\fnmark{N}</code> + <code>FootnoteBlock</code></td></tr>
+<tr><td>Images</td><td><code>PushBlock(Image)</code> + path payload</td></tr>
+</tbody></table>
+</div><h3 id="references"><a class="doc-anchor" href="#references">§</a>References</h3>
+<ul>
+<li><a href="https://github.com/WyattAu/ldir">Repository</a></li>
+</ul>
+</div></details><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><dl class="item-table"><dt><a class="fn" href="fn.parse_markdown.html" title="fn ldir_md::parse_markdown">parse_<wbr>markdown</a></dt><dd>Parse a Markdown string into an S-IR document.</dd></dl></section></div></main></body></html>

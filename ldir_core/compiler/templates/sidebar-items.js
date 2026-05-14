@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PageSize","TemplateError"],"fn":["parse_template","template_to_context"],"struct":["CompileContextPartial","DocumentTemplate","FirstPageTemplate","HeaderFooterTemplate","HeadingStyle","Margins","PageTemplate","TemplateContext"]};

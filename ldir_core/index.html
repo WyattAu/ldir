@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="ldir-core"><title>ldir_core - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="ldir_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0 (59807616e 2026-04-14)" data-channel="1.95.0" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../static.files/storage-41dd4d93.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Crate ldir_core</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../ldir_core/index.html">ldir_<wbr>core</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#ldir-core" title="ldir-core">ldir-core</a><ul><li><a href="#key-types" title="Key Types">Key Types</a></li><li><a href="#quick-start" title="Quick Start">Quick Start</a></li><li><a href="#key-modules" title="Key Modules">Key Modules</a></li><li><a href="#formal-verification" title="Formal Verification">Formal Verification</a></li><li><a href="#references" title="References">References</a></li></ul></li></ul><h3><a href="#reexports">Crate Items</a></h3><ul class="block"><li><a href="#reexports" title="Re-exports">Re-exports</a></li><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#macros" title="Macros">Macros</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1>Crate <span>ldir_<wbr>core</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/ldir_core/lib.rs.html#1-135">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="ldir-core"><a class="doc-anchor" href="#ldir-core">§</a>ldir-core</h2>
+<p>Compiler, validator, emitter, and font management for the LDIR document
+pipeline. This crate contains the central compilation pipeline:</p>
+<ol>
+<li>S-IR deserialization and validation</li>
+<li>S-IR to L-IR layout compilation</li>
+<li>L-IR to G-IR rendering</li>
+<li>G-IR binary emission</li>
+</ol>
+<h3 id="key-types"><a class="doc-anchor" href="#key-types">§</a>Key Types</h3>
+<ul>
+<li><a href="compiler/fn.compile_sir.html" title="fn ldir_core::compiler::compile_sir"><code>compiler::compile_sir</code></a> — S-IR to G-IR compilation entry point</li>
+<li><a href="validator/fn.validate_sir.html" title="fn ldir_core::validator::validate_sir"><code>validator::validate_sir</code></a> — S-IR well-formedness validation</li>
+<li><a href="emitter/binary/fn.emit_gir.html" title="fn ldir_core::emitter::binary::emit_gir"><code>emitter::emit_gir</code></a> — G-IR binary serialization</li>
+<li><a href="parser/sir_parser/fn.parse_sir.html" title="fn ldir_core::parser::sir_parser::parse_sir"><code>parser::parse_sir</code></a> — S-IR deserialization from rkyv bytes</li>
+<li><a href="verifier/fn.check_gir.html" title="fn ldir_core::verifier::check_gir"><code>verifier::check_gir</code></a> — G-IR well-formedness verification</li>
+<li><a href="font/db/struct.FontDatabase.html" title="struct ldir_core::font::db::FontDatabase"><code>font::FontDatabase</code></a> — Font loading and management</li>
+<li><a href="error/struct.LdirError.html" title="struct ldir_core::error::LdirError"><code>error::LdirError</code></a> — Structured error hierarchy</li>
+</ul>
+<h3 id="quick-start"><a class="doc-anchor" href="#quick-start">§</a>Quick Start</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ldir_core::compiler::compile_sir;
+<span class="kw">use </span>ldir_core::validator::validate_sir;
+<span class="kw">use </span>ldir_ir::sir::{SIRDocument, SIRInstruction, SIROpcode, ROOT_SENTINEL, BlockType};
+
+<span class="kw">let </span><span class="kw-2">mut </span>doc = SIRDocument::new();
+doc.push_with_payload(
+    SIRInstruction::new(SIROpcode::PushBlock, <span class="number">0</span>, ROOT_SENTINEL, <span class="number">0</span>),
+    <span class="kw-2">&amp;</span>[BlockType::Document <span class="kw">as </span>u8],
+);
+doc.push_with_payload(
+    SIRInstruction::new(SIROpcode::SetContent, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>),
+    <span class="string">b"Hello"</span>,
+);
+
+validate_sir(<span class="kw-2">&amp;</span>doc).expect(<span class="string">"document should be well-formed"</span>);
+<span class="kw">let </span>gir = compile_sir(<span class="kw-2">&amp;</span>doc).expect(<span class="string">"compilation should succeed"</span>);
+<span class="macro">assert!</span>(gir.is_well_formed());</code></pre></div><h3 id="key-modules"><a class="doc-anchor" href="#key-modules">§</a>Key Modules</h3>
+<ul>
+<li><a href="fp266/index.html" title="mod ldir_core::fp266"><code>fp266</code></a> — 26.6 fixed-point arithmetic (THM-FP-ADD-EXACT, THM-FP-MUL-ROUND)</li>
+<li><a href="compiler/index.html" title="mod ldir_core::compiler"><code>compiler</code></a> — S-IR to G-IR compilation (IF-COMPILE-001, ALG-COMPILE-001)</li>
+<li><a href="validator/index.html" title="mod ldir_core::validator"><code>validator</code></a> — S-IR well-formedness validation (IF-VALIDATE-001)</li>
+<li><a href="emitter/index.html" title="mod ldir_core::emitter"><code>emitter</code></a> — G-IR binary serialization (IF-EMIT-001)</li>
+<li><a href="parser/index.html" title="mod ldir_core::parser"><code>parser</code></a> — S-IR deserialization from rkyv bytes (IF-PARSE-001)</li>
+<li><a href="verifier/index.html" title="mod ldir_core::verifier"><code>verifier</code></a> — G-IR well-formedness verification (DEF-005)</li>
+<li><a href="error/index.html" title="mod ldir_core::error"><code>error</code></a> — Structured error hierarchy</li>
+<li><a href="font/index.html" title="mod ldir_core::font"><code>font</code></a> — Font loading via ttf-parser and fontdb</li>
+<li><a href="plugin/index.html" title="mod ldir_core::plugin"><code>plugin</code></a> — Plugin system for custom frontends and backends</li>
+</ul>
+<h3 id="formal-verification"><a class="doc-anchor" href="#formal-verification">§</a>Formal Verification</h3>
+<p>The well-formedness predicates for S-IR and G-IR are formally specified in
+Lean 4. Key theorems:</p>
+<ul>
+<li><code>THM-WF-SIR-DECIDABLE</code>: S-IR well-formedness is decidable</li>
+<li><code>THM-WF-GIR-DECIDABLE</code>: G-IR well-formedness is decidable</li>
+<li><code>THM-COMPILE-TERMINATES</code>: Compilation terminates</li>
+</ul>
+<h3 id="references"><a class="doc-anchor" href="#references">§</a>References</h3>
+<ul>
+<li><a href="https://github.com/WyattAu/ldir">Repository</a></li>
+<li>YP-IR-SEMANTICS-001: IR Type Semantics and Well-Formedness</li>
+<li>BP-IR-COMPILER-001: S-IR to G-IR Compiler Component</li>
+</ul>
+</div></details><h2 id="reexports" class="section-header">Re-exports<a href="#reexports" class="anchor">§</a></h2><dl class="item-table reexports"><dt id="reexport.compile_sir_to_lir"><code>pub use layout::lir_compile::<a class="fn" href="layout/lir_compile/fn.compile_sir_to_lir.html" title="fn ldir_core::layout::lir_compile::compile_sir_to_lir">compile_sir_to_lir</a>;</code></dt></dl><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="compiler/index.html" title="mod ldir_core::compiler">compiler</a></dt><dd>S-IR to G-IR compiler with Knuth-Plass line breaking and font shaping.
+S-IR → G-IR Compiler (IF-COMPILE-001, ALG-COMPILE-001).</dd><dt><a class="mod" href="cross_ref/index.html" title="mod ldir_core::cross_ref">cross_<wbr>ref</a></dt><dd>Cross-reference resolution for document labels and citations.
+Cross-reference resolution for document labels and citations.</dd><dt><a class="mod" href="emitter/index.html" title="mod ldir_core::emitter">emitter</a></dt><dd>G-IR binary emitter and parser (IF-EMIT-001).
+G-IR Binary Emitter and Parser (IF-EMIT-001).</dd><dt><a class="mod" href="error/index.html" title="mod ldir_core::error">error</a></dt><dd>Structured error hierarchy for the compilation pipeline.
+Error types for LDIR compilation pipeline.</dd><dt><a class="mod" href="font/index.html" title="mod ldir_core::font">font</a></dt><dd>Font loading, metrics, and database (ttf-parser + fontdb).
+Font loading and management (Phase A-1).</dd><dt><a class="mod" href="fp266/index.html" title="mod ldir_core::fp266">fp266</a></dt><dd>26.6 fixed-point arithmetic for coordinates (REQ-3.2.5).
+fp26_6 Fixed-Point Arithmetic (REQ-3.2.5).</dd><dt><a class="mod" href="interner/index.html" title="mod ldir_core::interner">interner</a></dt><dd>String interner for deduplicating repeated text across the compilation pipeline.</dd><dt><a class="mod" href="layout/index.html" title="mod ldir_core::layout">layout</a></dt><dd>Layout pipeline: line-breaking, pagination, and incremental re-layout.</dd><dt><a class="mod" href="page_numbers/index.html" title="mod ldir_core::page_numbers">page_<wbr>numbers</a></dt><dd>Page number formatting: arabic, roman, alphabetic.
+Page number formatting: arabic, roman, alphabetic.</dd><dt><a class="mod" href="parser/index.html" title="mod ldir_core::parser">parser</a></dt><dd>S-IR parser — deserialization from rkyv bytes (IF-PARSE-001).
+S-IR parser module.</dd><dt><a class="mod" href="plugin/index.html" title="mod ldir_core::plugin">plugin</a></dt><dd>Plugin system for custom frontends and backends.
+Plugin system for custom frontends and backends.</dd><dt><a class="mod" href="shaping/index.html" title="mod ldir_core::shaping">shaping</a></dt><dd>Text shaping: HarfBuzz FFI, LRU cache, fast ASCII path.
+Text shaping integration (TASK-016, Phase A-2).</dd><dt><a class="mod" href="solver/index.html" title="mod ldir_core::solver">solver</a></dt><dd>Cassowary constraint solver for float placement and layout.
+Cassowary-inspired constraint solver (simplified).
+References: YP-CONSTRAINT-CASSOWARY-001, THM-CS-OPTIMALITY, THM-CS-TERMINATION.</dd><dt><a class="mod" href="toc/index.html" title="mod ldir_core::toc">toc</a></dt><dd>Table of contents and document outline generation.
+Table of contents and document outline generation.</dd><dt><a class="mod" href="validator/index.html" title="mod ldir_core::validator">validator</a></dt><dd>S-IR well-formedness validator (IF-VALIDATE-001).
+S-IR validator module.</dd><dt><a class="mod" href="verifier/index.html" title="mod ldir_core::verifier">verifier</a></dt><dd>G-IR well-formedness verifier (DEF-005).
+G-IR well-formedness verifier (DEF-005).</dd></dl><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><dl class="item-table"><dt><a class="macro" href="macro.trace_phase.html" title="macro ldir_core::trace_phase">trace_<wbr>phase</a></dt><dd>Instrumentation macro that wraps a closure with a tracing span and measures timing.</dd></dl></section></div></main></body></html>

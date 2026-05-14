@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PluginError"],"struct":["GenerateOptions","PluginRegistry"],"trait":["BackendPlugin","FrontendPlugin"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["insert_cjk_breaks","is_cjk_char","is_cjk_text","is_prohibited_at_line_end","is_prohibited_at_line_start"]};

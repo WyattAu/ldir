@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["layout_math"],"struct":["MathLayoutResult","PositionedGlyph"]};

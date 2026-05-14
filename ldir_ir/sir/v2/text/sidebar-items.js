@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["module_to_text","text_to_module"]};

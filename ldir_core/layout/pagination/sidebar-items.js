@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["paginate","paginate_global"],"mod":["page_break"],"struct":["PageBreak","PaginatedDocument","PaginationOptions"]};

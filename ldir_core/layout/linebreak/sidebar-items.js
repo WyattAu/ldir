@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compute_adjustment_ratio","compute_badness","compute_demerits","compute_demerits_batch","compute_demerits_batch_simd","linebreak"],"mod":["cjk"],"struct":["FitnessClass","LineBreakItem","LineBreakOptions","LineBreakResult"]};

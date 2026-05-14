@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["font_info","glyph_advance_fp266","glyph_id_for_char","glyph_metrics","load_font","load_font_with_index","units_per_em"],"struct":["FontHandle","FontInfo","FontMetrics","LoadedFont"]};

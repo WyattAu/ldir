@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CrdtOp"],"struct":["CharId","CrdtChar","CrdtDocument","TextOperation"]};

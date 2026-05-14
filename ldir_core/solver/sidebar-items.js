@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Relation","SolverError","Strength"],"struct":["Constraint","Expression","Solver","Variable"]};

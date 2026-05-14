@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Dimension","Direction"],"struct":["DocumentMetadata","PageGeometry","PageStyle"]};

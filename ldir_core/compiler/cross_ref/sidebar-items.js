@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["LabelKind"],"fn":["collect_labels","infer_autoref_prefix","kind_prefix","resolve_kind_map","resolve_references","resolve_text_references"],"struct":["ResolvedLabel"]};

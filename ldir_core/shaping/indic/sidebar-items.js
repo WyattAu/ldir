@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["IndicCharCategory","IndicScript"],"fn":["cluster_indic_text","detect_indic_script","indic_break_allowed","indic_char_category","is_indic_char"],"struct":["IndicCluster"]};

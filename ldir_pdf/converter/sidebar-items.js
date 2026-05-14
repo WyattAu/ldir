@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["gir_to_pdf","gir_to_pdf_with_font","gir_to_pdf_with_fonts","gir_to_pdf_with_fonts_and_options"],"struct":["PdfOptions"]};

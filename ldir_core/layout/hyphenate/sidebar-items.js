@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["HyphenQuality"],"fn":["hyphenate_word"],"struct":["HyphenPoint"]};

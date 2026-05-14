@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["IccColorSpace"],"fn":["cmyk_to_srgb","srgb_to_cmyk"],"struct":["IccProfile"]};

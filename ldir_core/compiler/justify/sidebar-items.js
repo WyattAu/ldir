@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["hyphenation_points","justify_line","split_into_words","try_hyphenate_word"],"struct":["JustifiedGlyph","WordGroup"]};

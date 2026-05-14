@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["position","style","types"]};
