@@ -26,6 +26,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install harfbuzz
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -57,6 +65,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+
       - name: Install Rust toolchain (1.85)
         uses: dtolnay/rust-toolchain@1.85.0
 
@@ -81,6 +92,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -122,12 +136,9 @@ jobs:
       - name: Check for performance regression
         if: github.event_name == 'pull_request'
         run: |
-          REGRESSION_THRESHOLD=5
           if grep -qi "performance has regressed" bench-output.txt; then
             echo "::warning::Performance regression detected. Check benchmark output for details."
-            # Extract regression lines for summary
             grep -A1 "performance has regressed" bench-output.txt || true
-            # Count regressions exceeding threshold
             REGRESSIONS=$(grep -c "performance has regressed" bench-output.txt || echo 0)
             if [ "$REGRESSIONS" -gt 0 ]; then
               echo "::notice::$REGRESSIONS benchmark(s) regressed. Review before merging."
@@ -161,8 +172,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Lean 4 (elan)
-        uses: leanprover/elan-action@v4
+      - name: Install elan (Lean 4 toolchain)
+        run: |
+          curl -sSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o /tmp/elan-init.sh
+          sh /tmp/elan-init.sh -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Build Lean project
         working-directory: ldir-lean
@@ -190,6 +204,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -223,6 +240,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -249,7 +269,6 @@ jobs:
         run: |
           mkdir -p /tmp/pdfa-tests
           cargo test -p ldir-core --test integration -- --ignored 2>/dev/null || true
-          # Generate PDFs programmatically for validation
           cargo test -p ldir-core pdfa_generate -- --nocapture 2>/dev/null || true
 
       - name: Validate PDF/A conformance
@@ -262,7 +281,7 @@ jobs:
               if grep -q 'compliance="PASS"' "${pdf}.xml" 2>/dev/null; then
                 echo "  PASS: $pdf"
               else
-                echo "  WARN: $pdf (PDF/A conformance issues — non-blocking for now)"
+                echo "  WARN: $pdf (PDF/A conformance issues)"
                 PASS=false
               fi
             fi
@@ -270,6 +289,6 @@ jobs:
           if [ "$PASS" = "true" ]; then
             echo "All PDFs passed PDF/A conformance."
           else
-            echo "::warning::Some PDFs have PDF/A conformance issues. This is informational — full PDF/A support is tracked in X-3."
+            echo "::warning::Some PDFs have PDF/A conformance issues. Full PDF/A support tracked in X-3."
           fi
         continue-on-error: true
