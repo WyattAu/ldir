@@ -9,6 +9,14 @@ readme = "README.md"
 keywords = ["gpu", "rendering", "vello", "wgpu", "document"]
 categories = ["visualization"]
 
+[features]
+default = ["software"]
+## Software-only rendering (white buffer fallback, no GPU required).
+software = []
+## GPU rendering via wgpu + Vello compute shaders.
+## Requires a GPU with compute shader support (Vulkan/Metal/DX12/WebGPU).
+gpu = ["dep:pollster"]
+
 [dependencies]
 ldir-core = { workspace = true }
 ldir-ir = { workspace = true }
@@ -16,5 +24,6 @@ ttf-parser = { workspace = true }
 vello = { workspace = true }
 parley = { workspace = true }
 wgpu = { workspace = true }
+pollster = { version = "0.4", optional = true }
 
 [dev-dependencies]

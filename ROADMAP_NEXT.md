@@ -134,15 +134,19 @@ Add matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). Add MSRV ch
 
 ## Phase Y: GPU Rendering (8-12 weeks)
 
-### Y-1: Vello compute shader pipeline
+### Y-1: Vello compute shader pipeline (8-12 weeks) ✅ DONE (core)
 
-**Current state:** `ldir-vello/` maps G-IR to Vello scenes but does not use GPU compute shaders.
+**Delivered:** GPU rendering pipeline in `ldir-vello` behind `gpu` feature flag.
+- `GpuState` wraps `wgpu::Device` + `wgpu::Queue` + `vello::Renderer`
+- `render_gpu()` renders scenes to `Rgba8Unorm` texture, reads back to CPU pixel buffer
+- `render_scene_impl()` dispatches to GPU or software (white buffer) path
+- `RefCell<VelloRenderer>` for interior mutability in `&self` render methods
+- Aligned workspace `wgpu` to 22.1 to match vello 0.3 requirement
+- Added `pollster` dependency for async→sync GPU initialization
+- 65 tests pass (GPU feature), 64 tests pass (software default)
+- Clippy clean (`-D warnings`) in both feature modes
 
-**Approach:**
-1. Map G-IR commands to Vello's `Scene` builder API directly.
-2. Implement glyph caching on GPU (texture atlas).
-3. Implement viewport transform (pan/zoom) entirely on GPU.
-4. Target 144Hz pan/zoom (REQ-6.1.2: <6.9ms frame budget).
+**Remaining:** Glyph caching on GPU (texture atlas), viewport transform integration, benchmark at 144Hz (REQ-6.1.2: <6.9ms frame budget).
 
 ---
 
@@ -154,8 +158,8 @@ Add matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). Add MSRV ch
 | U: Performance | 4-6 weeks | ✅ DONE (U-2 deferred) |
 | V: Layout | 6-10 weeks | ✅ DONE |
 | W: WASM | 4-6 weeks | ✅ DONE (W-1 HarfBuzz deferred) |
-| X: Quality | ongoing | 🟡 X-1, X-2 done; X-3, X-4 pending |
-| Y: GPU | 8-12 weeks | 🔴 Not started |
+| X: Quality | ongoing | ✅ DONE |
+| Y: GPU | 8-12 weeks | 🟡 Y-1 core done; caching + viewport pending |
 
 **Critical path:** T -> U -> V -> Y (~20-31 weeks to GPU rendering)
 
