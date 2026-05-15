@@ -322,35 +322,37 @@
 <a href=#322 id=322 data-nosnippet>322</a>        }
 <a href=#323 id=323 data-nosnippet>323</a>    }
 <a href=#324 id=324 data-nosnippet>324</a>
-<a href=#325 id=325 data-nosnippet>325</a>    <span class="attr">#[test]
-<a href=#326 id=326 data-nosnippet>326</a>    </span><span class="kw">fn </span>test_batch_simd_matches_scalar() {
-<a href=#327 id=327 data-nosnippet>327</a>        <span class="kw">let </span>badness = [<span class="number">0.0</span>, <span class="number">0.5</span>, <span class="number">1.0</span>, <span class="number">0.25</span>];
-<a href=#328 id=328 data-nosnippet>328</a>        <span class="kw">let </span>fitness_changed = [<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>];
-<a href=#329 id=329 data-nosnippet>329</a>        <span class="kw">let </span>scalar = compute_demerits_batch(badness, <span class="number">100.0</span>, <span class="number">10.0</span>, fitness_changed);
-<a href=#330 id=330 data-nosnippet>330</a>        <span class="comment">// SAFETY: SSE2 available on all x86_64 (test runs on x86_64 only via #[cfg]).
-<a href=#331 id=331 data-nosnippet>331</a>        </span><span class="kw">let </span>simd = <span class="kw">unsafe </span>{ compute_demerits_batch_simd(badness, <span class="number">100.0</span>, <span class="number">10.0</span>, fitness_changed) };
-<a href=#332 id=332 data-nosnippet>332</a>        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">4 </span>{
-<a href=#333 id=333 data-nosnippet>333</a>            <span class="macro">assert!</span>(
-<a href=#334 id=334 data-nosnippet>334</a>                (simd[i] - scalar[i]).abs() &lt; <span class="number">1e-10</span>,
-<a href=#335 id=335 data-nosnippet>335</a>                <span class="string">"SIMD[{}] = {} != scalar = {}"</span>,
-<a href=#336 id=336 data-nosnippet>336</a>                i,
-<a href=#337 id=337 data-nosnippet>337</a>                simd[i],
-<a href=#338 id=338 data-nosnippet>338</a>                scalar[i]
-<a href=#339 id=339 data-nosnippet>339</a>            );
-<a href=#340 id=340 data-nosnippet>340</a>        }
-<a href=#341 id=341 data-nosnippet>341</a>    }
-<a href=#342 id=342 data-nosnippet>342</a>
-<a href=#343 id=343 data-nosnippet>343</a>    <span class="attr">#[test]
-<a href=#344 id=344 data-nosnippet>344</a>    </span><span class="kw">fn </span>test_batch_simd_infeasible() {
-<a href=#345 id=345 data-nosnippet>345</a>        <span class="kw">let </span>badness = [f64::INFINITY, f64::NEG_INFINITY, <span class="number">0.0</span>, <span class="number">1e6</span>];
-<a href=#346 id=346 data-nosnippet>346</a>        <span class="kw">let </span>fitness_changed = [<span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>];
-<a href=#347 id=347 data-nosnippet>347</a>        <span class="comment">// SAFETY: SSE2 available on all x86_64 (test runs on x86_64 only via #[cfg]).
-<a href=#348 id=348 data-nosnippet>348</a>        </span><span class="kw">let </span>result = <span class="kw">unsafe </span>{ compute_demerits_batch_simd(badness, <span class="number">10.0</span>, <span class="number">5.0</span>, fitness_changed) };
-<a href=#349 id=349 data-nosnippet>349</a>        <span class="comment">// infinity handling: (5 + inf)^2 = inf, (5 - inf)^2 = inf
-<a href=#350 id=350 data-nosnippet>350</a>        </span><span class="macro">assert!</span>(result[<span class="number">0</span>].is_infinite());
-<a href=#351 id=351 data-nosnippet>351</a>        <span class="macro">assert!</span>(result[<span class="number">1</span>].is_infinite());
-<a href=#352 id=352 data-nosnippet>352</a>        <span class="comment">// Normal values
-<a href=#353 id=353 data-nosnippet>353</a>        </span><span class="macro">assert!</span>((result[<span class="number">2</span>] - <span class="number">25.0</span>).abs() &lt; <span class="number">1e-10</span>); <span class="comment">// (5 + 0)^2 = 25
-<a href=#354 id=354 data-nosnippet>354</a>    </span>}
-<a href=#355 id=355 data-nosnippet>355</a>}
+<a href=#325 id=325 data-nosnippet>325</a>    <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+<a href=#326 id=326 data-nosnippet>326</a>    #[test]
+<a href=#327 id=327 data-nosnippet>327</a>    </span><span class="kw">fn </span>test_batch_simd_matches_scalar() {
+<a href=#328 id=328 data-nosnippet>328</a>        <span class="kw">let </span>badness = [<span class="number">0.0</span>, <span class="number">0.5</span>, <span class="number">1.0</span>, <span class="number">0.25</span>];
+<a href=#329 id=329 data-nosnippet>329</a>        <span class="kw">let </span>fitness_changed = [<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>];
+<a href=#330 id=330 data-nosnippet>330</a>        <span class="kw">let </span>scalar = compute_demerits_batch(badness, <span class="number">100.0</span>, <span class="number">10.0</span>, fitness_changed);
+<a href=#331 id=331 data-nosnippet>331</a>        <span class="comment">// SAFETY: SSE2 available on all x86_64 (test runs on x86_64 only via #[cfg]).
+<a href=#332 id=332 data-nosnippet>332</a>        </span><span class="kw">let </span>simd = <span class="kw">unsafe </span>{ compute_demerits_batch_simd(badness, <span class="number">100.0</span>, <span class="number">10.0</span>, fitness_changed) };
+<a href=#333 id=333 data-nosnippet>333</a>        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">4 </span>{
+<a href=#334 id=334 data-nosnippet>334</a>            <span class="macro">assert!</span>(
+<a href=#335 id=335 data-nosnippet>335</a>                (simd[i] - scalar[i]).abs() &lt; <span class="number">1e-10</span>,
+<a href=#336 id=336 data-nosnippet>336</a>                <span class="string">"SIMD[{}] = {} != scalar = {}"</span>,
+<a href=#337 id=337 data-nosnippet>337</a>                i,
+<a href=#338 id=338 data-nosnippet>338</a>                simd[i],
+<a href=#339 id=339 data-nosnippet>339</a>                scalar[i]
+<a href=#340 id=340 data-nosnippet>340</a>            );
+<a href=#341 id=341 data-nosnippet>341</a>        }
+<a href=#342 id=342 data-nosnippet>342</a>    }
+<a href=#343 id=343 data-nosnippet>343</a>
+<a href=#344 id=344 data-nosnippet>344</a>    <span class="attr">#[cfg(target_arch = <span class="string">"x86_64"</span>)]
+<a href=#345 id=345 data-nosnippet>345</a>    #[test]
+<a href=#346 id=346 data-nosnippet>346</a>    </span><span class="kw">fn </span>test_batch_simd_infeasible() {
+<a href=#347 id=347 data-nosnippet>347</a>        <span class="kw">let </span>badness = [f64::INFINITY, f64::NEG_INFINITY, <span class="number">0.0</span>, <span class="number">1e6</span>];
+<a href=#348 id=348 data-nosnippet>348</a>        <span class="kw">let </span>fitness_changed = [<span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>];
+<a href=#349 id=349 data-nosnippet>349</a>        <span class="comment">// SAFETY: SSE2 available on all x86_64 (test runs on x86_64 only via #[cfg]).
+<a href=#350 id=350 data-nosnippet>350</a>        </span><span class="kw">let </span>result = <span class="kw">unsafe </span>{ compute_demerits_batch_simd(badness, <span class="number">10.0</span>, <span class="number">5.0</span>, fitness_changed) };
+<a href=#351 id=351 data-nosnippet>351</a>        <span class="comment">// infinity handling: (5 + inf)^2 = inf, (5 - inf)^2 = inf
+<a href=#352 id=352 data-nosnippet>352</a>        </span><span class="macro">assert!</span>(result[<span class="number">0</span>].is_infinite());
+<a href=#353 id=353 data-nosnippet>353</a>        <span class="macro">assert!</span>(result[<span class="number">1</span>].is_infinite());
+<a href=#354 id=354 data-nosnippet>354</a>        <span class="comment">// Normal values
+<a href=#355 id=355 data-nosnippet>355</a>        </span><span class="macro">assert!</span>((result[<span class="number">2</span>] - <span class="number">25.0</span>).abs() &lt; <span class="number">1e-10</span>); <span class="comment">// (5 + 0)^2 = 25
+<a href=#356 id=356 data-nosnippet>356</a>    </span>}
+<a href=#357 id=357 data-nosnippet>357</a>}
 </code></pre></div></section></main></body></html>
