@@ -1,0 +1,221 @@
+# Test Vector Specification for LDIR 26.6 Fixed-Point Multiplication
+# Covers ALG-FP-MUL correctness, saturation, and precision properties
+
+[metadata]
+algorithm_id = "ALG-FP-MUL"
+algorithm_version = "0.1.0"
+generation_date = "2026-05-15T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "fp266"
+absolute_tolerance = 1
+relative_tolerance = 1e-10
+ulp_tolerance = 1
+note = "26.6 fixed-point format: 26 integer bits, 6 fractional bits. Values scaled by 64. Tolerance in ULP (unit in last place = 1/64 ≈ 0.015625)."
+
+# ============================================================
+# CATEGORY: NOMINAL (43% coverage — 3 of 7 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-FP-001"
+name = "Zero multiplication"
+category = "nominal"
+priority = "critical"
+description = "Any value multiplied by zero yields zero. Tests absorbing element property."
+
+[test_vector.input]
+a = { raw = 0, value = 0.0 }
+b = { raw = 1088, value = 17.0 }
+
+[test_vector.expected_output]
+result_raw = 0
+result_value = 0.0
+status = "exact"
+
+[test_vector.domain_constraints]
+references = ["NC-003", "NC-004"]
+note = "Both operands within fp266 representable range [-33554432.0, 33554431.984375]"
+
+[test_vector.verification]
+source = "Mathematical identity: x * 0 = 0"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+[[test_vector]]
+id = "TV-FP-002"
+name = "Identity multiplication"
+category = "nominal"
+priority = "critical"
+description = "Any value multiplied by 1.0 yields the same value. Tests multiplicative identity."
+
+[test_vector.input]
+a = { raw = -4608, value = -72.0 }
+b = { raw = 64, value = 1.0 }
+
+[test_vector.expected_output]
+result_raw = -4608
+result_value = -72.0
+status = "exact"
+
+[test_vector.domain_constraints]
+references = ["NC-003", "NC-004"]
+
+[test_vector.verification]
+source = "Mathematical identity: x * 1 = x"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+[[test_vector]]
+id = "TV-FP-003"
+name = "Commutativity"
+category = "nominal"
+priority = "critical"
+description = "a * b == b * a for all fp266 values within range."
+
+[test_vector.input]
+a = { raw = 5120, value = 80.0 }
+b = { raw = -192, value = -3.0 }
+
+[test_vector.expected_output]
+result_raw = -15360
+result_value = -240.0
+status = "exact"
+commutativity_holds = true
+
+[test_vector.domain_constraints]
+references = ["NC-003", "NC-004"]
+
+[test_vector.verification]
+source = "Mathematical property: commutativity of multiplication"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+# ============================================================
+# CATEGORY: BOUNDARY (29% coverage — 2 of 7 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-FP-004"
+name = "Saturation boundaries"
+category = "boundary"
+priority = "critical"
+description = "Multiplication at extremes: MAX*MAX and MIN*MIN should saturate to fp266 clamped range."
+
+[test_vector.input]
+max_val = { raw = 2147483647, value = 33554431.984375 }
+min_val = { raw = -2147483648, value = -33554432.0 }
+
+[test_vector.expected_output]
+max_times_max_raw = 2147483647
+max_times_max_value = 33554431.984375
+min_times_min_raw = 2147483647
+min_times_min_value = 33554431.984375
+status = "saturated"
+
+[test_vector.domain_constraints]
+references = ["NC-003", "NC-004"]
+note = "True products (≈1.126e15) exceed i32 range; must saturate to fp266 MAX."
+
+[test_vector.verification]
+source = "NC-003, NC-004 saturation semantics; mathematical derivation of overflow"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+[[test_vector]]
+id = "TV-FP-005"
+name = "Fractional precision"
+category = "boundary"
+priority = "high"
+description = "Multiplying 0.1 * 0.1 in fp266. 0.1 is not exactly representable; tests rounding behavior."
+
+[test_vector.input]
+a = { raw = 6, value = 0.09375 }
+b = { raw = 6, value = 0.09375 }
+
+[test_vector.expected_output]
+result_raw = 0
+result_value = 0.0
+note = "6*6 = 36 in raw integer multiply, right-shifted by 6 yields 0. Exact fp266 representation of 0.1 would be raw=6 (nearest). Product rounds to 0."
+ulp_error = 1
+
+[test_vector.domain_constraints]
+references = ["NC-003", "NC-004"]
+note = "0.1 in fp266 is 6/64 = 0.09375. True product = 0.0087890625. Rounded to fp266 = 0."
+
+[test_vector.verification]
+source = "Mathematical derivation: (6 * 6) >> 6 = 36 >> 6 = 0"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+# ============================================================
+# CATEGORY: ADVERSARIAL (29% coverage — 2 of 7 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-FP-006"
+name = "Negative times positive"
+category = "adversarial"
+priority = "high"
+description = "Large negative value multiplied by large positive value at boundary of representable range. Tests sign handling and saturation."
+
+[test_vector.input]
+a = { raw = -1073741824, value = -16777216.0 }
+b = { raw = 256, value = 4.0 }
+
+[test_vector.expected_output]
+result_raw = -2147483648
+result_value = -33554432.0
+status = "saturated"
+note = "True product = -67108864.0, exceeds fp266 MIN (-33554432.0). Must saturate."
+
+[test_vector.domain_constraints]
+references = ["NC-003", "NC-004"]
+
+[test_vector.verification]
+source = "Mathematical derivation: -16777216.0 * 4.0 = -67108864.0 < MIN fp266"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+[[test_vector]]
+id = "TV-FP-007"
+name = "Accumulator drift"
+category = "adversarial"
+priority = "high"
+description = "Repeatedly multiply-accumulate a small value 1000 times. Tests whether rounding errors compound beyond tolerance."
+
+[test_vector.input]
+base = { raw = 1, value = 0.015625 }
+iterations = 1000
+operation = "multiply_accumulate"
+
+[test_vector.expected_output]
+expected_raw = 1000
+expected_value = 15.625
+max_ulp_drift = 10
+note = "Accumulating 1.0 (raw) per iteration via multiply-by-1.0 then add. Drift must stay within 10 ULP over 1000 iterations."
+
+[test_vector.domain_constraints]
+references = ["NC-003", "NC-004"]
+note = "Accumulated value 1000/64 = 15.625 is well within fp266 range."
+
+[test_vector.verification]
+source = "Mathematical derivation: sum of 1000 * (1/64) = 15.625"
+method = "Analytical + empirical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-05-15"

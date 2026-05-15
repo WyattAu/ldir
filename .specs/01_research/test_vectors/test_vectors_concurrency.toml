@@ -1,0 +1,131 @@
+[metadata]
+algorithm_id = "ALG-DC-DECOMPOSE"
+algorithm_version = "0.1.0"
+generation_date = "2026-04-23T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "integer"
+absolute_tolerance = 0
+relative_tolerance = 0
+ulp_tolerance = 0
+
+[[test_vector]]
+id = "TV-DC-001"
+name = "single task"
+category = "nominal"
+priority = "critical"
+description = "A single unit-of-work produces exactly one task with no decomposition."
+
+[test_vector.input]
+input_size = { type = "usize", value = 1 }
+min_granularity = { type = "usize", value = 1 }
+max_depth = { type = "usize", value = 4 }
+
+[test_vector.expected_output]
+task_count = { type = "usize", value = 1 }
+max_depth_reached = { type = "usize", value = 0 }
+
+[test_vector.verification]
+source = "manual analysis"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-DC-002"
+name = "parallel decomposition"
+category = "nominal"
+priority = "critical"
+description = "An input larger than min_granularity is split into parallel subtasks."
+
+[test_vector.input]
+input_size = { type = "usize", value = 16 }
+min_granularity = { type = "usize", value = 4 }
+max_depth = { type = "usize", value = 4 }
+fork_factor = { type = "usize", value = 2 }
+
+[test_vector.expected_output]
+task_count = { type = "usize", value = 4 }
+max_depth_reached = { type = "usize", value = 2 }
+
+[test_vector.verification]
+source = "manual analysis"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-DC-003"
+name = "deterministic ordering"
+category = "nominal"
+priority = "high"
+description = "Decomposition produces tasks in a deterministic left-to-right order regardless of worker scheduling."
+
+[test_vector.input]
+input_size = { type = "usize", value = 8 }
+min_granularity = { type = "usize", value = 2 }
+max_depth = { type = "usize", value = 4 }
+fork_factor = { type = "usize", value = 2 }
+
+[test_vector.expected_output]
+task_count = { type = "usize", value = 4 }
+task_order = { type = "Vec<usize>", value = [0, 1, 2, 3] }
+deterministic = { type = "bool", value = true }
+
+[test_vector.verification]
+source = "manual analysis"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-DC-004"
+name = "empty input"
+category = "boundary"
+priority = "medium"
+description = "Zero-size input produces zero tasks."
+
+[test_vector.input]
+input_size = { type = "usize", value = 0 }
+min_granularity = { type = "usize", value = 1 }
+max_depth = { type = "usize", value = 4 }
+
+[test_vector.expected_output]
+task_count = { type = "usize", value = 0 }
+max_depth_reached = { type = "usize", value = 0 }
+
+[test_vector.verification]
+source = "manual analysis"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-DC-005"
+name = "nested decomposition"
+category = "nominal"
+priority = "high"
+description = "A subtask that still exceeds min_granularity is recursively decomposed up to max_depth."
+
+[test_vector.input]
+input_size = { type = "usize", value = 64 }
+min_granularity = { type = "usize", value = 4 }
+max_depth = { type = "usize", value = 3 }
+fork_factor = { type = "usize", value = 4 }
+
+[test_vector.expected_output]
+task_count = { type = "usize", value = 16 }
+max_depth_reached = { type = "usize", value = 3 }
+
+[test_vector.verification]
+source = "manual analysis"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"

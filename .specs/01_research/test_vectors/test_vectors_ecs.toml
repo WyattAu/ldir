@@ -1,0 +1,183 @@
+# Test Vector Specification for LDIR ECS Component Query
+# Covers ALG-ECS-QUERY correctness, entity lifecycle, and stress cases
+
+[metadata]
+algorithm_id = "ALG-ECS-QUERY"
+algorithm_version = "0.1.0"
+generation_date = "2026-05-15T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "integer"
+absolute_tolerance = 0
+relative_tolerance = 0.0
+ulp_tolerance = 0
+note = "All values are integers (entity IDs, component counts, generation counters). Exact equality required."
+
+# ============================================================
+# CATEGORY: NOMINAL (40% coverage — 2 of 5 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-ECS-001"
+name = "Create and query entity"
+category = "nominal"
+priority = "critical"
+description = "Create an entity, attach a component, then query for that component. Must return the attached data."
+
+[test_vector.input]
+operations = [
+  { op = "create_entity" },
+  { op = "attach_component", entity_id = 0, component_type = "Position", data = { x = 100, y = 200 } },
+  { op = "query_component", entity_id = 0, component_type = "Position" }
+]
+
+[test_vector.expected_output]
+query_result = { found = true, x = 100, y = 200 }
+entity_count = 1
+
+[test_vector.domain_constraints]
+references = ["MC-001", "MC-002"]
+note = "Single entity, well within MC-001 max entities and MC-002 memory budget."
+
+[test_vector.verification]
+source = "Manual construction + property-based: create-query roundtrip must be identity"
+method = "Manual + property-based"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+[[test_vector]]
+id = "TV-ECS-002"
+name = "Delete and verify"
+category = "nominal"
+priority = "critical"
+description = "Create an entity with a component, delete the entity, then verify the component is no longer queryable."
+
+[test_vector.input]
+operations = [
+  { op = "create_entity" },
+  { op = "attach_component", entity_id = 0, component_type = "Position", data = { x = 50, y = 75 } },
+  { op = "delete_entity", entity_id = 0 },
+  { op = "query_component", entity_id = 0, component_type = "Position" }
+]
+
+[test_vector.expected_output]
+query_result = { found = false }
+entity_count = 0
+generation_incremented = true
+
+[test_vector.domain_constraints]
+references = ["MC-001", "MC-002"]
+note = "Entity slot is freed but generation counter incremented to detect stale references."
+
+[test_vector.verification]
+source = "Manual construction: entity lifecycle guarantees deletion invalidates queries"
+method = "Manual + property-based"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+# ============================================================
+# CATEGORY: BOUNDARY (20% coverage — 1 of 5 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-ECS-003"
+name = "Generation conflict detection"
+category = "boundary"
+priority = "critical"
+description = "Create entity, delete it, create a new entity reusing the same slot. Old entity ID must fail generation check."
+
+[test_vector.input]
+operations = [
+  { op = "create_entity" },
+  { op = "attach_component", entity_id = 0, component_type = "Health", data = { hp = 100 } },
+  { op = "delete_entity", entity_id = 0 },
+  { op = "create_entity" },
+  { op = "query_component", entity_id = 0, component_type = "Health", generation = 0 }
+]
+
+[test_vector.expected_output]
+query_result = { found = false, reason = "generation_mismatch" }
+new_entity_generation = 1
+old_entity_generation = 0
+generation_conflict = true
+
+[test_vector.domain_constraints]
+references = ["MC-001", "MC-002"]
+note = "Tests the generational index pattern: slot reused but generation counter distinguishes old vs new."
+
+[test_vector.verification]
+source = "Manual construction: generation counter semantics"
+method = "Manual + property-based"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+# ============================================================
+# CATEGORY: ADVERSARIAL (40% coverage — 2 of 5 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-ECS-004"
+name = "Bulk insert and query"
+category = "adversarial"
+priority = "high"
+description = "Insert 10000 entities with components, then query a random subset. Tests allocation pressure and query correctness at scale."
+
+[test_vector.input]
+operations = [
+  { op = "bulk_create", count = 10000 },
+  { op = "bulk_attach", component_type = "Velocity", data_template = { vx = 0, vy = -9.8 } },
+  { op = "query_all", component_type = "Velocity" }
+]
+
+[test_vector.expected_output]
+query_count = 10000
+all_match = true
+max_query_time_ms = 10
+
+[test_vector.domain_constraints]
+references = ["MC-001", "MC-002"]
+note = "10000 entities. MC-001 max entities must be >= 10000. Memory usage must stay within MC-002 budget."
+
+[test_vector.verification]
+source = "Manual + property-based: forall inserted entities, query must return attached component"
+method = "Manual + property-based"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-05-15"
+
+[[test_vector]]
+id = "TV-ECS-005"
+name = "Sparse set stress"
+category = "adversarial"
+priority = "high"
+description = "Create 1000 entities, delete every other one (alternating), then query surviving entities. Tests sparse set compaction and tombstone handling."
+
+[test_vector.input]
+operations = [
+  { op = "bulk_create", count = 1000 },
+  { op = "bulk_attach", component_type = "Tag", data_template = { active = true } },
+  { op = "delete_range", start = 0, end = 999, step = 2 },
+  { op = "query_all", component_type = "Tag" }
+]
+
+[test_vector.expected_output]
+query_count = 500
+all_active = true
+no_tombstones_returned = true
+compaction_correct = true
+
+[test_vector.domain_constraints]
+references = ["MC-001", "MC-002"]
+note = "500 entities deleted from 1000. Sparse set must not return tombstoned entries."
+
+[test_vector.verification]
+source = "Manual + property-based: query_all after sparse deletion returns exactly surviving entities"
+method = "Manual + property-based"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-05-15"

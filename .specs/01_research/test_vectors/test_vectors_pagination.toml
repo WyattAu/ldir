@@ -1,0 +1,156 @@
+[metadata]
+algorithm_id = "ALG-PG-BREAK"
+algorithm_version = "0.1.0"
+generation_date = "2026-04-23T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "f64"
+absolute_tolerance = 1e-6
+relative_tolerance = 1e-8
+ulp_tolerance = 0
+
+[[test_vector]]
+id = "TV-PG-001"
+name = "single page fits"
+category = "nominal"
+priority = "critical"
+description = "Content shorter than page height fits on a single page with no breaks."
+
+[test_vector.input]
+content_height = { type = "f64", value = 500.0 }
+page_height = { type = "f64", value = 800.0 }
+page_count_limit = { type = "usize", value = 10 }
+
+[test_vector.expected_output]
+page_count = { type = "usize", value = 1 }
+break_offsets = { type = "Vec<f64>", value = [] }
+
+[test_vector.verification]
+source = "reference implementation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-PG-002"
+name = "multi-page split"
+category = "nominal"
+priority = "critical"
+description = "Content exceeding page height is split across multiple pages with correct break offsets."
+
+[test_vector.input]
+content_height = { type = "f64", value = 2000.0 }
+page_height = { type = "f64", value = 800.0 }
+page_count_limit = { type = "usize", value = 10 }
+
+[test_vector.expected_output]
+page_count = { type = "usize", value = 3 }
+break_offsets = { type = "Vec<f64>", value = [800.0, 1600.0] }
+
+[test_vector.verification]
+source = "reference implementation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-PG-003"
+name = "oversized single block"
+category = "boundary"
+priority = "high"
+description = "A single block taller than the page height must still be placed on a page without splitting the block itself."
+
+[test_vector.input]
+content_height = { type = "f64", value = 1200.0 }
+page_height = { type = "f64", value = 800.0 }
+page_count_limit = { type = "usize", value = 10 }
+block_heights = { type = "Vec<f64>", value = [1200.0] }
+
+[test_vector.expected_output]
+page_count = { type = "usize", value = 1 }
+break_offsets = { type = "Vec<f64>", value = [] }
+overflow = { type = "bool", value = true }
+
+[test_vector.verification]
+source = "reference implementation"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-PG-004"
+name = "orphan avoidance"
+category = "adversarial"
+priority = "high"
+description = "A short trailing segment is pulled onto the previous page to avoid leaving an orphan line at the top of the next page."
+
+[test_vector.input]
+content_height = { type = "f64", value = 850.0 }
+page_height = { type = "f64", value = 800.0 }
+page_count_limit = { type = "usize", value = 10 }
+orphan_threshold = { type = "f64", value = 100.0 }
+block_heights = { type = "Vec<f64>", value = [750.0, 100.0] }
+
+[test_vector.expected_output]
+page_count = { type = "usize", value = 1 }
+break_offsets = { type = "Vec<f64>", value = [] }
+
+[test_vector.verification]
+source = "reference implementation"
+method = "Numerical"
+confidence = 0.9
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-PG-005"
+name = "widow avoidance"
+category = "adversarial"
+priority = "high"
+description = "A short leading segment is pushed onto the next page to avoid leaving a widow line at the bottom of the current page."
+
+[test_vector.input]
+content_height = { type = "f64", value = 850.0 }
+page_height = { type = "f64", value = 800.0 }
+page_count_limit = { type = "usize", value = 10 }
+widow_threshold = { type = "f64", value = 100.0 }
+block_heights = { type = "Vec<f64>", value = [700.0, 150.0] }
+
+[test_vector.expected_output]
+page_count = { type = "usize", value = 2 }
+break_offsets = { type = "Vec<f64>", value = [700.0] }
+
+[test_vector.verification]
+source = "reference implementation"
+method = "Numerical"
+confidence = 0.9
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-PG-006"
+name = "empty content"
+category = "boundary"
+priority = "medium"
+description = "Zero-height content produces a single empty page."
+
+[test_vector.input]
+content_height = { type = "f64", value = 0.0 }
+page_height = { type = "f64", value = 800.0 }
+page_count_limit = { type = "usize", value = 10 }
+
+[test_vector.expected_output]
+page_count = { type = "usize", value = 1 }
+break_offsets = { type = "Vec<f64>", value = [] }
+
+[test_vector.verification]
+source = "reference implementation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"

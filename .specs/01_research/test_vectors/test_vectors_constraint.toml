@@ -1,0 +1,149 @@
+[metadata]
+algorithm_id = "ALG-CS-SOLVE"
+algorithm_version = "0.1.0"
+generation_date = "2026-04-23T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "f64"
+absolute_tolerance = 1e-6
+relative_tolerance = 1e-8
+ulp_tolerance = 0
+
+[[test_vector]]
+id = "TV-CS-001"
+name = "single equality"
+category = "nominal"
+priority = "critical"
+description = "A single variable constrained to a constant value resolves to that value."
+
+[test_vector.input]
+variables = { type = "Vec<String>", value = ["x"] }
+constraints = { type = "Vec<String>", value = ["x == 42.0"] }
+
+[test_vector.expected_output]
+solution = { type = "HashMap<String, f64>", value = { x = 42.0 } }
+feasible = { type = "bool", value = true }
+
+[test_vector.verification]
+source = "mathematical derivation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-CS-002"
+name = "two-variable system"
+category = "nominal"
+priority = "critical"
+description = "Two variables linked by a sum constraint resolve uniquely."
+
+[test_vector.input]
+variables = { type = "Vec<String>", value = ["x", "y"] }
+constraints = { type = "Vec<String>", value = ["x + y == 100.0", "x == 30.0"] }
+
+[test_vector.expected_output]
+solution = { type = "HashMap<String, f64>", value = { x = 30.0, y = 70.0 } }
+feasible = { type = "bool", value = true }
+
+[test_vector.verification]
+source = "mathematical derivation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-CS-003"
+name = "inequality constraint"
+category = "nominal"
+priority = "high"
+description = "A variable with an upper-bound inequality stays within the bound."
+
+[test_vector.input]
+variables = { type = "Vec<String>", value = ["w"] }
+constraints = { type = "Vec<String>", value = ["w <= 200.0", "w >= 0.0"] }
+objective = { type = "String", value = "maximize w" }
+
+[test_vector.expected_output]
+solution = { type = "HashMap<String, f64>", value = { w = 200.0 } }
+feasible = { type = "bool", value = true }
+
+[test_vector.verification]
+source = "mathematical derivation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-CS-004"
+name = "infeasible detection"
+category = "adversarial"
+priority = "critical"
+description = "Contradictory constraints are detected and the system is reported as infeasible."
+
+[test_vector.input]
+variables = { type = "Vec<String>", value = ["z"] }
+constraints = { type = "Vec<String>", value = ["z == 10.0", "z == 20.0"] }
+
+[test_vector.expected_output]
+solution = { type = "HashMap<String, f64>", value = {} }
+feasible = { type = "bool", value = false }
+
+[test_vector.verification]
+source = "mathematical derivation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-CS-005"
+name = "stay constraint"
+category = "nominal"
+priority = "high"
+description = "A stay constraint keeps a variable at its initial suggested value when no other forces act on it."
+
+[test_vector.input]
+variables = { type = "Vec<String>", value = ["a"] }
+constraints = { type = "Vec<String>", value = ["stay a == 55.0"] }
+suggested_values = { type = "HashMap<String, f64>", value = { a = 55.0 } }
+
+[test_vector.expected_output]
+solution = { type = "HashMap<String, f64>", value = { a = 55.0 } }
+feasible = { type = "bool", value = true }
+
+[test_vector.verification]
+source = "mathematical derivation"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-04-23"
+
+[[test_vector]]
+id = "TV-CS-006"
+name = "edit and re-solve"
+category = "nominal"
+priority = "high"
+description = "After an edit variable changes, re-solving propagates the new value through the constraint graph."
+
+[test_vector.input]
+variables = { type = "Vec<String>", value = ["left", "right", "total"] }
+constraints = { type = "Vec<String>", value = ["left + right == total"] }
+edit_variable = { type = "String", value = "left" }
+edit_value = { type = "f64", value = 60.0 }
+suggested_values = { type = "HashMap<String, f64>", value = { left = 50.0, right = 50.0, total = 100.0 } }
+
+[test_vector.expected_output]
+solution = { type = "HashMap<String, f64>", value = { left = 60.0, right = 40.0, total = 100.0 } }
+feasible = { type = "bool", value = true }
+
+[test_vector.verification]
+source = "mathematical derivation"
+method = "Analytical"
+confidence = 1.0
+verifier = "DeepThought"
+verification_date = "2026-04-23"

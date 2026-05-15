@@ -34,18 +34,6 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install harfbuzz
 
-      - name: Install system dependencies (Windows)
-        if: runner.os == 'Windows'
-        continue-on-error: true
-        run: vcpkg install harfbuzz:x64-windows
-        env:
-          VCPKG_DEFAULT_TRIPLET: x64-windows
-
-      - name: Set VCPKG_ROOT (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:

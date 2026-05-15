@@ -32,6 +32,9 @@ wasmtime-wasi = { version = "28", optional = true }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 harfbuzz-sys = { workspace = true }
 
+[target.'cfg(all(not(target_arch = "wasm32"), target_family = "windows"))'.dependencies]
+harfbuzz-sys = { workspace = true, features = ["bundled"] }
+
 [dev-dependencies]
 proptest = { workspace = true }
 quickcheck = { workspace = true }
