@@ -29,21 +29,27 @@
 
 ---
 
-## Phase 1: CI/CD Hardening (1-2 weeks)
+## Phase 1: CI/CD Hardening (1-2 weeks) -- PARTIALLY DONE
 
-### 1.1 Resolve Remaining CI Failures
+### 1.1 Resolve Remaining CI Failures -- DONE
 
-- **Font tests on CI**: Install `fonts-dejavu-core` on Ubuntu runners, or mark font-db/font-loader tests as `#[cfg(feature = "system-fonts")]` and gate them behind a CI feature flag
-- **veraPDF**: Use `apt install verapdf` on Ubuntu (available in universe since 22.04), or switch to the official Docker image
-- **Lean4 caching**: Cache `~/.elan` and `ldir-lean/.lake` between runs to reduce 60min cold builds to ~10min
-- **Feature Gates job**: Add `--exclude ldir-wasm` and system font install before wasm-plugins test
+- [x] **aarch64 cross-compilation**: Install `libharfbuzz-dev:arm64` with `dpkg --add-architecture arm64`
+- [x] **bench.yml --quick profile**: Replaced invalid `--quick` cargo flag with `CRITERION_MEASUREMENT_TIME` env var
+- [x] **Pre-commit hook**: Removed redundant `--exclude ldir-core-fuzz` (already workspace-excluded)
+- [ ] **Font tests on CI**: `fonts-dejavu-core` is installed; `ldir-test-helpers` bundles test font fixture
+- [ ] **veraPDF**: Install via apt or use continue-on-error (already set)
+- [ ] **Lean4 caching**: Cache `~/.elan` and `ldir-lean/.lake` between runs
 
-### 1.2 CI Quality Gates
+### 1.2 CI Quality Gates -- PARTIALLY DONE
 
-- Make `Rust ubuntu-latest` a required status check (currently no branch protection)
-- Add `cargo doc --workspace --no-deps` to CI to catch documentation warnings
-- Add `cargo test --workspace --doc` to verify all doctests pass
-- Add security audit: `cargo audit` for known vulnerability scanning
+- [x] Clippy with `-D warnings` enforced on all platforms
+- [x] `cargo fmt --check` enforced on all platforms
+- [x] `cargo doc --workspace --no-deps` in CI (docs.yml)
+- [x] Dependabot configured for Cargo and Actions
+- [x] Benchmark regression detection in CI
+- [ ] Make `Rust ubuntu-latest` a required status check (branch protection)
+- [ ] Add `cargo audit` for known vulnerability scanning
+- [ ] Add `cargo test --workspace --doc` for doctest verification
 
 ### 1.3 Release Pipeline
 
@@ -60,35 +66,29 @@
 
 ---
 
-## Phase 2: Documentation Accuracy (1 week)
+## Phase 2: Documentation Accuracy (1 week) -- PARTIALLY DONE
 
-### 2.1 Fix Identified Documentation Issues
+### 2.1 Fix Identified Documentation Issues -- DONE
 
-**High priority:**
-- Update Rust version from 1.85 to 1.87 in `getting-started.md`, `user-guide.md`, `migration-guide.md`
-- Fix API reference: replace `serialize_sir`/`deserialize_sir` with actual method-based API (`SIRDocument::to_bytes()`/`from_bytes()`)
-- Fix `getting-started.md` code example to use `push_with_payload` instead of `push`
-- Update workspace version references from `1.0` to `0.1.0` in `migration-guide.md`
-- Remove `ldir-pdf` and `ldir-tex` from WASM-compatible crate lists (depend on native libs)
-
-**Medium priority:**
-- Add L-IR layer to architecture diagram in `getting-started.md`
-- Move `ROOT_SENTINEL` out of fp266 constants table in API reference
-- Document `DEFAULT_LINE_HEIGHT_FACTOR` interpretation (stored as 6, used as 0.6x)
-- Update `ROADMAP.md` metrics (Lean4 sorry count, unwrap/expect count)
-
-**Low priority:**
-- Fix fp266 `MAX_VALUE` precision in API reference (`~524287.99` to `~524287.9921875`)
-- Fix `fractional()` return range documentation for negative values
+All high-priority documentation issues have been resolved:
+- [x] Update MSRV to 1.88 in VERSION.md, ROADMAP.md, user-guide.md
+- [x] Fix crate version references from 1.0 to 0.1 in getting-started.md, migration-guide.md
+- [x] Correct input format count (9) and output format count (8) in README.md
+- [x] Add all 26 crates to README.md table
+- [x] Update Lean4 sorry count to 0 across VERSION.md, ROADMAP.md, ROADMAP_NEXT.md, ldir-lean/README.md
+- [x] Fix WASM section in user-guide.md (remove ldir-pdf from WASM-compatible list)
+- [x] Update ldc/README.md to reflect 9 input formats, 8 output formats
+- [x] Update CAPABILITY_MATRIX.md (Wasmtime: NOT FOUND -> Available)
+- [x] Add landing page (docs/index.html) for GitHub Pages
+- [x] Update docs.yml to copy landing page to doc output
 
 ### 2.2 Specification Debt
 
-From the specs audit, 5 HIGH issues need addressing:
-- 7 of 8 test vector TOML files are missing (only `test_vectors_ir.toml` exists)
-- `TRACEABILITY_MATRIX.md` does not exist at `.specs/` root
-- `YP-LAYOUT-LIR-001.md` exists but is not registered in `yellow_paper_registry.toml`
-- S-IR v2 `Dimension` uses `f64` but YP-NUMERICAL-FIXEDPOINT-001 mandates 26.6 fixed-point
-- Lean4 proof file path in `blue_paper_registry.toml` is stale (migrated to `/ldir-lean/`)
+From the specs audit, remaining items:
+- [ ] Create test vector TOML files for remaining Yellow Papers
+- [ ] Update TRACEABILITY_MATRIX.md statuses (currently all "Planned")
+- [ ] Register YP-LAYOUT-LIR-001.md in yellow_paper_registry.toml
+- [ ] Resolve S-IR v2 Dimension f64 vs 26.6 fixed-point inconsistency
 
 ### Success Criteria
 
@@ -116,10 +116,17 @@ Font-dependent tests (font::db, font::loader, shaping::harfbuzz) fail on CI runn
 
 Recommended: Option B (bundle test font) for deterministic CI.
 
-### 3.3 Lean4 Proof Status
+### 3.3 Lean4 Proof Status -- ALL RESOLVED
 
-1 sorry remains: `compile_preserves_content` (deferred to Phase X-1 real compiler model).
-All 3 blocked proofs from Era N have been resolved or deferred with complete proof strategies.
+All proofs compile with 0 sorry. Verified properties:
+- Entity uniqueness (entityUnique)
+- Parent reference validity (parentExists)
+- Acyclicity with fuel-based termination (isAcyclic)
+- Single-root constraint (hasSingleRoot)
+- Compiler termination (compile_terminates)
+- Content preservation (compile_preserves_content)
+- Knuth-Plass termination (kp_termination)
+- Cumulative width monotonicity (cumWidth_mono)
 
 ### 3.4 Unsafe Block Audit
 

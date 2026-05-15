@@ -1,4 +1,5 @@
 name: Documentation
+
 on:
   push:
     branches: [main]
@@ -7,6 +8,7 @@ on:
       - '.specs/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - 'docs/**'
 
 permissions:
   contents: write
@@ -17,16 +19,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Build documentation
         run: cargo doc --workspace --exclude ldir-wasm --no-deps
-      
+
+      - name: Add landing page
+        run: |
+          cp docs/index.html target/doc/index.html
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
