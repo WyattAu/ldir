@@ -322,6 +322,7 @@ mod tests {
         }
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_batch_simd_matches_scalar() {
         let badness = [0.0, 0.5, 1.0, 0.25];
@@ -340,6 +341,7 @@ mod tests {
         }
     }
 
+    #[cfg(target_arch = "x86_64")]
     #[test]
     fn test_batch_simd_infeasible() {
         let badness = [f64::INFINITY, f64::NEG_INFINITY, 0.0, 1e6];
