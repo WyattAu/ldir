@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ldir -- The LLVM of Documents</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --text: #c9d1d9;
+    --heading: #f0f6fc;
+    --accent: #58a6ff;
+    --code-bg: #161b22;
+    --border: #30363d;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+  h1 { color: var(--heading); font-size: 2rem; margin-bottom: 0.25rem; }
+  h1 code { color: var(--accent); }
+  .tagline { color: #8b949e; margin-bottom: 2rem; font-size: 1.1rem; }
+  .badges { margin-bottom: 2rem; }
+  .badges img { margin-right: 0.5rem; vertical-align: middle; }
+  h2 { color: var(--heading); font-size: 1.3rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+  p { margin-bottom: 0.75rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: var(--mono);
+    background: var(--code-bg);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+  }
+  pre code { background: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+  th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--heading); font-weight: 600; }
+  td code { font-size: 0.85em; }
+  .arch {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+  }
+  .links { list-style: none; padding-left: 0; }
+  .links li { margin-bottom: 0.4rem; }
+  .links li::before { content: "-> "; color: #8b949e; }
+</style>
+</head>
+<body>
+
+<h1><code>ldir</code> -- The LLVM of Documents</h1>
+<p class="tagline">A universal intermediate representation for deterministic document typesetting.</p>
+
+<div class="badges">
+  <a href="https://github.com/WyattAu/ldir/actions"><img src="https://img.shields.io/github/actions/workflow/status/WyattAu/ldir/ci.yml?branch=main" alt="CI"></a>
+  <a href="https://crates.io/crates/ldir"><img src="https://img.shields.io/crates/v/ldir.svg" alt="crates.io"></a>
+  <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License">
+</div>
+
+<h2>Overview</h2>
+<p>
+  <code>ldir</code> is a compiler infrastructure for documents. It defines a three-layer
+  intermediate representation (S-IR, L-IR, G-IR) that decouples input parsing from output
+  rendering, enabling format-agnostic optimization, validation, and transformation.
+</p>
+
+<h2>Architecture</h2>
+<div class="arch">
+  Input --&gt; [Parser] --&gt; S-IR v2 --&gt; [Compiler] --&gt; L-IR --&gt; [Renderer] --&gt; PDF / HTML / EPUB / ...
+</div>
+
+<h2>Supported Formats</h2>
+<table>
+  <tr><th>Input (9)</th><td>Markdown, LaTeX, Typst, HTML, Asciidoc, Org-mode, DOCX, SIR2, LDIR</td></tr>
+  <tr><th>Output (8)</th><td>PDF, HTML, EPUB, TXT, DOCX, GIR, SIR2, LDIR</td></tr>
+</table>
+
+<h2>Quick Start</h2>
+<pre><code>cargo install --path ldc
+ldc input.md -o output.pdf</code></pre>
+
+<h2>Crates</h2>
+<table>
+  <tr><th>Crate</th><th>Description</th></tr>
+  <tr><td><code>ldir-ir</code></td><td>IR type definitions (S-IR, L-IR, G-IR)</td></tr>
+  <tr><td><code>ldir-core</code></td><td>Compiler, layout, shaping, fonts, validator</td></tr>
+  <tr><td><code>ldir-pdf</code></td><td>PDF generation with TrueType embedding</td></tr>
+  <tr><td><code>ldir-md</code></td><td>Markdown parser (CommonMark + GFM)</td></tr>
+  <tr><td><code>ldir-tex</code></td><td>TeX/LaTeX parser</td></tr>
+  <tr><td><code>ldir-typst</code></td><td>Typst parser</td></tr>
+  <tr><td><code>ldir-html</code></td><td>HTML renderer</td></tr>
+  <tr><td><code>ldir-lsp</code></td><td>Language Server Protocol server</td></tr>
+  <tr><td><code>ldir-opt</code></td><td>IR optimizer (8 passes)</td></tr>
+  <tr><td><code>ldir-vello</code></td><td>GPU renderer (Vello/WGPU)</td></tr>
+  <tr><td><code>ldir-wasm</code></td><td>WASM playground</td></tr>
+  <tr><td><code>ldc</code></td><td>CLI compiler driver</td></tr>
+</table>
+
+<h2>Formal Verification</h2>
+<p>
+  IR well-formedness properties are formally verified in <a href="https://lean-lang.org/">Lean 4</a>.
+  All proofs compile with 0 <code>sorry</code>. Verified properties include entity uniqueness,
+  parent reference validity, acyclicity, single-root constraint, and compiler termination.
+</p>
+
+<h2>Documentation</h2>
+<ul class="links">
+  <li><a href="ldir_core/index.html">ldir-core API</a></li>
+  <li><a href="ldir_ir/index.html">ldir-ir API</a></li>
+  <li><a href="ldir_pdf/index.html">ldir-pdf API</a></li>
+  <li><a href="ldir_tex/index.html">ldir-tex API</a></li>
+  <li><a href="ldir_md/index.html">ldir-md API</a></li>
+  <li><a href="https://github.com/WyattAu/ldir/blob/main/docs/user-guide.md">User Guide</a></li>
+  <li><a href="https://github.com/WyattAu/ldir/blob/main/docs/getting-started.md">Getting Started</a></li>
+</ul>
+
+<h2>Links</h2>
+<ul class="links">
+  <li><a href="https://github.com/WyattAu/ldir">Source Repository</a></li>
+  <li><a href="https://github.com/WyattAu/ldir/blob/main/CHANGELOG.md">Changelog</a></li>
+  <li><a href="https://github.com/WyattAu/ldir/blob/main/ROADMAP.md">Roadmap</a></li>
+  <li><a href="https://github.com/WyattAu/ldir/blob/main/LICENSE">License (MIT / Apache-2.0)</a></li>
+</ul>
+
+</body>
+</html>
