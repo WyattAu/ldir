@@ -4,7 +4,7 @@
 
 | Crate | Description |
 |-------|-------------|
-| `ldir_ir` | S-IR and G-IR type definitions with rkyv serialization |
+| `ldir_ir` | S-IR, L-IR, and G-IR type definitions with rkyv serialization |
 | `ldir_core` | fp26_6 arithmetic, ECS, S-IR validator, compiler, and G-IR emitter |
 
 ---
@@ -47,6 +47,19 @@
 | `StyleTable` | Table of style entries indexed by style ID |
 | `GIR_COMMAND_ARGS` | `8` — number of argument slots per G-IR command |
 
+### L-IR Module (`ldir_ir::lir`)
+
+#### Types
+
+| Type | Description |
+|------|-------------|
+| `LIRDocument` | Positioned layout document with pages and style table |
+| `LIRPage` | Single page containing positioned L-IR nodes |
+| `LIRNode` | Layout node enum: `Glyph`, `Line`, `Paragraph`, `Heading`, `List`, `Table`, etc. |
+| `LIRGeometry` | Positioned geometry with x, y, width, height, baseline |
+| `LIRStyleTable` | Table of text styles indexed by style ID |
+| `LIRTextStyle` | Text style entry with font ID, size, weight |
+
 ---
 
 ## `ldir_core` — Compilation Pipeline
@@ -57,7 +70,6 @@
 
 | Constant | Type | Value | Description |
 |----------|------|-------|-------------|
-| `ROOT_SENTINEL` | `u32` | `0xFFFF_FFFF` | Sentinel root parent ID |
 | `FRACTIONAL_BITS` | `u32` | `6` | Number of fractional bits |
 | `SCALE` | `i64` | `64` | 2^6 scale factor |
 | `MIN_RAW` | `i64` | `i32::MIN * 64` | Minimum raw value |

@@ -96,6 +96,11 @@ pub fn compute_demerits(
 /// Compute badness for 4 ratios simultaneously using SIMD.
 ///
 /// Returns `[b0, b1, b2, b3]` where `bi = 100 * |ri|^3`.
+///
+/// # Safety
+///
+/// Requires SSE2 (guaranteed on all x86_64 CPUs). Callers must ensure
+/// this is only invoked on x86_64 targets (enforced by `#[cfg]`).
 #[inline]
 #[cfg(target_arch = "x86_64")]
 #[allow(dead_code, clippy::unnecessary_cast)]
@@ -150,6 +155,8 @@ pub unsafe fn compute_demerits_batch_simd(
     line_penalty: f64,
     fitness_changed: [bool; 4],
 ) -> [f64; 4] {
+    // SAFETY: SSE2 is available on all x86_64 CPUs (enforced by #[cfg]).
+    // All pointer offsets are within the bounds of fixed-size [f64; 4] arrays.
     unsafe {
         use std::arch::x86_64::*;
 
@@ -320,6 +327,7 @@ mod tests {
         let badness = [0.0, 0.5, 1.0, 0.25];
         let fitness_changed = [false, true, false, true];
         let scalar = compute_demerits_batch(badness, 100.0, 10.0, fitness_changed);
+        // SAFETY: SSE2 available on all x86_64 (test runs on x86_64 only via #[cfg]).
         let simd = unsafe { compute_demerits_batch_simd(badness, 100.0, 10.0, fitness_changed) };
         for i in 0..4 {
             assert!(
@@ -336,6 +344,7 @@ mod tests {
     fn test_batch_simd_infeasible() {
         let badness = [f64::INFINITY, f64::NEG_INFINITY, 0.0, 1e6];
         let fitness_changed = [false, false, false, false];
+        // SAFETY: SSE2 available on all x86_64 (test runs on x86_64 only via #[cfg]).
         let result = unsafe { compute_demerits_batch_simd(badness, 10.0, 5.0, fitness_changed) };
         // infinity handling: (5 + inf)^2 = inf, (5 - inf)^2 = inf
         assert!(result[0].is_infinite());

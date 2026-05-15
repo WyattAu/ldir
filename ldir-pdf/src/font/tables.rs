@@ -151,6 +151,11 @@ mod tests {
                     let data: &'static [u8] = Box::leak(data.into_boxed_slice());
                     if let Ok(face) = ttf_parser::Face::parse(data, 0) {
                         return Some(unsafe {
+                            // SAFETY: `data` was leaked via `Box::leak` above,
+                            // giving it a `'static` lifetime. The transmute
+                            // extends `Face<'_>` to `Face<'static>` to match,
+                            // which is sound because the backing storage is
+                            // now `'static`.
                             std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(
                                 face,
                             )

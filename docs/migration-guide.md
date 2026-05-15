@@ -4,30 +4,29 @@
 
 | Version | Date       | Summary                                      |
 |---------|------------|----------------------------------------------|
-| 1.0.0   | 2026-04-23 | Core pipeline complete (S-IR, G-IR, compiler, emitter, validator) |
-| 0.2.0   | 2026-04-23 | Yellow papers, Lean 4 proofs, test vectors    |
 | 0.1.0   | 2026-04-23 | Initial project structure and specifications  |
 
 ## Breaking Changes
 
-### 1.0.0
+No breaking changes yet. The project is in active pre-release development (version 0.1.0).
 
-No breaking changes — this is the initial public release of the Rust crates.
+The following APIs are currently available:
 
-The following APIs are stable for the 1.x series:
+- `ldir_ir::sir` -- S-IR types (`SIRDocument`, `SIRInstruction`, `SIROpcode`, `BlockType`, `ROOT_SENTINEL`)
+- `ldir_ir::sir::v2` -- S-IR v2 types (`SIRModuleV2`, `SIRNodeV2`, `NodeType`)
+- `ldir_ir::lir` -- L-IR types (`LIRDocument`, `LIRNode`, `LIRGeometry`)
+- `ldir_ir::gir` -- G-IR types (`GIRDocument`, `GIRPage`, `GIRCommand`, `GIROpcode`, `GIRStyle`, `StyleTable`)
+- `ldir_core::compiler::compile_sir` -- S-IR to G-IR compilation
+- `ldir_core::validator::validate_sir` -- S-IR well-formedness validation
+- `ldir_core::emitter::{emit_gir, parse_gir}` -- G-IR binary serialization
+- `ldir_core::plugin::{FrontendPlugin, BackendPlugin, PluginRegistry}` -- Plugin system
+- `ldir_core::fp266::Fp266` -- 26.6 fixed-point arithmetic
+- `ldir_core::ecs` -- Entity Component System
+- `ldir_core::error` -- Error types (`LdirError`, `ErrorKind`)
 
-- `ldir_ir::sir` — S-IR types (`SIRDocument`, `SIRInstruction`, `SIROpcode`, `BlockType`, `ROOT_SENTINEL`)
-- `ldir_ir::gir` — G-IR types (`GIRDocument`, `GIRPage`, `GIRCommand`, `GIROpcode`, `GIRStyle`, `StyleTable`)
-- `ldir_core::compiler::compile_sir` — S-IR → G-IR compilation
-- `ldir_core::validator::validate_sir` — S-IR well-formedness validation
-- `ldir_core::emitter::{emit_gir, parse_gir}` — G-IR binary serialization
-- `ldir_core::fp266::Fp266` — 26.6 fixed-point arithmetic
-- `ldir_core::ecs` — Entity Component System
-- `ldir_core::error` — Error types (`LdirError`, `ErrorKind`)
+### Planned deprecations (0.x -> 1.0)
 
-### Planned deprecations (1.x → 2.x)
-
-The following may change in 2.0:
+The following may change before 1.0:
 
 - `SIRInstruction` repr alignment (currently 16 bytes, wire format 13 bytes)
 - G-IR command argument layout may expand for additional rendering features
@@ -35,14 +34,9 @@ The following may change in 2.0:
 
 ## Upgrade Instructions
 
-### Upgrading to 1.0.0
-
-No action needed if you are using a previous version — 1.0.0 is the first
-release with published Rust crate APIs.
-
 ### Minimum Rust version
 
-LDIR requires **Rust 1.85** or later (edition 2024). Update with:
+LDIR requires **Rust 1.87** or later (edition 2024). Update with:
 
 ```bash
 rustup update stable
@@ -68,7 +62,9 @@ ldir-ir = { path = "ldir-ir" }
 
 ## Feature Flags
 
-There are currently no feature flags. All functionality is included by default.
+| Flag | Default | Description |
+|------|---------|-------------|
+| `wasm-plugins` | off | Wasmtime-based Wasm plugin sandbox for frontends/backends |
 
 ## Semantic Versioning Policy
 

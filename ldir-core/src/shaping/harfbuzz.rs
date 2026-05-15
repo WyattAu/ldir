@@ -2,6 +2,26 @@
 //!
 //! Provides real font-aware text shaping via HarfBuzz FFI.
 //! All unsafe code is confined to this module.
+//!
+//! # Safety
+//!
+//! All `unsafe` blocks in this module call HarfBuzz C FFI functions via
+//! `harfbuzz_sys`. Each call follows HarfBuzz's documented API contracts:
+//!
+//! - `hb_blob_create`: `font_data` pointer is valid for the duration of the
+//!   call (HB_MEMORY_MODE_READONLY does not take ownership). Null destroy
+//!   function is correct since we do not allocate the data.
+//! - `hb_face_create`/`hb_font_create`: take ownership of blob/face refs;
+//!   correctly destroyed via `hb_*_destroy` at end of function.
+//! - `hb_buffer_add_utf8`: text pointer and length are valid; text is not
+//!   mutated during shaping.
+//! - `hb_buffer_get_glyph_infos`/`hb_buffer_get_glyph_positions`: return
+//!   pointers valid until buffer is destroyed. We iterate within bounds
+//!   (`0..glyph_count`) before destroying the buffer.
+//!
+//! Resource cleanup is guaranteed: blob, face, font, and buffer are all
+//! destroyed in a single `unsafe` block at the end of `shape_harfbuzz`,
+//! regardless of intermediate results.
 
 #![allow(unsafe_code)]
 #![allow(dead_code)]
