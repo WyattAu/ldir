@@ -14,5 +14,5 @@
 | Scripting | Python | >= 3.11.0 | 3.14.4 | Available | Tooling/scripts |
 | WASM Tooling | Node.js | >= 20.0.0 | 25.9.0 | Available | WASM build |
 | LLVM Toolchain | LLVM | >= 17.0.0 | Available | Available | SIMD intrinsics |
-| WASM Runtime | Wasmtime | >= 15.0.0 | NOT FOUND | Missing | Required for WASM extensibility |
+| WASM Runtime | Wasmtime | >= 15.0.0 | 28.x | Available | Optional `wasm-plugins` feature |
 | Lean4 IDE | Lean4 VSCode | >= 4.0.0 | Unknown | Unknown | Development ergonomics |

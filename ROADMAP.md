@@ -4,17 +4,17 @@
 
 | Metric | Value |
 |--------|-------|
-| Rust crates | 25 (+ 1 Lean4 project) |
+| Rust crates | 26 (+ 1 Lean4 project) |
 | Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
 | Total tests | 1,863 (all passing locally) |
-| Lean4 sorry | 1 (compile_preserves_content; deferred to real compiler model) |
+| Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (2 rkyv INVARIANT-guarded, 1 len()-guarded) |
 | Unsafe blocks | 25 (all justified FFI: 19 harfbuzz, 4 font loader, 1 font tables, 1 ecs) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
 | Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
-| MSRV | 1.87 (edition 2024) |
+| MSRV | 1.88 (edition 2024) |
 
 ---
 

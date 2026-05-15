@@ -48,8 +48,8 @@ If you are using LDIR as a workspace dependency, update your `Cargo.toml`:
 
 ```toml
 [workspace.dependencies]
-ldir-core = "1.0"
-ldir-ir = "1.0"
+ldir-core = "0.1"
+ldir-ir = "0.1"
 ```
 
 Or for path dependencies during development:

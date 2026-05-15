@@ -1,4 +1,4 @@
-# ldir-lean — Formal Verification
+# ldir-lean -- Formal Verification
 
 Lean4 formal specifications and proofs for the LDIR document IR.
 
@@ -18,7 +18,8 @@ Subsequent builds are incremental.
 
 | Proof File | Theorems | Proven | Sorry |
 |-----------|----------|--------|-------|
-| `ProofIRWellformedness.lean` | 10 + 3 lemmas | 8 | 2 (eraseDups) |
+| `ProofIRWellformedness.lean` | ~20 | ~20 | 0 |
+| `ProofLayoutProperties.lean` | ~6 | ~6 | 0 |
 
 ### IR Well-Formedness (`ProofIRWellformedness.lean`)
 
@@ -34,20 +35,20 @@ Key results:
 - `wf_sir_implies_single_root`: Well-formed S-IR has exactly one root
 - `not_single_root_implies_not_wf`: Converse direction
 - `compile_terminates`: Compilation always terminates (structural recursion)
+- `isAcyclic_single`, `isAcyclicAux_mono`, `isAcyclic_cons_root`: Acyclicity proofs
+- `compile_preserves_content`: Compiler preserves document content
 
-### Known Gaps
+### Layout Properties (`ProofLayoutProperties.lean`)
 
-Two `sorry` remain due to Mathlib's `List.eraseDups` being defined via `List.brecOn`,
-making structural induction opaque:
-- `entityUnique_subset`: eraseDups preserves subset relationship
-- `entityUnique_soundness`: eraseDups-based uniqueness check is sound
+- `kp_termination`: Knuth-Plass line-breaking terminates
+- `cumWidth_mono`: Cumulative width is monotonically non-decreasing
 
 ## Planned Proofs
 
 | Target | Yellow Paper Reference | Priority |
 |--------|----------------------|----------|
 | Knuth-Plass optimality | YP-LAYOUT-KNUTHPLASS-001 THM-KP-OPTIMALITY | Medium |
-| Compiler correctness | BP-IR-COMPILER-001 POST-COMP-001 | High |
+| Full compiler correctness | BP-IR-COMPILER-001 POST-COMP-001 | High |
 | Constraint solver soundness | YP-CONSTRAINT-CASSOWARY-001 | Low |
 | Fixed-point arithmetic bounds | YP-NUMERICAL-FIXEDPOINT-001 | Medium |
 

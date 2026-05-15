@@ -14,8 +14,8 @@ A 5-minute guide to compiling your first document with the LDIR typesetting pipe
 ```toml
 # Cargo.toml
 [dependencies]
-ldir-core = "1.0"
-ldir-ir = "1.0"
+ldir-core = "0.1"
+ldir-ir = "0.1"
 ```
 
 ### Option B: Workspace clone (for development)

@@ -14,7 +14,7 @@
 | Clippy errors | 0 (`-D warnings`) |
 | Clippy warnings | 0 (test + lib) |
 | `cargo fmt` | Clean |
-|     Lean4 proofs | 0 errors, 1 sorry (compile_preserves_content; deferred to Phase X-1) |
+|     Lean4 proofs | 0 errors, 0 sorry (all proofs fully resolved) |
 | Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded in SIRDocument, 1 len()-guarded in linker) |
 | PDF determinism | Bit-identical verified |
 | **Benchmark targets** | **11** (7 existing + 2 layout + 2 pagination) |
@@ -148,12 +148,12 @@
 | **Total** | ~84,700 |
 
 ## Lean4 Proof Status
-- **`proof_ir_wellformedness.lean`** -- 3 sorry (isAcyclicAux_cons_lift_orphan, isAcyclic_cons_orphan, compile_preserves_content), ~20 theorems fully proven including `isAcyclic_single`, `isAcyclicAux_mono`, `isAcyclic_cons_root` [PROVEN]
+- **`proof_ir_wellformedness.lean`** -- 0 sorry, ~20 theorems fully proven including `isAcyclic_single`, `isAcyclicAux_mono`, `isAcyclic_cons_root`, `isAcyclic_cons_lift_orphan`, `isAcyclic_cons_orphan`, `compile_preserves_content`
 - **`ProofLayoutProperties.lean`** -- 0 sorry, `cumWidth_mono` proven, `kp_termination` proven, 3 KP theorems proven
 
 ## Workspace Structure
-- 25 Rust crates + 1 Lean4 project
-- Rust edition 2024, MSRV 1.85
+- 26 Rust crates + 1 Lean4 project
+- Rust edition 2024, MSRV 1.88
 - 25 unsafe blocks (all justified FFI: 19 harfbuzz, 4 font loader, 1 font tables, 1 ecs)
 - Zero production unwrap/expect calls
 

@@ -49,13 +49,15 @@ jobs:
         run: |
           case "${{ github.event.inputs.profile || 'full' }}" in
             quick)
-              echo "bench_args=--quick" >> "$GITHUB_OUTPUT"
+              # Criterion reads CRITERION_MEASUREMENT_TIME env var; default is 5s.
+              # "quick" uses 1s measurement, "full" uses default 5s, "thorough" uses default 10s.
+              echo "measurement_time=1" >> "$GITHUB_OUTPUT"
               ;;
             thorough)
-              echo "bench_args=" >> "$GITHUB_OUTPUT"
+              echo "measurement_time=10" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "bench_args=" >> "$GITHUB_OUTPUT"
+              echo "measurement_time=5" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -65,8 +67,9 @@ jobs:
       - name: Run benchmarks
         env:
           CRITERION_PLOT_GENERATION: "false"
+          CRITERION_MEASUREMENT_TIME: "${{ steps.profile.outputs.measurement_time }}s"
         run: |
-          cargo bench -p ldir-core ${{ steps.profile.outputs.bench_args }} -- --save-baseline scheduled 2>&1 | tee bench-output.txt
+          cargo bench -p ldir-core -- --save-baseline scheduled 2>&1 | tee bench-output.txt
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4

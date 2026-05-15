@@ -62,9 +62,8 @@ pub fn test_font_path() -> PathBuf {
 /// Returns the raw bytes of the DejaVu Sans test font.
 pub fn test_font_data() -> Vec<u8> {
     let path = test_font_path();
-    std::fs::read(&path).unwrap_or_else(|e| {
-        panic!("Failed to read test font at {}: {}", path.display(), e)
-    })
+    std::fs::read(&path)
+        .unwrap_or_else(|e| panic!("Failed to read test font at {}: {}", path.display(), e))
 }
 
 /// Attempts to find the workspace root by walking up from CARGO_MANIFEST_DIR.

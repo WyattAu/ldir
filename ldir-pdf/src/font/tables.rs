@@ -150,9 +150,7 @@ mod tests {
                 // extends `Face<'_>` to `Face<'static>` to match,
                 // which is sound because the backing storage is
                 // now `'static`.
-                std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(
-                    face,
-                )
+                std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(face)
             });
         }
         None

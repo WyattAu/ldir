@@ -4,11 +4,11 @@
 
 | Metric | Value |
 |--------|-------|
-| Rust crates | 25 |
+| Rust crates | 26 |
 | Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
 | Total tests | 1,863 (all passing) |
-| Lean4 sorry | 1 (compile_preserves_content; deferred to Phase X-1) |
+| Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded, 1 len()-guarded) |
 | Unsafe blocks | 25 (all justified FFI: 19 harfbuzz, 4 font loader, 1 font tables, 1 ecs) |
@@ -21,11 +21,9 @@
 
 Eliminate known technical debt and establish performance baselines.
 
-### T-1: Eliminate Lean4 sorry (1-2 weeks) [DONE] (2 of 3 eliminated)
+### T-1: Eliminate Lean4 sorry (1-2 weeks) [DONE] (all 3 resolved)
 
-**Proven:** `isAcyclicAux_not_found` (Line 491) and `isAcyclicAux_cons_lift_orphan` (Line 527) using Mathlib's `List.find?_eq_none` and `List.find?_cons` lemmas. Key technique: `split` on `Option` + `if`-`Bool` match, case-split on `Nat.eq_zero_or_pos` for induction fuel.
-
-**Remaining:** 1 sorry (`compile_preserves_content`, line 761). Requires proving membership preservation through `List.foldl` -- deferred to Phase X-1 (real compiler model).
+**Proven:** All theorems fully resolved -- `isAcyclicAux_not_found`, `isAcyclicAux_cons_lift_orphan`, `isAcyclic_cons_orphan`, and `compile_preserves_content`. Key technique: `split` on `Option` + `if`-`Bool` match, case-split on `Nat.eq_zero_or_pos` for induction fuel, and `List.foldl` membership preservation.
 
 ### T-2: Benchmark regression CI (1 week) [DONE]
 

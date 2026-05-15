@@ -60,7 +60,7 @@ This installs the `ldc` compiler driver. To build all tools:
 cargo build --workspace
 ```
 
-**Requirements:** Rust 1.85+ (edition 2024). No other dependencies are needed for basic text output. For PDF generation with embedded fonts, a TrueType font must be available (DejaVu Sans is auto-detected on most Linux systems).
+**Requirements:** Rust 1.88+ (edition 2024). No other dependencies are needed for basic text output. For PDF generation with embedded fonts, a TrueType font must be available (DejaVu Sans is auto-detected on most Linux systems).
 
 ### First Document: Hello World to PDF
 
@@ -378,12 +378,15 @@ Start via your editor's LSP configuration. The server tracks dirty subtrees for 
 
 ### WASM Playground
 
-Core crates compile to `wasm32-unknown-unknown` for browser-based rendering:
+Core IR crates compile to `wasm32-unknown-unknown` for browser-based use:
 
-- `ldir-ir` — S-IR/G-IR types (pure Rust)
-- `ldir-pdf` — PDF generation (pure Rust)
-- `ldir-md` — Markdown parser (pure Rust)
-- `ldir-core` — Compiler with ASCII fallback shaping on WASM
+- `ldir-ir` -- S-IR/G-IR types (pure Rust, no native deps)
+- `ldir-md` -- Markdown parser (pure Rust)
+- `ldir-tex` -- TeX parser (pure Rust)
+- `ldir-wasm` -- WASM bridge and playground
+
+Note: `ldir-pdf` and `ldir-core` depend on `harfbuzz-sys` (native FFI) and are
+not suitable for WASM without a WASI-based HarfBuzz build.
 
 The WASM playground provides browser-based Markdown to HTML rendering.
 
