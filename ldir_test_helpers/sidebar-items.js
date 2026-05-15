@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["system_font_search_paths","test_font_data","test_font_path"]};

@@ -692,94 +692,79 @@
 <a href=#692 id=692 data-nosnippet>692</a>        <span class="macro">assert!</span>(scenes.is_empty());
 <a href=#693 id=693 data-nosnippet>693</a>    }
 <a href=#694 id=694 data-nosnippet>694</a>
-<a href=#695 id=695 data-nosnippet>695</a>    <span class="kw">fn </span>load_system_font() -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
-<a href=#696 id=696 data-nosnippet>696</a>        <span class="kw">let </span>paths = [
-<a href=#697 id=697 data-nosnippet>697</a>            <span class="string">"/usr/share/fonts/TTF/DejaVuSans.ttf"</span>,
-<a href=#698 id=698 data-nosnippet>698</a>            <span class="string">"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"</span>,
-<a href=#699 id=699 data-nosnippet>699</a>        ];
-<a href=#700 id=700 data-nosnippet>700</a>        <span class="kw">for </span>path <span class="kw">in </span><span class="kw-2">&amp;</span>paths {
-<a href=#701 id=701 data-nosnippet>701</a>            <span class="kw">if let </span><span class="prelude-val">Ok</span>(data) = std::fs::read(path) {
-<a href=#702 id=702 data-nosnippet>702</a>                <span class="kw">return </span><span class="prelude-val">Some</span>(data);
-<a href=#703 id=703 data-nosnippet>703</a>            }
-<a href=#704 id=704 data-nosnippet>704</a>        }
-<a href=#705 id=705 data-nosnippet>705</a>        <span class="prelude-val">None
-<a href=#706 id=706 data-nosnippet>706</a>    </span>}
-<a href=#707 id=707 data-nosnippet>707</a>
-<a href=#708 id=708 data-nosnippet>708</a>    <span class="attr">#[test]
-<a href=#709 id=709 data-nosnippet>709</a>    </span><span class="kw">fn </span>test_glyph_outline_with_real_font() {
-<a href=#710 id=710 data-nosnippet>710</a>        <span class="kw">let </span>font_data = <span class="kw">match </span>load_system_font() {
-<a href=#711 id=711 data-nosnippet>711</a>            <span class="prelude-val">Some</span>(d) =&gt; d,
-<a href=#712 id=712 data-nosnippet>712</a>            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
-<a href=#713 id=713 data-nosnippet>713</a>        };
-<a href=#714 id=714 data-nosnippet>714</a>        <span class="kw">let </span>arc_data = Arc::new(font_data);
-<a href=#715 id=715 data-nosnippet>715</a>        <span class="kw">let </span>face = ttf_parser::Face::parse(<span class="kw-2">&amp;</span>arc_data, <span class="number">0</span>).unwrap();
-<a href=#716 id=716 data-nosnippet>716</a>        <span class="kw">let </span>gid_a = face.glyph_index(<span class="string">'A'</span>).unwrap();
-<a href=#717 id=717 data-nosnippet>717</a>
-<a href=#718 id=718 data-nosnippet>718</a>        <span class="kw">let </span><span class="kw-2">mut </span>page = GIRPage::new();
-<a href=#719 id=719 data-nosnippet>719</a>        page.push(GIRCommand::new_set_font(<span class="number">0</span>));
-<a href=#720 id=720 data-nosnippet>720</a>        page.push(GIRCommand::new_move_xy(<span class="number">100 </span>* <span class="number">64</span>, <span class="number">200 </span>* <span class="number">64</span>));
-<a href=#721 id=721 data-nosnippet>721</a>        page.push(GIRCommand::new_put_glyph(gid_a.<span class="number">0 </span><span class="kw">as </span>i32, <span class="number">10 </span>* <span class="number">64</span>));
-<a href=#722 id=722 data-nosnippet>722</a>        <span class="kw">let </span>fonts = FontMap::from_fonts(<span class="kw-2">&amp;</span>[(<span class="number">0</span>, Arc::clone(<span class="kw-2">&amp;</span>arc_data), <span class="number">12.0</span>)]);
-<a href=#723 id=723 data-nosnippet>723</a>        <span class="kw">let </span>scene = gir_page_to_scene_with_fonts(<span class="kw-2">&amp;</span>page, <span class="kw-2">&amp;</span>fonts);
-<a href=#724 id=724 data-nosnippet>724</a>        <span class="macro">assert!</span>(!scene.encoding().is_empty());
-<a href=#725 id=725 data-nosnippet>725</a>    }
-<a href=#726 id=726 data-nosnippet>726</a>
-<a href=#727 id=727 data-nosnippet>727</a>    <span class="attr">#[test]
-<a href=#728 id=728 data-nosnippet>728</a>    </span><span class="kw">fn </span>test_glyph_outline_missing_glyph_id_zero_fallback() {
-<a href=#729 id=729 data-nosnippet>729</a>        <span class="kw">let </span>font_data = <span class="kw">match </span>load_system_font() {
-<a href=#730 id=730 data-nosnippet>730</a>            <span class="prelude-val">Some</span>(d) =&gt; d,
-<a href=#731 id=731 data-nosnippet>731</a>            <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
-<a href=#732 id=732 data-nosnippet>732</a>        };
-<a href=#733 id=733 data-nosnippet>733</a>        <span class="kw">let </span>arc_data = Arc::new(font_data);
-<a href=#734 id=734 data-nosnippet>734</a>
-<a href=#735 id=735 data-nosnippet>735</a>        <span class="kw">let </span><span class="kw-2">mut </span>page = GIRPage::new();
-<a href=#736 id=736 data-nosnippet>736</a>        page.push(GIRCommand::new_set_font(<span class="number">0</span>));
-<a href=#737 id=737 data-nosnippet>737</a>        page.push(GIRCommand::new_move_xy(<span class="number">50 </span>* <span class="number">64</span>, <span class="number">50 </span>* <span class="number">64</span>));
-<a href=#738 id=738 data-nosnippet>738</a>        page.push(GIRCommand::new_put_glyph(<span class="number">0</span>, <span class="number">10 </span>* <span class="number">64</span>));
-<a href=#739 id=739 data-nosnippet>739</a>        <span class="kw">let </span>fonts = FontMap::from_fonts(<span class="kw-2">&amp;</span>[(<span class="number">0</span>, Arc::clone(<span class="kw-2">&amp;</span>arc_data), <span class="number">12.0</span>)]);
-<a href=#740 id=740 data-nosnippet>740</a>        <span class="kw">let </span>scene = gir_page_to_scene_with_fonts(<span class="kw-2">&amp;</span>page, <span class="kw-2">&amp;</span>fonts);
-<a href=#741 id=741 data-nosnippet>741</a>        <span class="macro">assert!</span>(!scene.encoding().is_empty());
-<a href=#742 id=742 data-nosnippet>742</a>    }
-<a href=#743 id=743 data-nosnippet>743</a>
-<a href=#744 id=744 data-nosnippet>744</a>    <span class="attr">#[test]
-<a href=#745 id=745 data-nosnippet>745</a>    </span><span class="kw">fn </span>test_glyph_outline_invalid_font_data_fallback() {
-<a href=#746 id=746 data-nosnippet>746</a>        <span class="kw">let </span>arc_data = Arc::new(<span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="number">64</span>]);
-<a href=#747 id=747 data-nosnippet>747</a>
-<a href=#748 id=748 data-nosnippet>748</a>        <span class="kw">let </span><span class="kw-2">mut </span>page = GIRPage::new();
-<a href=#749 id=749 data-nosnippet>749</a>        page.push(GIRCommand::new_set_font(<span class="number">0</span>));
-<a href=#750 id=750 data-nosnippet>750</a>        page.push(GIRCommand::new_move_xy(<span class="number">50 </span>* <span class="number">64</span>, <span class="number">50 </span>* <span class="number">64</span>));
-<a href=#751 id=751 data-nosnippet>751</a>        page.push(GIRCommand::new_put_glyph(<span class="number">65</span>, <span class="number">10 </span>* <span class="number">64</span>));
-<a href=#752 id=752 data-nosnippet>752</a>        <span class="kw">let </span>fonts = FontMap::from_fonts(<span class="kw-2">&amp;</span>[(<span class="number">0</span>, Arc::clone(<span class="kw-2">&amp;</span>arc_data), <span class="number">12.0</span>)]);
-<a href=#753 id=753 data-nosnippet>753</a>        <span class="kw">let </span>scene = gir_page_to_scene_with_fonts(<span class="kw-2">&amp;</span>page, <span class="kw-2">&amp;</span>fonts);
-<a href=#754 id=754 data-nosnippet>754</a>        <span class="macro">assert!</span>(!scene.encoding().is_empty());
-<a href=#755 id=755 data-nosnippet>755</a>    }
-<a href=#756 id=756 data-nosnippet>756</a>
-<a href=#757 id=757 data-nosnippet>757</a>    <span class="attr">#[test]
-<a href=#758 id=758 data-nosnippet>758</a>    </span><span class="kw">fn </span>test_render_glyph_outline_returns_false_for_glyph_zero() {
-<a href=#759 id=759 data-nosnippet>759</a>        <span class="kw">let </span>result = render_glyph_outline(
-<a href=#760 id=760 data-nosnippet>760</a>            <span class="kw-2">&amp;mut </span>Scene::new(),
-<a href=#761 id=761 data-nosnippet>761</a>            Affine::IDENTITY,
-<a href=#762 id=762 data-nosnippet>762</a>            <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">64</span>],
-<a href=#763 id=763 data-nosnippet>763</a>            <span class="number">0</span>,
-<a href=#764 id=764 data-nosnippet>764</a>            <span class="number">12.0</span>,
+<a href=#695 id=695 data-nosnippet>695</a>    <span class="kw">fn </span>load_test_font() -&gt; Vec&lt;u8&gt; {
+<a href=#696 id=696 data-nosnippet>696</a>        ldir_test_helpers::test_font_data()
+<a href=#697 id=697 data-nosnippet>697</a>    }
+<a href=#698 id=698 data-nosnippet>698</a>
+<a href=#699 id=699 data-nosnippet>699</a>    <span class="attr">#[test]
+<a href=#700 id=700 data-nosnippet>700</a>    </span><span class="kw">fn </span>test_glyph_outline_with_real_font() {
+<a href=#701 id=701 data-nosnippet>701</a>        <span class="kw">let </span>font_data = load_test_font();
+<a href=#702 id=702 data-nosnippet>702</a>        <span class="kw">let </span>arc_data = Arc::new(font_data);
+<a href=#703 id=703 data-nosnippet>703</a>        <span class="kw">let </span>face = ttf_parser::Face::parse(<span class="kw-2">&amp;</span>arc_data, <span class="number">0</span>).unwrap();
+<a href=#704 id=704 data-nosnippet>704</a>        <span class="kw">let </span>gid_a = face.glyph_index(<span class="string">'A'</span>).unwrap();
+<a href=#705 id=705 data-nosnippet>705</a>
+<a href=#706 id=706 data-nosnippet>706</a>        <span class="kw">let </span><span class="kw-2">mut </span>page = GIRPage::new();
+<a href=#707 id=707 data-nosnippet>707</a>        page.push(GIRCommand::new_set_font(<span class="number">0</span>));
+<a href=#708 id=708 data-nosnippet>708</a>        page.push(GIRCommand::new_move_xy(<span class="number">100 </span>* <span class="number">64</span>, <span class="number">200 </span>* <span class="number">64</span>));
+<a href=#709 id=709 data-nosnippet>709</a>        page.push(GIRCommand::new_put_glyph(gid_a.<span class="number">0 </span><span class="kw">as </span>i32, <span class="number">10 </span>* <span class="number">64</span>));
+<a href=#710 id=710 data-nosnippet>710</a>        <span class="kw">let </span>fonts = FontMap::from_fonts(<span class="kw-2">&amp;</span>[(<span class="number">0</span>, Arc::clone(<span class="kw-2">&amp;</span>arc_data), <span class="number">12.0</span>)]);
+<a href=#711 id=711 data-nosnippet>711</a>        <span class="kw">let </span>scene = gir_page_to_scene_with_fonts(<span class="kw-2">&amp;</span>page, <span class="kw-2">&amp;</span>fonts);
+<a href=#712 id=712 data-nosnippet>712</a>        <span class="macro">assert!</span>(!scene.encoding().is_empty());
+<a href=#713 id=713 data-nosnippet>713</a>    }
+<a href=#714 id=714 data-nosnippet>714</a>
+<a href=#715 id=715 data-nosnippet>715</a>    <span class="attr">#[test]
+<a href=#716 id=716 data-nosnippet>716</a>    </span><span class="kw">fn </span>test_glyph_outline_missing_glyph_id_zero_fallback() {
+<a href=#717 id=717 data-nosnippet>717</a>        <span class="kw">let </span>font_data = load_test_font();
+<a href=#718 id=718 data-nosnippet>718</a>        <span class="kw">let </span>arc_data = Arc::new(font_data);
+<a href=#719 id=719 data-nosnippet>719</a>
+<a href=#720 id=720 data-nosnippet>720</a>        <span class="kw">let </span><span class="kw-2">mut </span>page = GIRPage::new();
+<a href=#721 id=721 data-nosnippet>721</a>        page.push(GIRCommand::new_set_font(<span class="number">0</span>));
+<a href=#722 id=722 data-nosnippet>722</a>        page.push(GIRCommand::new_move_xy(<span class="number">50 </span>* <span class="number">64</span>, <span class="number">50 </span>* <span class="number">64</span>));
+<a href=#723 id=723 data-nosnippet>723</a>        page.push(GIRCommand::new_put_glyph(<span class="number">0</span>, <span class="number">10 </span>* <span class="number">64</span>));
+<a href=#724 id=724 data-nosnippet>724</a>        <span class="kw">let </span>fonts = FontMap::from_fonts(<span class="kw-2">&amp;</span>[(<span class="number">0</span>, Arc::clone(<span class="kw-2">&amp;</span>arc_data), <span class="number">12.0</span>)]);
+<a href=#725 id=725 data-nosnippet>725</a>        <span class="kw">let </span>scene = gir_page_to_scene_with_fonts(<span class="kw-2">&amp;</span>page, <span class="kw-2">&amp;</span>fonts);
+<a href=#726 id=726 data-nosnippet>726</a>        <span class="macro">assert!</span>(!scene.encoding().is_empty());
+<a href=#727 id=727 data-nosnippet>727</a>    }
+<a href=#728 id=728 data-nosnippet>728</a>
+<a href=#729 id=729 data-nosnippet>729</a>    <span class="attr">#[test]
+<a href=#730 id=730 data-nosnippet>730</a>    </span><span class="kw">fn </span>test_glyph_outline_invalid_font_data_fallback() {
+<a href=#731 id=731 data-nosnippet>731</a>        <span class="kw">let </span>arc_data = Arc::new(<span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="number">64</span>]);
+<a href=#732 id=732 data-nosnippet>732</a>
+<a href=#733 id=733 data-nosnippet>733</a>        <span class="kw">let </span><span class="kw-2">mut </span>page = GIRPage::new();
+<a href=#734 id=734 data-nosnippet>734</a>        page.push(GIRCommand::new_set_font(<span class="number">0</span>));
+<a href=#735 id=735 data-nosnippet>735</a>        page.push(GIRCommand::new_move_xy(<span class="number">50 </span>* <span class="number">64</span>, <span class="number">50 </span>* <span class="number">64</span>));
+<a href=#736 id=736 data-nosnippet>736</a>        page.push(GIRCommand::new_put_glyph(<span class="number">65</span>, <span class="number">10 </span>* <span class="number">64</span>));
+<a href=#737 id=737 data-nosnippet>737</a>        <span class="kw">let </span>fonts = FontMap::from_fonts(<span class="kw-2">&amp;</span>[(<span class="number">0</span>, Arc::clone(<span class="kw-2">&amp;</span>arc_data), <span class="number">12.0</span>)]);
+<a href=#738 id=738 data-nosnippet>738</a>        <span class="kw">let </span>scene = gir_page_to_scene_with_fonts(<span class="kw-2">&amp;</span>page, <span class="kw-2">&amp;</span>fonts);
+<a href=#739 id=739 data-nosnippet>739</a>        <span class="macro">assert!</span>(!scene.encoding().is_empty());
+<a href=#740 id=740 data-nosnippet>740</a>    }
+<a href=#741 id=741 data-nosnippet>741</a>
+<a href=#742 id=742 data-nosnippet>742</a>    <span class="attr">#[test]
+<a href=#743 id=743 data-nosnippet>743</a>    </span><span class="kw">fn </span>test_render_glyph_outline_returns_false_for_glyph_zero() {
+<a href=#744 id=744 data-nosnippet>744</a>        <span class="kw">let </span>result = render_glyph_outline(
+<a href=#745 id=745 data-nosnippet>745</a>            <span class="kw-2">&amp;mut </span>Scene::new(),
+<a href=#746 id=746 data-nosnippet>746</a>            Affine::IDENTITY,
+<a href=#747 id=747 data-nosnippet>747</a>            <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">64</span>],
+<a href=#748 id=748 data-nosnippet>748</a>            <span class="number">0</span>,
+<a href=#749 id=749 data-nosnippet>749</a>            <span class="number">12.0</span>,
+<a href=#750 id=750 data-nosnippet>750</a>            <span class="number">0.0</span>,
+<a href=#751 id=751 data-nosnippet>751</a>            <span class="number">0.0</span>,
+<a href=#752 id=752 data-nosnippet>752</a>        );
+<a href=#753 id=753 data-nosnippet>753</a>        <span class="macro">assert!</span>(!result);
+<a href=#754 id=754 data-nosnippet>754</a>    }
+<a href=#755 id=755 data-nosnippet>755</a>
+<a href=#756 id=756 data-nosnippet>756</a>    <span class="attr">#[test]
+<a href=#757 id=757 data-nosnippet>757</a>    </span><span class="kw">fn </span>test_render_glyph_outline_returns_false_for_invalid_font() {
+<a href=#758 id=758 data-nosnippet>758</a>        <span class="kw">let </span>result = render_glyph_outline(
+<a href=#759 id=759 data-nosnippet>759</a>            <span class="kw-2">&amp;mut </span>Scene::new(),
+<a href=#760 id=760 data-nosnippet>760</a>            Affine::IDENTITY,
+<a href=#761 id=761 data-nosnippet>761</a>            <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">10</span>],
+<a href=#762 id=762 data-nosnippet>762</a>            <span class="number">65</span>,
+<a href=#763 id=763 data-nosnippet>763</a>            <span class="number">12.0</span>,
+<a href=#764 id=764 data-nosnippet>764</a>            <span class="number">0.0</span>,
 <a href=#765 id=765 data-nosnippet>765</a>            <span class="number">0.0</span>,
-<a href=#766 id=766 data-nosnippet>766</a>            <span class="number">0.0</span>,
-<a href=#767 id=767 data-nosnippet>767</a>        );
-<a href=#768 id=768 data-nosnippet>768</a>        <span class="macro">assert!</span>(!result);
-<a href=#769 id=769 data-nosnippet>769</a>    }
-<a href=#770 id=770 data-nosnippet>770</a>
-<a href=#771 id=771 data-nosnippet>771</a>    <span class="attr">#[test]
-<a href=#772 id=772 data-nosnippet>772</a>    </span><span class="kw">fn </span>test_render_glyph_outline_returns_false_for_invalid_font() {
-<a href=#773 id=773 data-nosnippet>773</a>        <span class="kw">let </span>result = render_glyph_outline(
-<a href=#774 id=774 data-nosnippet>774</a>            <span class="kw-2">&amp;mut </span>Scene::new(),
-<a href=#775 id=775 data-nosnippet>775</a>            Affine::IDENTITY,
-<a href=#776 id=776 data-nosnippet>776</a>            <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">10</span>],
-<a href=#777 id=777 data-nosnippet>777</a>            <span class="number">65</span>,
-<a href=#778 id=778 data-nosnippet>778</a>            <span class="number">12.0</span>,
-<a href=#779 id=779 data-nosnippet>779</a>            <span class="number">0.0</span>,
-<a href=#780 id=780 data-nosnippet>780</a>            <span class="number">0.0</span>,
-<a href=#781 id=781 data-nosnippet>781</a>        );
-<a href=#782 id=782 data-nosnippet>782</a>        <span class="macro">assert!</span>(!result);
-<a href=#783 id=783 data-nosnippet>783</a>    }
-<a href=#784 id=784 data-nosnippet>784</a>}
+<a href=#766 id=766 data-nosnippet>766</a>        );
+<a href=#767 id=767 data-nosnippet>767</a>        <span class="macro">assert!</span>(!result);
+<a href=#768 id=768 data-nosnippet>768</a>    }
+<a href=#769 id=769 data-nosnippet>769</a>}
 </code></pre></div></section></main></body></html>

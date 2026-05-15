@@ -235,27 +235,22 @@
 <a href=#235 id=235 data-nosnippet>235</a>    <span class="attr">#[test]
 <a href=#236 id=236 data-nosnippet>236</a>    </span><span class="kw">fn </span>unicode_basic_with_font_uses_cmap() {
 <a href=#237 id=237 data-nosnippet>237</a>        <span class="comment">// With real font data, cmap should map known chars to non-zero glyph IDs
-<a href=#238 id=238 data-nosnippet>238</a>        </span><span class="kw">let </span>path = <span class="string">"/usr/share/fonts/TTF/DejaVuSans.ttf"</span>;
-<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">if let </span><span class="prelude-val">Ok</span>(data) = std::fs::read(path) {
-<a href=#240 id=240 data-nosnippet>240</a>            <span class="kw">let </span>run = shape_unicode_basic(<span class="kw-2">&amp;</span>data, <span class="string">"A"</span>, Fp266::from_int(<span class="number">10</span>), <span class="number">1</span>);
-<a href=#241 id=241 data-nosnippet>241</a>            <span class="macro">assert_eq!</span>(run.glyphs.len(), <span class="number">1</span>);
-<a href=#242 id=242 data-nosnippet>242</a>            <span class="comment">// 'A' should map to a real glyph ID (not 0xFFFD or 0)
-<a href=#243 id=243 data-nosnippet>243</a>            </span><span class="macro">assert_ne!</span>(run.glyphs[<span class="number">0</span>].glyph_id, <span class="number">0xFFFD</span>);
-<a href=#244 id=244 data-nosnippet>244</a>            <span class="macro">assert!</span>(run.glyphs[<span class="number">0</span>].glyph_id &gt; <span class="number">0</span>);
-<a href=#245 id=245 data-nosnippet>245</a>        }
-<a href=#246 id=246 data-nosnippet>246</a>        <span class="comment">// Skip on systems without the test font
-<a href=#247 id=247 data-nosnippet>247</a>    </span>}
-<a href=#248 id=248 data-nosnippet>248</a>
-<a href=#249 id=249 data-nosnippet>249</a>    <span class="attr">#[test]
-<a href=#250 id=250 data-nosnippet>250</a>    </span><span class="kw">fn </span>unicode_basic_with_font_unknown_char() {
-<a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">let </span>path = <span class="string">"/usr/share/fonts/TTF/DejaVuSans.ttf"</span>;
-<a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">if let </span><span class="prelude-val">Ok</span>(data) = std::fs::read(path) {
-<a href=#253 id=253 data-nosnippet>253</a>            <span class="comment">// U+0001 is a control character not in most fonts
-<a href=#254 id=254 data-nosnippet>254</a>            </span><span class="kw">let </span>run = shape_unicode_basic(<span class="kw-2">&amp;</span>data, <span class="string">"\u{0001}"</span>, Fp266::from_int(<span class="number">10</span>), <span class="number">1</span>);
-<a href=#255 id=255 data-nosnippet>255</a>            <span class="macro">assert_eq!</span>(run.glyphs.len(), <span class="number">1</span>);
-<a href=#256 id=256 data-nosnippet>256</a>            <span class="comment">// Missing glyph should get glyph ID 0 with default advance
-<a href=#257 id=257 data-nosnippet>257</a>            </span><span class="macro">assert_eq!</span>(run.glyphs[<span class="number">0</span>].glyph_id, <span class="number">0</span>);
-<a href=#258 id=258 data-nosnippet>258</a>        }
-<a href=#259 id=259 data-nosnippet>259</a>    }
-<a href=#260 id=260 data-nosnippet>260</a>}
+<a href=#238 id=238 data-nosnippet>238</a>        </span><span class="kw">let </span>data = ldir_test_helpers::test_font_data();
+<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">let </span>run = shape_unicode_basic(<span class="kw-2">&amp;</span>data, <span class="string">"A"</span>, Fp266::from_int(<span class="number">10</span>), <span class="number">1</span>);
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="macro">assert_eq!</span>(run.glyphs.len(), <span class="number">1</span>);
+<a href=#241 id=241 data-nosnippet>241</a>        <span class="comment">// 'A' should map to a real glyph ID (not 0xFFFD or 0)
+<a href=#242 id=242 data-nosnippet>242</a>        </span><span class="macro">assert_ne!</span>(run.glyphs[<span class="number">0</span>].glyph_id, <span class="number">0xFFFD</span>);
+<a href=#243 id=243 data-nosnippet>243</a>        <span class="macro">assert!</span>(run.glyphs[<span class="number">0</span>].glyph_id &gt; <span class="number">0</span>);
+<a href=#244 id=244 data-nosnippet>244</a>    }
+<a href=#245 id=245 data-nosnippet>245</a>
+<a href=#246 id=246 data-nosnippet>246</a>    <span class="attr">#[test]
+<a href=#247 id=247 data-nosnippet>247</a>    </span><span class="kw">fn </span>unicode_basic_with_font_unknown_char() {
+<a href=#248 id=248 data-nosnippet>248</a>        <span class="kw">let </span>data = ldir_test_helpers::test_font_data();
+<a href=#249 id=249 data-nosnippet>249</a>        <span class="comment">// U+0001 is a control character not in most fonts
+<a href=#250 id=250 data-nosnippet>250</a>        </span><span class="kw">let </span>run = shape_unicode_basic(<span class="kw-2">&amp;</span>data, <span class="string">"\u{0001}"</span>, Fp266::from_int(<span class="number">10</span>), <span class="number">1</span>);
+<a href=#251 id=251 data-nosnippet>251</a>        <span class="macro">assert_eq!</span>(run.glyphs.len(), <span class="number">1</span>);
+<a href=#252 id=252 data-nosnippet>252</a>        <span class="comment">// Missing glyph should get glyph ID 0 with default advance
+<a href=#253 id=253 data-nosnippet>253</a>        </span><span class="macro">assert_eq!</span>(run.glyphs[<span class="number">0</span>].glyph_id, <span class="number">0</span>);
+<a href=#254 id=254 data-nosnippet>254</a>    }
+<a href=#255 id=255 data-nosnippet>255</a>}
 </code></pre></div></section></main></body></html>

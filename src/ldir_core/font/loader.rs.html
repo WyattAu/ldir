@@ -196,124 +196,123 @@
 <a href=#196 id=196 data-nosnippet>196</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
 <a href=#197 id=197 data-nosnippet>197</a>
 <a href=#198 id=198 data-nosnippet>198</a>    <span class="kw">fn </span>test_font_data() -&gt; Arc&lt;Vec&lt;u8&gt;&gt; {
-<a href=#199 id=199 data-nosnippet>199</a>        <span class="kw">let </span>path = <span class="string">"/usr/share/fonts/TTF/DejaVuSans.ttf"</span>;
-<a href=#200 id=200 data-nosnippet>200</a>        Arc::new(std::fs::read(path).unwrap_or_default())
-<a href=#201 id=201 data-nosnippet>201</a>    }
-<a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a>    <span class="attr">#[test]
-<a href=#204 id=204 data-nosnippet>204</a>    </span><span class="kw">fn </span>load_font_success() {
-<a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">let </span>data = test_font_data();
-<a href=#206 id=206 data-nosnippet>206</a>        <span class="kw">let </span>result = load_font(data);
-<a href=#207 id=207 data-nosnippet>207</a>        <span class="macro">assert!</span>(result.is_ok());
-<a href=#208 id=208 data-nosnippet>208</a>    }
-<a href=#209 id=209 data-nosnippet>209</a>
-<a href=#210 id=210 data-nosnippet>210</a>    <span class="attr">#[test]
-<a href=#211 id=211 data-nosnippet>211</a>    </span><span class="kw">fn </span>load_font_invalid_data() {
-<a href=#212 id=212 data-nosnippet>212</a>        <span class="kw">let </span>data = Arc::new(<span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="number">10</span>]);
-<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw">let </span>result = load_font(data);
-<a href=#214 id=214 data-nosnippet>214</a>        <span class="macro">assert!</span>(result.is_err());
-<a href=#215 id=215 data-nosnippet>215</a>    }
-<a href=#216 id=216 data-nosnippet>216</a>
-<a href=#217 id=217 data-nosnippet>217</a>    <span class="attr">#[test]
-<a href=#218 id=218 data-nosnippet>218</a>    </span><span class="kw">fn </span>font_info_returns_metadata() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>face = font.face();
-<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">let </span>info = font_info(<span class="kw-2">&amp;</span>face);
-<a href=#222 id=222 data-nosnippet>222</a>        <span class="macro">assert!</span>(info.units_per_em &gt; <span class="number">0</span>);
-<a href=#223 id=223 data-nosnippet>223</a>        <span class="macro">assert!</span>(info.family_name.is_some());
-<a href=#224 id=224 data-nosnippet>224</a>        <span class="prelude-val">Ok</span>(())
-<a href=#225 id=225 data-nosnippet>225</a>    }
-<a href=#226 id=226 data-nosnippet>226</a>
-<a href=#227 id=227 data-nosnippet>227</a>    <span class="attr">#[test]
-<a href=#228 id=228 data-nosnippet>228</a>    </span><span class="kw">fn </span>glyph_id_for_known_char() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#230 id=230 data-nosnippet>230</a>        <span class="kw">let </span>face = font.face();
-<a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'A'</span>);
-<a href=#232 id=232 data-nosnippet>232</a>        <span class="macro">assert!</span>(gid.is_some());
-<a href=#233 id=233 data-nosnippet>233</a>        <span class="kw">let </span>g = gid.ok_or(<span class="string">"no glyph for 'A'"</span>)<span class="question-mark">?</span>;
-<a href=#234 id=234 data-nosnippet>234</a>        <span class="macro">assert!</span>(g.<span class="number">0 </span>&gt; <span class="number">0</span>);
-<a href=#235 id=235 data-nosnippet>235</a>        <span class="prelude-val">Ok</span>(())
-<a href=#236 id=236 data-nosnippet>236</a>    }
-<a href=#237 id=237 data-nosnippet>237</a>
-<a href=#238 id=238 data-nosnippet>238</a>    <span class="attr">#[test]
-<a href=#239 id=239 data-nosnippet>239</a>    </span><span class="kw">fn </span>glyph_id_for_missing_char() {
-<a href=#240 id=240 data-nosnippet>240</a>        <span class="kw">let </span>data = test_font_data();
-<a href=#241 id=241 data-nosnippet>241</a>        <span class="kw">if let </span><span class="prelude-val">Ok</span>(font) = load_font(data) {
-<a href=#242 id=242 data-nosnippet>242</a>            <span class="kw">let </span>face = font.face();
-<a href=#243 id=243 data-nosnippet>243</a>            <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'\u{0001}'</span>);
-<a href=#244 id=244 data-nosnippet>244</a>            <span class="macro">assert!</span>(gid.is_none());
-<a href=#245 id=245 data-nosnippet>245</a>        }
-<a href=#246 id=246 data-nosnippet>246</a>    }
-<a href=#247 id=247 data-nosnippet>247</a>
-<a href=#248 id=248 data-nosnippet>248</a>    <span class="attr">#[test]
-<a href=#249 id=249 data-nosnippet>249</a>    </span><span class="kw">fn </span>glyph_metrics_returns_data() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#250 id=250 data-nosnippet>250</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">let </span>face = font.face();
-<a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'A'</span>).ok_or(<span class="string">"no glyph for 'A'"</span>)<span class="question-mark">?</span>;
-<a href=#253 id=253 data-nosnippet>253</a>        <span class="kw">let </span>metrics = glyph_metrics(<span class="kw-2">&amp;</span>face, gid);
-<a href=#254 id=254 data-nosnippet>254</a>        <span class="macro">assert!</span>(metrics.advance_width.is_some());
-<a href=#255 id=255 data-nosnippet>255</a>        <span class="prelude-val">Ok</span>(())
-<a href=#256 id=256 data-nosnippet>256</a>    }
-<a href=#257 id=257 data-nosnippet>257</a>
-<a href=#258 id=258 data-nosnippet>258</a>    <span class="attr">#[test]
-<a href=#259 id=259 data-nosnippet>259</a>    </span><span class="kw">fn </span>glyph_advance_fp266_positive() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#260 id=260 data-nosnippet>260</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#261 id=261 data-nosnippet>261</a>        <span class="kw">let </span>face = font.face();
-<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'A'</span>).ok_or(<span class="string">"no glyph for 'A'"</span>)<span class="question-mark">?</span>;
-<a href=#263 id=263 data-nosnippet>263</a>        <span class="kw">let </span>advance = glyph_advance_fp266(<span class="kw-2">&amp;</span>face, gid, Fp266::from_int(<span class="number">12</span>), font.upem);
-<a href=#264 id=264 data-nosnippet>264</a>        <span class="macro">assert!</span>(advance.raw() &gt; <span class="number">0</span>);
-<a href=#265 id=265 data-nosnippet>265</a>        <span class="prelude-val">Ok</span>(())
-<a href=#266 id=266 data-nosnippet>266</a>    }
-<a href=#267 id=267 data-nosnippet>267</a>
-<a href=#268 id=268 data-nosnippet>268</a>    <span class="attr">#[test]
-<a href=#269 id=269 data-nosnippet>269</a>    </span><span class="kw">fn </span>units_per_em_positive() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#271 id=271 data-nosnippet>271</a>        <span class="macro">assert!</span>(units_per_em(<span class="kw-2">&amp;</span>font) &gt; <span class="number">0</span>);
-<a href=#272 id=272 data-nosnippet>272</a>        <span class="prelude-val">Ok</span>(())
-<a href=#273 id=273 data-nosnippet>273</a>    }
-<a href=#274 id=274 data-nosnippet>274</a>
-<a href=#275 id=275 data-nosnippet>275</a>    <span class="attr">#[test]
-<a href=#276 id=276 data-nosnippet>276</a>    </span><span class="kw">fn </span>font_handle_data_access() {
-<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">let </span>data = test_font_data();
-<a href=#278 id=278 data-nosnippet>278</a>        <span class="kw">let </span>handle = FontHandle::new(data.clone());
-<a href=#279 id=279 data-nosnippet>279</a>        <span class="macro">assert_eq!</span>(handle.data().len(), data.len());
-<a href=#280 id=280 data-nosnippet>280</a>    }
-<a href=#281 id=281 data-nosnippet>281</a>
-<a href=#282 id=282 data-nosnippet>282</a>    <span class="attr">#[test]
-<a href=#283 id=283 data-nosnippet>283</a>    </span><span class="kw">fn </span>font_handle_into_arc() {
-<a href=#284 id=284 data-nosnippet>284</a>        <span class="kw">let </span>data = Arc::new(<span class="macro">vec!</span>[<span class="number">1u8</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#285 id=285 data-nosnippet>285</a>        <span class="kw">let </span>handle = FontHandle::new(data);
-<a href=#286 id=286 data-nosnippet>286</a>        <span class="kw">let </span>arc = handle.into_arc();
-<a href=#287 id=287 data-nosnippet>287</a>        <span class="macro">assert_eq!</span>(arc.len(), <span class="number">3</span>);
-<a href=#288 id=288 data-nosnippet>288</a>    }
-<a href=#289 id=289 data-nosnippet>289</a>
-<a href=#290 id=290 data-nosnippet>290</a>    <span class="attr">#[test]
-<a href=#291 id=291 data-nosnippet>291</a>    </span><span class="kw">fn </span>face_reparse_consistent() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#292 id=292 data-nosnippet>292</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#293 id=293 data-nosnippet>293</a>        <span class="kw">let </span>face1 = font.face();
-<a href=#294 id=294 data-nosnippet>294</a>        <span class="kw">let </span>face2 = font.face();
-<a href=#295 id=295 data-nosnippet>295</a>        <span class="kw">let </span>gid1 = glyph_id_for_char(<span class="kw-2">&amp;</span>face1, <span class="string">'B'</span>);
-<a href=#296 id=296 data-nosnippet>296</a>        <span class="kw">let </span>gid2 = glyph_id_for_char(<span class="kw-2">&amp;</span>face2, <span class="string">'B'</span>);
-<a href=#297 id=297 data-nosnippet>297</a>        <span class="macro">assert_eq!</span>(gid1, gid2);
-<a href=#298 id=298 data-nosnippet>298</a>        <span class="prelude-val">Ok</span>(())
-<a href=#299 id=299 data-nosnippet>299</a>    }
-<a href=#300 id=300 data-nosnippet>300</a>
-<a href=#301 id=301 data-nosnippet>301</a>    <span class="attr">#[test]
-<a href=#302 id=302 data-nosnippet>302</a>    </span><span class="kw">fn </span>dejavu_sans_not_monospace() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#303 id=303 data-nosnippet>303</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#304 id=304 data-nosnippet>304</a>        <span class="kw">let </span>face = font.face();
-<a href=#305 id=305 data-nosnippet>305</a>        <span class="kw">let </span>info = font_info(<span class="kw-2">&amp;</span>face);
-<a href=#306 id=306 data-nosnippet>306</a>        <span class="macro">assert!</span>(!info.is_monospace);
-<a href=#307 id=307 data-nosnippet>307</a>        <span class="prelude-val">Ok</span>(())
-<a href=#308 id=308 data-nosnippet>308</a>    }
-<a href=#309 id=309 data-nosnippet>309</a>
-<a href=#310 id=310 data-nosnippet>310</a>    <span class="attr">#[test]
-<a href=#311 id=311 data-nosnippet>311</a>    </span><span class="kw">fn </span>post_script_name_present() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#312 id=312 data-nosnippet>312</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
-<a href=#313 id=313 data-nosnippet>313</a>        <span class="kw">let </span>face = font.face();
-<a href=#314 id=314 data-nosnippet>314</a>        <span class="kw">let </span>info = font_info(<span class="kw-2">&amp;</span>face);
-<a href=#315 id=315 data-nosnippet>315</a>        <span class="macro">assert!</span>(info.post_script_name.is_some());
-<a href=#316 id=316 data-nosnippet>316</a>        <span class="prelude-val">Ok</span>(())
-<a href=#317 id=317 data-nosnippet>317</a>    }
-<a href=#318 id=318 data-nosnippet>318</a>}
+<a href=#199 id=199 data-nosnippet>199</a>        Arc::new(ldir_test_helpers::test_font_data())
+<a href=#200 id=200 data-nosnippet>200</a>    }
+<a href=#201 id=201 data-nosnippet>201</a>
+<a href=#202 id=202 data-nosnippet>202</a>    <span class="attr">#[test]
+<a href=#203 id=203 data-nosnippet>203</a>    </span><span class="kw">fn </span>load_font_success() {
+<a href=#204 id=204 data-nosnippet>204</a>        <span class="kw">let </span>data = test_font_data();
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">let </span>result = load_font(data);
+<a href=#206 id=206 data-nosnippet>206</a>        <span class="macro">assert!</span>(result.is_ok());
+<a href=#207 id=207 data-nosnippet>207</a>    }
+<a href=#208 id=208 data-nosnippet>208</a>
+<a href=#209 id=209 data-nosnippet>209</a>    <span class="attr">#[test]
+<a href=#210 id=210 data-nosnippet>210</a>    </span><span class="kw">fn </span>load_font_invalid_data() {
+<a href=#211 id=211 data-nosnippet>211</a>        <span class="kw">let </span>data = Arc::new(<span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="number">10</span>]);
+<a href=#212 id=212 data-nosnippet>212</a>        <span class="kw">let </span>result = load_font(data);
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="macro">assert!</span>(result.is_err());
+<a href=#214 id=214 data-nosnippet>214</a>    }
+<a href=#215 id=215 data-nosnippet>215</a>
+<a href=#216 id=216 data-nosnippet>216</a>    <span class="attr">#[test]
+<a href=#217 id=217 data-nosnippet>217</a>    </span><span class="kw">fn </span>font_info_returns_metadata() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#218 id=218 data-nosnippet>218</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>face = font.face();
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>info = font_info(<span class="kw-2">&amp;</span>face);
+<a href=#221 id=221 data-nosnippet>221</a>        <span class="macro">assert!</span>(info.units_per_em &gt; <span class="number">0</span>);
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="macro">assert!</span>(info.family_name.is_some());
+<a href=#223 id=223 data-nosnippet>223</a>        <span class="prelude-val">Ok</span>(())
+<a href=#224 id=224 data-nosnippet>224</a>    }
+<a href=#225 id=225 data-nosnippet>225</a>
+<a href=#226 id=226 data-nosnippet>226</a>    <span class="attr">#[test]
+<a href=#227 id=227 data-nosnippet>227</a>    </span><span class="kw">fn </span>glyph_id_for_known_char() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span>face = font.face();
+<a href=#230 id=230 data-nosnippet>230</a>        <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'A'</span>);
+<a href=#231 id=231 data-nosnippet>231</a>        <span class="macro">assert!</span>(gid.is_some());
+<a href=#232 id=232 data-nosnippet>232</a>        <span class="kw">let </span>g = gid.ok_or(<span class="string">"no glyph for 'A'"</span>)<span class="question-mark">?</span>;
+<a href=#233 id=233 data-nosnippet>233</a>        <span class="macro">assert!</span>(g.<span class="number">0 </span>&gt; <span class="number">0</span>);
+<a href=#234 id=234 data-nosnippet>234</a>        <span class="prelude-val">Ok</span>(())
+<a href=#235 id=235 data-nosnippet>235</a>    }
+<a href=#236 id=236 data-nosnippet>236</a>
+<a href=#237 id=237 data-nosnippet>237</a>    <span class="attr">#[test]
+<a href=#238 id=238 data-nosnippet>238</a>    </span><span class="kw">fn </span>glyph_id_for_missing_char() {
+<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">let </span>data = test_font_data();
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="kw">if let </span><span class="prelude-val">Ok</span>(font) = load_font(data) {
+<a href=#241 id=241 data-nosnippet>241</a>            <span class="kw">let </span>face = font.face();
+<a href=#242 id=242 data-nosnippet>242</a>            <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'\u{0001}'</span>);
+<a href=#243 id=243 data-nosnippet>243</a>            <span class="macro">assert!</span>(gid.is_none());
+<a href=#244 id=244 data-nosnippet>244</a>        }
+<a href=#245 id=245 data-nosnippet>245</a>    }
+<a href=#246 id=246 data-nosnippet>246</a>
+<a href=#247 id=247 data-nosnippet>247</a>    <span class="attr">#[test]
+<a href=#248 id=248 data-nosnippet>248</a>    </span><span class="kw">fn </span>glyph_metrics_returns_data() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#249 id=249 data-nosnippet>249</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#250 id=250 data-nosnippet>250</a>        <span class="kw">let </span>face = font.face();
+<a href=#251 id=251 data-nosnippet>251</a>        <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'A'</span>).ok_or(<span class="string">"no glyph for 'A'"</span>)<span class="question-mark">?</span>;
+<a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">let </span>metrics = glyph_metrics(<span class="kw-2">&amp;</span>face, gid);
+<a href=#253 id=253 data-nosnippet>253</a>        <span class="macro">assert!</span>(metrics.advance_width.is_some());
+<a href=#254 id=254 data-nosnippet>254</a>        <span class="prelude-val">Ok</span>(())
+<a href=#255 id=255 data-nosnippet>255</a>    }
+<a href=#256 id=256 data-nosnippet>256</a>
+<a href=#257 id=257 data-nosnippet>257</a>    <span class="attr">#[test]
+<a href=#258 id=258 data-nosnippet>258</a>    </span><span class="kw">fn </span>glyph_advance_fp266_positive() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#259 id=259 data-nosnippet>259</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#260 id=260 data-nosnippet>260</a>        <span class="kw">let </span>face = font.face();
+<a href=#261 id=261 data-nosnippet>261</a>        <span class="kw">let </span>gid = glyph_id_for_char(<span class="kw-2">&amp;</span>face, <span class="string">'A'</span>).ok_or(<span class="string">"no glyph for 'A'"</span>)<span class="question-mark">?</span>;
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw">let </span>advance = glyph_advance_fp266(<span class="kw-2">&amp;</span>face, gid, Fp266::from_int(<span class="number">12</span>), font.upem);
+<a href=#263 id=263 data-nosnippet>263</a>        <span class="macro">assert!</span>(advance.raw() &gt; <span class="number">0</span>);
+<a href=#264 id=264 data-nosnippet>264</a>        <span class="prelude-val">Ok</span>(())
+<a href=#265 id=265 data-nosnippet>265</a>    }
+<a href=#266 id=266 data-nosnippet>266</a>
+<a href=#267 id=267 data-nosnippet>267</a>    <span class="attr">#[test]
+<a href=#268 id=268 data-nosnippet>268</a>    </span><span class="kw">fn </span>units_per_em_positive() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#270 id=270 data-nosnippet>270</a>        <span class="macro">assert!</span>(units_per_em(<span class="kw-2">&amp;</span>font) &gt; <span class="number">0</span>);
+<a href=#271 id=271 data-nosnippet>271</a>        <span class="prelude-val">Ok</span>(())
+<a href=#272 id=272 data-nosnippet>272</a>    }
+<a href=#273 id=273 data-nosnippet>273</a>
+<a href=#274 id=274 data-nosnippet>274</a>    <span class="attr">#[test]
+<a href=#275 id=275 data-nosnippet>275</a>    </span><span class="kw">fn </span>font_handle_data_access() {
+<a href=#276 id=276 data-nosnippet>276</a>        <span class="kw">let </span>data = test_font_data();
+<a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">let </span>handle = FontHandle::new(data.clone());
+<a href=#278 id=278 data-nosnippet>278</a>        <span class="macro">assert_eq!</span>(handle.data().len(), data.len());
+<a href=#279 id=279 data-nosnippet>279</a>    }
+<a href=#280 id=280 data-nosnippet>280</a>
+<a href=#281 id=281 data-nosnippet>281</a>    <span class="attr">#[test]
+<a href=#282 id=282 data-nosnippet>282</a>    </span><span class="kw">fn </span>font_handle_into_arc() {
+<a href=#283 id=283 data-nosnippet>283</a>        <span class="kw">let </span>data = Arc::new(<span class="macro">vec!</span>[<span class="number">1u8</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<a href=#284 id=284 data-nosnippet>284</a>        <span class="kw">let </span>handle = FontHandle::new(data);
+<a href=#285 id=285 data-nosnippet>285</a>        <span class="kw">let </span>arc = handle.into_arc();
+<a href=#286 id=286 data-nosnippet>286</a>        <span class="macro">assert_eq!</span>(arc.len(), <span class="number">3</span>);
+<a href=#287 id=287 data-nosnippet>287</a>    }
+<a href=#288 id=288 data-nosnippet>288</a>
+<a href=#289 id=289 data-nosnippet>289</a>    <span class="attr">#[test]
+<a href=#290 id=290 data-nosnippet>290</a>    </span><span class="kw">fn </span>face_reparse_consistent() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#291 id=291 data-nosnippet>291</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#292 id=292 data-nosnippet>292</a>        <span class="kw">let </span>face1 = font.face();
+<a href=#293 id=293 data-nosnippet>293</a>        <span class="kw">let </span>face2 = font.face();
+<a href=#294 id=294 data-nosnippet>294</a>        <span class="kw">let </span>gid1 = glyph_id_for_char(<span class="kw-2">&amp;</span>face1, <span class="string">'B'</span>);
+<a href=#295 id=295 data-nosnippet>295</a>        <span class="kw">let </span>gid2 = glyph_id_for_char(<span class="kw-2">&amp;</span>face2, <span class="string">'B'</span>);
+<a href=#296 id=296 data-nosnippet>296</a>        <span class="macro">assert_eq!</span>(gid1, gid2);
+<a href=#297 id=297 data-nosnippet>297</a>        <span class="prelude-val">Ok</span>(())
+<a href=#298 id=298 data-nosnippet>298</a>    }
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a>    <span class="attr">#[test]
+<a href=#301 id=301 data-nosnippet>301</a>    </span><span class="kw">fn </span>dejavu_sans_not_monospace() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#302 id=302 data-nosnippet>302</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#303 id=303 data-nosnippet>303</a>        <span class="kw">let </span>face = font.face();
+<a href=#304 id=304 data-nosnippet>304</a>        <span class="kw">let </span>info = font_info(<span class="kw-2">&amp;</span>face);
+<a href=#305 id=305 data-nosnippet>305</a>        <span class="macro">assert!</span>(!info.is_monospace);
+<a href=#306 id=306 data-nosnippet>306</a>        <span class="prelude-val">Ok</span>(())
+<a href=#307 id=307 data-nosnippet>307</a>    }
+<a href=#308 id=308 data-nosnippet>308</a>
+<a href=#309 id=309 data-nosnippet>309</a>    <span class="attr">#[test]
+<a href=#310 id=310 data-nosnippet>310</a>    </span><span class="kw">fn </span>post_script_name_present() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#311 id=311 data-nosnippet>311</a>        <span class="kw">let </span>font = load_font(test_font_data())<span class="question-mark">?</span>;
+<a href=#312 id=312 data-nosnippet>312</a>        <span class="kw">let </span>face = font.face();
+<a href=#313 id=313 data-nosnippet>313</a>        <span class="kw">let </span>info = font_info(<span class="kw-2">&amp;</span>face);
+<a href=#314 id=314 data-nosnippet>314</a>        <span class="macro">assert!</span>(info.post_script_name.is_some());
+<a href=#315 id=315 data-nosnippet>315</a>        <span class="prelude-val">Ok</span>(())
+<a href=#316 id=316 data-nosnippet>316</a>    }
+<a href=#317 id=317 data-nosnippet>317</a>}
 </code></pre></div></section></main></body></html>
