@@ -2108,7 +2108,7 @@ dependencies = [
  "ldir-ir",
  "ldir-test-helpers",
  "pdf-writer",
- "png",
+ "png 0.18.1",
  "rayon",
  "ttf-parser 0.25.1",
 ]
@@ -2697,6 +2697,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82151a2fc869e011c153adc57cf2789ccb8d9906ce52c0b39a6b5697749d7526"
 dependencies = [
  "bitflags 1.3.2",
+ "crc32fast",
+ "fdeflate",
+ "flate2",
+ "miniz_oxide",
+]
+
+[[package]]
+name = "png"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60769b8b31b2a9f263dae2776c37b1b28ae246943cf719eb6946a1db05128a61"
+dependencies = [
+ "bitflags 2.11.1",
  "crc32fast",
  "fdeflate",
  "flate2",
@@ -3958,7 +3971,7 @@ dependencies = [
  "futures-intrusive",
  "log",
  "peniko 0.2.0",
- "png",
+ "png 0.17.16",
  "raw-window-handle",
  "skrifa 0.22.3",
  "static_assertions",
