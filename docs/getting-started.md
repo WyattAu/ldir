@@ -4,8 +4,8 @@ A 5-minute guide to compiling your first document with the LDIR typesetting pipe
 
 ## Prerequisites
 
-- **Rust 1.87+** (edition 2024). No other dependencies are needed for basic use.
-- Verify: `rustc --version` should show `1.87` or later.
+- **Rust 1.88+** (edition 2024). No other dependencies are needed for basic use.
+- Verify: `rustc --version` should show `1.88` or later.
 
 ## Installation
 

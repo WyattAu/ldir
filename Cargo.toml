@@ -33,7 +33,7 @@ exclude = ["ldir-core/fuzz"]
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-rust-version = "1.87"
+rust-version = "1.88"
 repository = "https://github.com/WyattAu/ldir"
 description = "A low-level document intermediate representation language for deterministic typesetting"
 

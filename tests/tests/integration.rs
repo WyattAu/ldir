@@ -222,6 +222,7 @@ fn test_code_block() {
 // ---------------------------------------------------------------------------
 
 /// Helper: count occurrences of a byte pattern in a byte slice.
+#[allow(dead_code)]
 fn count_pattern(haystack: &[u8], needle: &[u8]) -> usize {
     haystack
         .windows(needle.len())

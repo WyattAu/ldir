@@ -36,7 +36,7 @@ The following may change before 1.0:
 
 ### Minimum Rust version
 
-LDIR requires **Rust 1.87** or later (edition 2024). Update with:
+LDIR requires **Rust 1.88** or later (edition 2024). Update with:
 
 ```bash
 rustup update stable
