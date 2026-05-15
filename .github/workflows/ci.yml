@@ -58,6 +58,9 @@ jobs:
       - name: Build documentation
         run: cargo doc --workspace --exclude ldir-wasm --no-deps 2>&1 | grep -E "^error" || true
 
+      - name: Build binaries (required for integration tests)
+        run: cargo build --workspace --exclude ldir-wasm --bins
+
       - name: Test
         run: cargo test --workspace --exclude ldir-wasm
 
