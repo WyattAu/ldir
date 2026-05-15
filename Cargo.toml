@@ -25,6 +25,7 @@ members = [
     "ldir-opt",
     "ldir-link",
     "ldir-lsp",
+    "ldir-test-helpers",
     "tests",
 ]
 exclude = ["ldir-core/fuzz"]
@@ -41,6 +42,7 @@ description = "A low-level document intermediate representation language for det
 # Internal
 ldir-core = { path = "ldir-core", version = "0.1.0" }
 ldir-ir = { path = "ldir-ir", version = "0.1.0" }
+ldir-test-helpers = { path = "ldir-test-helpers", version = "0.1.0" }
 ldir-tex = { path = "ldir-tex", version = "0.1.0" }
 ldir-md = { path = "ldir-md", version = "0.1.0" }
 ldir-pdf = { path = "ldir-pdf", version = "0.1.0" }

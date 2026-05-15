@@ -137,10 +137,10 @@ fn extract_tex_heading(line: &str) -> Option<(&str, &str, usize)> {
         ("\\subparagraph{", "subparagraph"),
     ];
     for &(cmd, kind) in COMMANDS {
-        if let Some(rest) = line.strip_prefix(cmd) {
-            if let Some(end) = rest.find('}') {
-                return Some((&rest[..end], kind, cmd.len()));
-            }
+        if let Some(rest) = line.strip_prefix(cmd)
+            && let Some(end) = rest.find('}')
+        {
+            return Some((&rest[..end], kind, cmd.len()));
         }
     }
     None
@@ -148,10 +148,10 @@ fn extract_tex_heading(line: &str) -> Option<(&str, &str, usize)> {
 
 fn extract_tex_environment(line: &str) -> Option<(&str, usize)> {
     let prefix = "\\begin{";
-    if let Some(rest) = line.strip_prefix(prefix) {
-        if let Some(end) = rest.find('}') {
-            return Some((&rest[..end], prefix.len()));
-        }
+    if let Some(rest) = line.strip_prefix(prefix)
+        && let Some(end) = rest.find('}')
+    {
+        return Some((&rest[..end], prefix.len()));
     }
     None
 }

@@ -692,25 +692,13 @@ mod tests {
         assert!(scenes.is_empty());
     }
 
-    fn load_system_font() -> Option<Vec<u8>> {
-        let paths = [
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        ];
-        for path in &paths {
-            if let Ok(data) = std::fs::read(path) {
-                return Some(data);
-            }
-        }
-        None
+    fn load_test_font() -> Vec<u8> {
+        ldir_test_helpers::test_font_data()
     }
 
     #[test]
     fn test_glyph_outline_with_real_font() {
-        let font_data = match load_system_font() {
-            Some(d) => d,
-            None => return,
-        };
+        let font_data = load_test_font();
         let arc_data = Arc::new(font_data);
         let face = ttf_parser::Face::parse(&arc_data, 0).unwrap();
         let gid_a = face.glyph_index('A').unwrap();
@@ -726,10 +714,7 @@ mod tests {
 
     #[test]
     fn test_glyph_outline_missing_glyph_id_zero_fallback() {
-        let font_data = match load_system_font() {
-            Some(d) => d,
-            None => return,
-        };
+        let font_data = load_test_font();
         let arc_data = Arc::new(font_data);
 
         let mut page = GIRPage::new();

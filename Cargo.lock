@@ -1958,6 +1958,7 @@ dependencies = [
  "ldir-md",
  "ldir-org",
  "ldir-pdf",
+ "ldir-test-helpers",
  "ldir-tex",
  "ldir-typst",
  "proptest",
@@ -2105,11 +2106,16 @@ dependencies = [
  "jpeg-decoder",
  "ldir-core",
  "ldir-ir",
+ "ldir-test-helpers",
  "pdf-writer",
  "png",
  "rayon",
  "ttf-parser 0.25.1",
 ]
+
+[[package]]
+name = "ldir-test-helpers"
+version = "0.1.0"
 
 [[package]]
 name = "ldir-tex"
@@ -2147,6 +2153,7 @@ version = "0.1.0"
 dependencies = [
  "ldir-core",
  "ldir-ir",
+ "ldir-test-helpers",
  "parley",
  "pollster",
  "ttf-parser 0.25.1",

@@ -210,7 +210,7 @@ mod tests {
     use super::*;
 
     fn test_font_data() -> Vec<u8> {
-        std::fs::read("/usr/share/fonts/TTF/DejaVuSans.ttf").expect("test font should exist")
+        ldir_test_helpers::test_font_data()
     }
 
     #[test]

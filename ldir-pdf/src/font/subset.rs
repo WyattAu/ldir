@@ -336,16 +336,7 @@ mod tests {
     use super::*;
 
     fn get_font_data() -> Option<Vec<u8>> {
-        let paths = [
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        ];
-        for path in &paths {
-            if let Ok(data) = std::fs::read(path) {
-                return Some(data);
-            }
-        }
-        None
+        Some(ldir_test_helpers::test_font_data())
     }
 
     #[test]

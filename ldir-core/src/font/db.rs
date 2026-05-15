@@ -186,8 +186,7 @@ mod tests {
     #[test]
     fn load_font_data_returns_ids() {
         let mut db = FontDatabase::new();
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        let data = Arc::new(std::fs::read(path).expect("test font should exist"));
+        let data = Arc::new(ldir_test_helpers::test_font_data());
         let ids = db.load_font_data(data);
         assert!(!ids.is_empty());
     }
@@ -195,8 +194,7 @@ mod tests {
     #[test]
     fn query_loaded_font() {
         let mut db = FontDatabase::new();
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        let data = Arc::new(std::fs::read(path).expect("test font should exist"));
+        let data = Arc::new(ldir_test_helpers::test_font_data());
         db.load_font_data(data);
         let id = db.query("DejaVu Sans");
         assert!(id.is_some());
@@ -205,8 +203,7 @@ mod tests {
     #[test]
     fn face_info_for_loaded_font() {
         let mut db = FontDatabase::new();
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        let data = Arc::new(std::fs::read(path).expect("test font should exist"));
+        let data = Arc::new(ldir_test_helpers::test_font_data());
         let ids = db.load_font_data(data);
         let id = ids.into_iter().next().unwrap();
         let info = db.face_info(id);
@@ -218,8 +215,7 @@ mod tests {
     #[test]
     fn load_face_from_database() {
         let mut db = FontDatabase::new();
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        let data = Arc::new(std::fs::read(path).expect("test font should exist"));
+        let data = Arc::new(ldir_test_helpers::test_font_data());
         let ids = db.load_font_data(data);
         let id = ids.into_iter().next().unwrap();
         let loaded = db.load_face(id);
@@ -229,8 +225,7 @@ mod tests {
     #[test]
     fn query_nonexistent_font_returns_none() {
         let mut db = FontDatabase::new();
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        let data = Arc::new(std::fs::read(path).expect("test font should exist"));
+        let data = Arc::new(ldir_test_helpers::test_font_data());
         db.load_font_data(data);
         let id = db.query("NonExistentFont");
         assert!(id.is_none());
@@ -284,8 +279,7 @@ mod tests {
     #[test]
     fn fallback_chain_includes_primary() {
         let mut db = FontDatabase::new();
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        let data = Arc::new(std::fs::read(path).expect("test font should exist"));
+        let data = Arc::new(ldir_test_helpers::test_font_data());
         let ids = db.load_font_data(data);
         let primary = ids
             .into_iter()

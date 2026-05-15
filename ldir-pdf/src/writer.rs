@@ -1127,18 +1127,8 @@ mod tests {
     use crate::structure::StructureType;
 
     fn get_font_face() -> Option<FontFace> {
-        let paths = [
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        ];
-        for path in &paths {
-            if let Ok(data) = std::fs::read(path) {
-                if let Ok(face) = FontFace::from_bytes(&data) {
-                    return Some(face);
-                }
-            }
-        }
-        None
+        let data = ldir_test_helpers::test_font_data();
+        FontFace::from_bytes(&data).ok()
     }
 
     #[test]

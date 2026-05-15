@@ -196,8 +196,7 @@ mod tests {
     use super::*;
 
     fn test_font_data() -> Arc<Vec<u8>> {
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        Arc::new(std::fs::read(path).unwrap_or_default())
+        Arc::new(ldir_test_helpers::test_font_data())
     }
 
     #[test]

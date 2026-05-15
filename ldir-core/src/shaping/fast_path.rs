@@ -235,26 +235,21 @@ mod tests {
     #[test]
     fn unicode_basic_with_font_uses_cmap() {
         // With real font data, cmap should map known chars to non-zero glyph IDs
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        if let Ok(data) = std::fs::read(path) {
-            let run = shape_unicode_basic(&data, "A", Fp266::from_int(10), 1);
-            assert_eq!(run.glyphs.len(), 1);
-            // 'A' should map to a real glyph ID (not 0xFFFD or 0)
-            assert_ne!(run.glyphs[0].glyph_id, 0xFFFD);
-            assert!(run.glyphs[0].glyph_id > 0);
-        }
-        // Skip on systems without the test font
+        let data = ldir_test_helpers::test_font_data();
+        let run = shape_unicode_basic(&data, "A", Fp266::from_int(10), 1);
+        assert_eq!(run.glyphs.len(), 1);
+        // 'A' should map to a real glyph ID (not 0xFFFD or 0)
+        assert_ne!(run.glyphs[0].glyph_id, 0xFFFD);
+        assert!(run.glyphs[0].glyph_id > 0);
     }
 
     #[test]
     fn unicode_basic_with_font_unknown_char() {
-        let path = "/usr/share/fonts/TTF/DejaVuSans.ttf";
-        if let Ok(data) = std::fs::read(path) {
-            // U+0001 is a control character not in most fonts
-            let run = shape_unicode_basic(&data, "\u{0001}", Fp266::from_int(10), 1);
-            assert_eq!(run.glyphs.len(), 1);
-            // Missing glyph should get glyph ID 0 with default advance
-            assert_eq!(run.glyphs[0].glyph_id, 0);
-        }
+        let data = ldir_test_helpers::test_font_data();
+        // U+0001 is a control character not in most fonts
+        let run = shape_unicode_basic(&data, "\u{0001}", Fp266::from_int(10), 1);
+        assert_eq!(run.glyphs.len(), 1);
+        // Missing glyph should get glyph ID 0 with default advance
+        assert_eq!(run.glyphs[0].glyph_id, 0);
     }
 }

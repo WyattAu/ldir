@@ -141,28 +141,19 @@ mod tests {
     use super::*;
 
     fn get_face() -> Option<ttf_parser::Face<'static>> {
-        let paths = [
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        ];
-        for path in &paths {
-            if let Ok(data) = std::fs::read(path) {
-                if let Ok(_face) = ttf_parser::Face::parse(&data, 0) {
-                    let data: &'static [u8] = Box::leak(data.into_boxed_slice());
-                    if let Ok(face) = ttf_parser::Face::parse(data, 0) {
-                        return Some(unsafe {
-                            // SAFETY: `data` was leaked via `Box::leak` above,
-                            // giving it a `'static` lifetime. The transmute
-                            // extends `Face<'_>` to `Face<'static>` to match,
-                            // which is sound because the backing storage is
-                            // now `'static`.
-                            std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(
-                                face,
-                            )
-                        });
-                    }
-                }
-            }
+        let data = ldir_test_helpers::test_font_data();
+        let data: &'static [u8] = Box::leak(data.into_boxed_slice());
+        if let Ok(face) = ttf_parser::Face::parse(data, 0) {
+            return Some(unsafe {
+                // SAFETY: `data` was leaked via `Box::leak` above,
+                // giving it a `'static` lifetime. The transmute
+                // extends `Face<'_>` to `Face<'static>` to match,
+                // which is sound because the backing storage is
+                // now `'static`.
+                std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(
+                    face,
+                )
+            });
         }
         None
     }

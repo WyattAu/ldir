@@ -336,19 +336,7 @@ mod tests {
     // Use a small TrueType font fixture for tests.
     // We generate a minimal valid TTF header + required tables.
     fn make_minimal_ttf() -> Vec<u8> {
-        // DejaVu Sans is available on most CI systems.
-        // Fall back to minimal valid font bytes.
-        let paths = [
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        ];
-        for path in &paths {
-            if let Ok(data) = std::fs::read(path) {
-                return data;
-            }
-        }
-        // Minimal valid TTF: just enough for ttf-parser to accept
-        vec![]
+        ldir_test_helpers::test_font_data()
     }
 
     #[test]
