@@ -118,19 +118,21 @@
 <a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">let </span>pr = trace_phase_fn(<span class="string">"compile_sir"</span>, || <span class="number">99</span>);
 <a href=#119 id=119 data-nosnippet>119</a>        <span class="macro">assert_eq!</span>(pr.phase, <span class="string">"compile_sir"</span>);
 <a href=#120 id=120 data-nosnippet>120</a>        <span class="macro">assert_eq!</span>(pr.value, <span class="number">99</span>);
-<a href=#121 id=121 data-nosnippet>121</a>        <span class="macro">assert!</span>(pr.elapsed.as_nanos() &gt; <span class="number">0</span>);
-<a href=#122 id=122 data-nosnippet>122</a>    }
-<a href=#123 id=123 data-nosnippet>123</a>
-<a href=#124 id=124 data-nosnippet>124</a>    <span class="attr">#[test]
-<a href=#125 id=125 data-nosnippet>125</a>    </span><span class="kw">fn </span>phase_span_returns_valid_span_for_all_phases() {
-<a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">for </span><span class="kw-2">&amp;</span>name <span class="kw">in </span>PHASE_NAMES {
-<a href=#127 id=127 data-nosnippet>127</a>            <span class="kw">let </span>_span = phase_span(name);
-<a href=#128 id=128 data-nosnippet>128</a>        }
-<a href=#129 id=129 data-nosnippet>129</a>    }
-<a href=#130 id=130 data-nosnippet>130</a>
-<a href=#131 id=131 data-nosnippet>131</a>    <span class="attr">#[test]
-<a href=#132 id=132 data-nosnippet>132</a>    </span><span class="kw">fn </span>phase_span_handles_unknown_name() {
-<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span>_span = phase_span(<span class="string">"some_custom_phase"</span>);
-<a href=#134 id=134 data-nosnippet>134</a>    }
-<a href=#135 id=135 data-nosnippet>135</a>}
+<a href=#121 id=121 data-nosnippet>121</a>        <span class="comment">// Note: elapsed.as_nanos() &gt; 0 is not guaranteed on coarse-timer VMs.
+<a href=#122 id=122 data-nosnippet>122</a>        // Timing correctness is tested by trace_phase_macro_returns_elapsed
+<a href=#123 id=123 data-nosnippet>123</a>        // which uses an explicit sleep to guarantee measurable elapsed time.
+<a href=#124 id=124 data-nosnippet>124</a>    </span>}
+<a href=#125 id=125 data-nosnippet>125</a>
+<a href=#126 id=126 data-nosnippet>126</a>    <span class="attr">#[test]
+<a href=#127 id=127 data-nosnippet>127</a>    </span><span class="kw">fn </span>phase_span_returns_valid_span_for_all_phases() {
+<a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">for </span><span class="kw-2">&amp;</span>name <span class="kw">in </span>PHASE_NAMES {
+<a href=#129 id=129 data-nosnippet>129</a>            <span class="kw">let </span>_span = phase_span(name);
+<a href=#130 id=130 data-nosnippet>130</a>        }
+<a href=#131 id=131 data-nosnippet>131</a>    }
+<a href=#132 id=132 data-nosnippet>132</a>
+<a href=#133 id=133 data-nosnippet>133</a>    <span class="attr">#[test]
+<a href=#134 id=134 data-nosnippet>134</a>    </span><span class="kw">fn </span>phase_span_handles_unknown_name() {
+<a href=#135 id=135 data-nosnippet>135</a>        <span class="kw">let </span>_span = phase_span(<span class="string">"some_custom_phase"</span>);
+<a href=#136 id=136 data-nosnippet>136</a>    }
+<a href=#137 id=137 data-nosnippet>137</a>}
 </code></pre></div></section></main></body></html>
