@@ -13,8 +13,9 @@ target
 # Contains mutation testing data
 **/mutants.out*/
 
-# Lean4 Lake build artifacts
+# Lean4 Lake build artifacts and managed packages
 .lake/build/
+ldir-lean/.lake/packages/
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
