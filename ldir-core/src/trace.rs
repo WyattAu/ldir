@@ -118,7 +118,9 @@ mod tests {
         let pr = trace_phase_fn("compile_sir", || 99);
         assert_eq!(pr.phase, "compile_sir");
         assert_eq!(pr.value, 99);
-        assert!(pr.elapsed.as_nanos() > 0);
+        // Note: elapsed.as_nanos() > 0 is not guaranteed on coarse-timer VMs.
+        // Timing correctness is tested by trace_phase_macro_returns_elapsed
+        // which uses an explicit sleep to guarantee measurable elapsed time.
     }
 
     #[test]

@@ -82,13 +82,16 @@ pub fn decode_image(data: &[u8], format: ImageFormat) -> Result<ImageData, Error
 }
 
 pub fn decode_png(data: &[u8]) -> Result<ImageData, Error> {
-    let mut decoder = png::Decoder::new(data);
+    let mut decoder = png::Decoder::new(std::io::Cursor::new(data));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
     let mut reader = decoder
         .read_info()
         .map_err(|e| Error::PngDecode(e.to_string()))?;
 
-    let mut buf = vec![0; reader.output_buffer_size()];
+    let buf_size = reader
+        .output_buffer_size()
+        .ok_or_else(|| Error::PngDecode("output_buffer_size unknown after read_info".into()))?;
+    let mut buf = vec![0; buf_size];
     let info = reader
         .next_frame(&mut buf)
         .map_err(|e| Error::PngDecode(e.to_string()))?;

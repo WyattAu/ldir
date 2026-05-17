@@ -239,8 +239,13 @@ mod tests {
             count > 0 || !db.inner.is_empty(),
             "should load system fonts"
         );
-        let id = db.query("DejaVu Sans");
-        assert!(id.is_some());
+        // DejaVu Sans may not be available on all platforms (e.g., macOS/Windows CI).
+        // Only assert its presence on Linux where fonts-dejavu-core is installed.
+        #[cfg(target_os = "linux")]
+        assert!(
+            db.query("DejaVu Sans").is_some(),
+            "should find DejaVu Sans on Linux"
+        );
     }
 
     #[test]
@@ -271,7 +276,7 @@ mod tests {
         let mut db = FontDatabase::new();
         db.load_system_fonts();
         let result = db.query_family_style("DejaVu Sans", Weight::BOLD, Style::Normal);
-        if db.face_count() > 0 {
+        if db.face_count() > 0 && db.query("DejaVu Sans").is_some() {
             assert!(result.is_some(), "should find bold DejaVu Sans");
         }
     }

@@ -15,7 +15,7 @@ ldir-ir = { workspace = true }
 pdf-writer = { workspace = true }
 ttf-parser = { workspace = true }
 flate2 = "1"
-png = "0.17"
+png = "0.18"
 jpeg-decoder = "0.3"
 rayon = { workspace = true }
 
