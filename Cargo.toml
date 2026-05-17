@@ -93,7 +93,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 pdf-writer = "0.11"
 
 # GPU rendering
-vello = "0.3"
+vello = "0.7"
 parley = "0.3"
 wgpu = "22.1"
 
