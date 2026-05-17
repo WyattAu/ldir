@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
 
 **Formal verification alignment, deterministic output guarantees, and backend consistency.**
 
-- Lean4 proofs: 0 errors, 1 sorry across all active proof files (compile_preserves_content; deferred to Phase X-1 real compiler model)
+- Lean4 proofs: 0 errors, 0 sorry (all proofs fully resolved)
 - PDF bit-identical determinism verified
 - G-IR well-formedness verifier with diagnostic output
 - L-IR pipeline: S-IR → L-IR → G-IR compilation with Knuth-Plass line breaking, widow/orphan avoidance

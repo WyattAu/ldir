@@ -81,6 +81,8 @@ pub fn shape_harfbuzz(
         return ShapedRun::empty();
     }
 
+    // SAFETY: font_data slice is valid for the call duration; HB_MEMORY_MODE_READONLY
+    // does not take ownership; null destroy function is correct since we don't own the allocation.
     let blob = unsafe {
         hb::hb_blob_create(
             font_data.as_ptr() as *const i8,
@@ -91,7 +93,9 @@ pub fn shape_harfbuzz(
         )
     };
 
+    // SAFETY: blob is a valid pointer returned by hb_blob_create.
     let face = unsafe { hb::hb_face_create(blob, 0) };
+    // SAFETY: face is a valid pointer returned by hb_face_create.
     let font = unsafe { hb::hb_font_create(face) };
 
     let (scale, ptem) = match ttf_parser::Face::parse(font_data, 0) {
@@ -108,15 +112,19 @@ pub fn shape_harfbuzz(
             (font_size.raw() as i32, font_size.to_f64() as f32)
         }
     };
+    // SAFETY: font is a valid pointer; scale values are derived from valid font metrics.
     unsafe {
         hb::hb_font_set_scale(font, scale, scale);
         hb::hb_font_set_ptem(font, ptem);
     }
 
+    // SAFETY: font is a valid pointer; sets OT font funcs for glyph metrics.
     unsafe { hb::hb_ot_font_set_funcs(font) };
 
+    // SAFETY: returns a valid buffer pointer (never null per HarfBuzz docs).
     let buffer = unsafe { hb::hb_buffer_create() };
 
+    // SAFETY: buffer is valid, text is valid UTF-8, len matches the string length.
     unsafe {
         hb::hb_buffer_add_utf8(
             buffer,
@@ -128,17 +136,22 @@ pub fn shape_harfbuzz(
     }
 
     if let Some(script) = script {
+        // SAFETY: buffer is valid, script is a well-known constant.
         unsafe { hb::hb_buffer_set_script(buffer, script) };
     }
     if let Some(lang) = language {
         let lang_cstr = std::ffi::CString::new(lang).unwrap_or_default();
+        // SAFETY: buffer is valid, lang_cstr is a valid null-terminated C string,
+        // hb_language_from_string handles the pointer safely.
         unsafe {
             hb::hb_buffer_set_language(buffer, hb::hb_language_from_string(lang_cstr.as_ptr(), -1))
         };
     }
     if let Some(dir) = direction {
+        // SAFETY: buffer is valid, dir is a well-known constant.
         unsafe { hb::hb_buffer_set_direction(buffer, dir) };
     } else {
+        // SAFETY: buffer is valid; guesses script/direction/language from content.
         unsafe { hb::hb_buffer_guess_segment_properties(buffer) };
     }
 
@@ -161,12 +174,16 @@ pub fn shape_harfbuzz(
         hb_features.as_ptr()
     };
 
+    // SAFETY: font, buffer, and features_ptr are all valid pointers; len matches the slice.
     unsafe {
         hb::hb_shape(font, buffer, features_ptr, hb_features.len() as u32);
     }
 
+    // SAFETY: buffer was shaped; returns the number of glyphs in the buffer.
     let glyph_count = unsafe { hb::hb_buffer_get_length(buffer) } as usize;
+    // SAFETY: buffer was shaped; returns valid pointer to glyph info array.
     let glyph_infos = unsafe { hb::hb_buffer_get_glyph_infos(buffer, std::ptr::null_mut()) };
+    // SAFETY: buffer was shaped; returns valid pointer to glyph position array.
     let glyph_positions =
         unsafe { hb::hb_buffer_get_glyph_positions(buffer, std::ptr::null_mut()) };
 
@@ -174,7 +191,9 @@ pub fn shape_harfbuzz(
     let mut total_advance = Fp266::ZERO;
 
     for i in 0..glyph_count {
+        // SAFETY: i < glyph_count, within bounds of the glyph_infos array.
         let info = unsafe { *glyph_infos.add(i) };
+        // SAFETY: i < glyph_count, within bounds of the glyph_positions array.
         let pos = unsafe { *glyph_positions.add(i) };
 
         let x_offset = Fp266::from_raw(pos.x_offset as i64);
@@ -192,6 +211,8 @@ pub fn shape_harfbuzz(
         });
     }
 
+    // SAFETY: buffer, font, face, and blob are all valid pointers owned by us;
+    // each destroy call decrements the refcount and frees when it reaches zero.
     unsafe {
         hb::hb_buffer_destroy(buffer);
         hb::hb_font_destroy(font);

@@ -12,7 +12,7 @@ The LDIR project implements a low-level document intermediate representation lan
 - Knuth-Plass line breaking algorithm
 - Cassowary constraint solver
 - PDF output via pdf-writer
-- 1587 passing tests across 25 crates
+- 1,810 passing tests across 26 crates
 
 ## Code Example
 

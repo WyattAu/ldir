@@ -7,7 +7,7 @@
 | Rust crates | 26 (+ 1 Lean4 project) |
 | Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,863 (all passing locally) |
+| Total tests | 1,810 (all passing locally) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (2 rkyv INVARIANT-guarded, 1 len()-guarded) |

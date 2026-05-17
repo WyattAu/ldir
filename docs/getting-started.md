@@ -181,7 +181,7 @@ assert_eq!(doc, restored_doc);
 
 ## Next Steps
 
-- **API Reference**: See `.docs/api_reference.md` for complete type documentation.
+- **API Reference**: See `https://github.com/WyattAu/ldir/blob/main/.docs/api_reference.md` for complete type documentation.
 - **Examples**: Run `cargo run --example <name> --package ldir-core`:
   - `hello-world` — minimal document compilation
   - `custom-style` — style application with fonts and colors

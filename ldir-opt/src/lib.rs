@@ -1,3 +1,8 @@
+//! IR optimization passes for LDIR documents.
+//!
+//! Provides 8 optimization passes including dead node elimination,
+//! style inlining, text node merging, and more.
+
 #![warn(clippy::unwrap_used, clippy::expect_used)]
 #![deny(unsafe_code)]
 

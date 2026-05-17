@@ -9,14 +9,28 @@ on:
         required: false
         default: '30'
 
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   fuzz:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
       - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: fuzz-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: fuzz-cargo-
       - run: cargo install cargo-fuzz
       - run: cd ldir-core/fuzz && cargo fuzz build --release
       - run: cd ldir-core/fuzz && cargo fuzz run fuzz_sir_parser -- -max_total_time=${{ github.event.inputs.duration-minutes || '30' }}m

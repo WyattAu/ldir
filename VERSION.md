@@ -9,7 +9,7 @@
 ## Quality Metrics
 | Metric | Value |
 |--------|-------|
-| **Total tests** | **1,863** |
+| **Total tests** | **1,810** |
 | Test failures | 0 |
 | Clippy errors | 0 (`-D warnings`) |
 | Clippy warnings | 0 (test + lib) |
@@ -48,7 +48,7 @@
 - **Formatting normalization**: Applied `cargo fmt` across entire workspace; all 30+ formatting diffs resolved.
 - **`.cargo/config.toml` cleanup**: Removed invalid `build.targets` key that produced config warning.
 - **Documentation audit**: Removed all emoji characters from VERSION.md and CAPABILITY_MATRIX.md; replaced with plain-text status indicators.
-- **Test count update**: Verified 1,863 tests passing (up from 1,610 documented).
+- **Test count update**: Verified 1,810 tests passing (up from 1,610 documented).
 - **Lean4 proof status reconciliation**: Updated sorry count from 5 to 3 to reflect Era N proofs (`cumWidth_mono`, `isAcyclicAux_mono`).
 - **Pre-commit hook**: Added `.git/hooks/pre-commit` enforcing `cargo fmt --check`, `cargo clippy -D warnings`, and `cargo test`.
 
@@ -114,29 +114,31 @@
 ## Test Summary
 | Category | Count |
 |----------|-------|
-| ldir-core | 909 |
-| ldir-ir | 187 |
+| ldir-core | 807 |
+| ldir-ir | 175 |
 | ldir-pdf | 176 |
 | ldir-html | 42 |
-| ldir-tex | 56 |
-| ldir-md | 30 |
+| ldir-tex | 55 |
+| ldir-md | 26 |
 | ldir-typst | 26 |
 | ldir-org | 27 |
 | ldir-adoc | 24 |
 | ldir-as | 36 |
 | ldir-txt | 26 |
 | ldir-docx | 14 |
-| ldir-wasm | 70 |
+| ldir-wasm | 70 (excluded from workspace total; tested separately with wasm target) |
 | ldir-html-reader | 34 |
 | ldir-docx-reader | 17 |
 | ldir-diff | 15 |
 | ldir-validate | 5 |
 | ldir-epub | 11 |
-| ldir-vello | 62 |
+| ldir-vello | 64 |
 | ldir-opt | 25 |
 | ldir-link | 16 |
 | ldir-lsp | 44 |
-| **Total** | **1,863** |
+| tests (integration) | 19 |
+| ldir-test-helpers | 1 |
+| **Total (workspace)** | **1,810** |
 
 ## Artifact Summary
 | Category | Lines |
