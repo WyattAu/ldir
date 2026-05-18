@@ -1,6 +1,5 @@
 #![deny(unsafe_code)]
 #![warn(clippy::unwrap_used, clippy::expect_used)]
-#![allow(dead_code)]
 
 use indexmap::IndexMap;
 use std::collections::HashMap;
@@ -8,7 +7,6 @@ use std::collections::HashMap;
 use bumpalo::collections::Vec as BumpVec;
 use ldir_ir::gir::{GIRCommand, GIRDocument, GIRPage};
 use ldir_ir::sir::StyleModifier;
-use ldir_ir::sir::v2::annotations::LabelCategory;
 use ldir_ir::sir::v2::metadata::Dimension;
 use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, NodeType};
 use ldir_ir::sir::v2::resources::ResourceDecls;
@@ -1349,43 +1347,6 @@ fn compile_v2_node_with_bib(
     Ok(())
 }
 
-fn compile_children(
-    node_id: u32,
-    module: &SIRModuleV2,
-    page: &mut GIRPage,
-    ctx: &mut CompileContext,
-    gir_doc: &mut GIRDocument,
-) -> Result<()> {
-    let node = match module.body.get(node_id) {
-        Some(n) => n,
-        None => return Ok(()),
-    };
-    let mut labels = IndexMap::new();
-    let refs_map = IndexMap::new();
-    let mut eq_counter: u32 = 0;
-    let mut section_counters: IndexMap<u8, u32> = IndexMap::new();
-    let mut section_number: Vec<u32> = Vec::new();
-    let mut footnotes: Vec<(usize, String)> = Vec::new();
-    let mut figure_counter: usize = 0;
-    for &child_id in &node.child_ids {
-        compile_v2_node(
-            child_id,
-            module,
-            page,
-            ctx,
-            gir_doc,
-            &mut labels,
-            &refs_map,
-            &mut eq_counter,
-            &mut section_counters,
-            &mut section_number,
-            &mut footnotes,
-            &mut figure_counter,
-        )?;
-    }
-    Ok(())
-}
-
 #[allow(clippy::too_many_arguments)]
 fn compile_children_with_refs(
     node_id: u32,
@@ -1466,70 +1427,6 @@ fn compile_children_with_bib(
         )?;
     }
     Ok(())
-}
-
-fn collect_v2_labels(module: &SIRModuleV2) -> IndexMap<String, String> {
-    let mut labels = IndexMap::new();
-
-    for node in module.body.iter() {
-        if let Some(label) = &node.label {
-            match &node.node_type {
-                NodeType::Section => {
-                    labels.insert(label.clone(), node.counter.clone().unwrap_or_default());
-                }
-                NodeType::Subsection => {
-                    labels.insert(label.clone(), node.counter.clone().unwrap_or_default());
-                }
-                NodeType::Subsubsection => {
-                    labels.insert(label.clone(), node.counter.clone().unwrap_or_default());
-                }
-                NodeType::Chapter => {
-                    labels.insert(label.clone(), node.counter.clone().unwrap_or_default());
-                }
-                NodeType::MathBlock { numbered: true, .. } => {
-                    labels.insert(label.clone(), node.counter.clone().unwrap_or_default());
-                }
-                _ => {
-                    labels.insert(label.clone(), String::new());
-                }
-            }
-        }
-    }
-
-    for (label, info) in &module.annotations.labels {
-        if !labels.contains_key(label) {
-            labels.insert(label.clone(), String::new());
-            match info.category {
-                LabelCategory::Section => {
-                    labels.insert(label.clone(), String::new());
-                }
-                LabelCategory::Equation => {
-                    labels.insert(label.clone(), String::new());
-                }
-                LabelCategory::Figure => {
-                    labels.insert(label.clone(), String::new());
-                }
-                _ => {}
-            }
-        }
-    }
-
-    labels
-}
-
-fn collect_v2_refs(
-    module: &SIRModuleV2,
-    labels: &IndexMap<String, String>,
-) -> IndexMap<String, String> {
-    let mut refs_map = IndexMap::new();
-
-    for xref in &module.annotations.refs {
-        if let Some(number) = labels.get(&xref.label) {
-            refs_map.insert(xref.label.clone(), number.clone());
-        }
-    }
-
-    refs_map
 }
 
 fn resolve_v2_references(
@@ -3462,46 +3359,6 @@ mod tests {
         let gir = compile_v2_document(&module, &mut ctx).unwrap();
 
         assert!(gir.is_well_formed());
-    }
-
-    #[test]
-    fn test_collect_v2_labels_from_module() {
-        let mut module = SIRModuleV2::new();
-        let doc_id = module.body.push(Node::new(0, NodeType::Document));
-        let sec_id = module.body.push(
-            Node::new(1, NodeType::Section)
-                .with_label("sec:intro")
-                .with_parent(doc_id),
-        );
-        let sec_text = module.body.push(
-            Node::new(
-                2,
-                NodeType::Text {
-                    content: "Introduction".into(),
-                },
-            )
-            .with_parent(sec_id),
-        );
-        if let Some(d) = module.body.get_mut(doc_id) {
-            d.add_child(sec_id);
-        }
-        if let Some(s) = module.body.get_mut(sec_id) {
-            s.add_child(sec_text);
-        }
-
-        let labels = collect_v2_labels(&module);
-        assert!(labels.contains_key("sec:intro"));
-    }
-
-    #[test]
-    fn test_collect_v2_labels_from_annotations() {
-        let mut module = SIRModuleV2::new();
-        module
-            .annotations
-            .add_label("fig:diagram".to_string(), 42, LabelCategory::Figure);
-
-        let labels = collect_v2_labels(&module);
-        assert!(labels.contains_key("fig:diagram"));
     }
 
     #[test]

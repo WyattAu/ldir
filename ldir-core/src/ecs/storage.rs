@@ -10,8 +10,6 @@
 //! - THM-ECS-DETERMINISM: Entity iteration order is deterministic
 //! - AX-ECS-005: Deterministic iteration order
 
-#![allow(dead_code)]
-
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
@@ -51,6 +49,7 @@ use crate::ecs::entity::{Entity, EntityAllocator};
 ///
 /// assert_eq!(world.get_component::<Health>(entity), Some(&Health(100)));
 /// ```
+#[allow(dead_code)]
 pub struct World {
     /// Entity allocator with generation tracking.
     entities: EntityAllocator,
@@ -58,6 +57,7 @@ pub struct World {
     stores: HashMap<TypeId, Box<dyn Any>>,
 }
 
+#[allow(dead_code)]
 impl World {
     /// Creates a new empty world.
     pub fn new() -> Self {

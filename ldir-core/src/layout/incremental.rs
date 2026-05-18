@@ -13,8 +13,6 @@
 //! - INV-COMP-001: Bit-identical output (determinism)
 //! - YP-INCREMENTAL-001: Incremental layout specification
 
-#![allow(dead_code)]
-
 use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 

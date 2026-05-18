@@ -3,6 +3,7 @@ name = "ldir-dis"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR IR disassembler — converts binary S-IR to human-readable text"
 repository.workspace = true
 readme = "README.md"

@@ -24,7 +24,6 @@
 //! regardless of intermediate results.
 
 #![allow(unsafe_code)]
-#![allow(dead_code)]
 
 use harfbuzz_sys as hb;
 

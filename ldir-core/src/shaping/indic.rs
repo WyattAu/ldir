@@ -4,7 +4,6 @@
 //! and line-break analysis for the ten major Indic scripts defined in Unicode.
 
 #![deny(unsafe_code)]
-#![allow(dead_code)]
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IndicScript {

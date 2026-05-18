@@ -3,6 +3,7 @@ name = "ldc"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR compiler CLI: compile documents to PDF and other formats"
 repository.workspace = true
 readme = "README.md"

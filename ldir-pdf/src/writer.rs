@@ -3,8 +3,6 @@
 //! Generates a valid PDF 1.4+ document with embedded TrueType fonts
 //! using Type0 (composite) + CIDFontType2 + ToUnicode CMap structure.
 
-#![allow(dead_code)]
-
 use pdf_writer::types::{AnnotationType, CidFontType, FontFlags, SystemInfo, UnicodeCmap};
 use pdf_writer::{Content, Filter, Name, Pdf, Rect, Ref, Str, TextStr};
 use rayon::prelude::*;
@@ -63,6 +61,7 @@ fn jpeg_info(data: &[u8]) -> Option<(u32, u32, u8)> {
     None
 }
 
+#[allow(dead_code)]
 fn jpeg_dims(data: &[u8]) -> Option<(u32, u32)> {
     jpeg_info(data).map(|(w, h, _)| (w, h))
 }
@@ -146,15 +145,18 @@ impl PdfDocumentBuilder {
         self.creator = creator.to_string();
     }
 
+    #[allow(dead_code)]
     pub fn set_language(&mut self, lang: &str) {
         self.language = lang.to_string();
     }
 
+    #[allow(dead_code)]
     pub fn set_structure_tree(&mut self, tree: Vec<StructureNode>) {
         self.structure_tree = tree;
         self.tagged = true;
     }
 
+    #[allow(dead_code)]
     pub fn set_tagged(&mut self, tagged: bool) {
         self.tagged = tagged;
     }
@@ -172,6 +174,7 @@ impl PdfDocumentBuilder {
     ///
     /// The profile will be embedded in the PDF and referenced from the
     /// catalog's OutputIntent and default color space.
+    #[allow(dead_code)]
     pub fn set_icc_profile(&mut self, profile: IccProfile) {
         self.icc_profile = Some(profile);
     }
@@ -211,6 +214,7 @@ impl PdfDocumentBuilder {
     }
 
     /// Set the active font by name and size (backward compat, no-op without embedded font).
+    #[allow(dead_code)]
     pub fn set_font(&mut self, _name: &str, _size: f64) {
         // This is kept for backward compatibility. When using the new
         // font embedding path, use add_font() + set_active_font() instead.
@@ -347,6 +351,7 @@ impl PdfDocumentBuilder {
     /// - `row_height`: height of each row
     /// - `num_rows`: number of rows in the grid
     /// - `line_width`: stroke thickness of the grid lines
+    #[allow(dead_code)]
     pub fn draw_table(
         &mut self,
         x: f64,

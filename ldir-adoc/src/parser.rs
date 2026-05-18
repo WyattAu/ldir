@@ -118,6 +118,7 @@ impl AsciidocParser {
                 && trimmed.chars().nth(1).is_some_and(|c| c != '*'))
     }
 
+    #[allow(dead_code)]
     fn is_code_block_delimiter(line: &str) -> bool {
         let trimmed = line.trim();
         trimmed == "----"
@@ -128,6 +129,7 @@ impl AsciidocParser {
             || trimmed == "----"
     }
 
+    #[allow(dead_code)]
     fn is_literal_block_delimiter(line: &str) -> bool {
         let trimmed = line.trim();
         trimmed == "----" || trimmed == "...."

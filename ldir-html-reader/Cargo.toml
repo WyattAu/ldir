@@ -3,6 +3,7 @@ name = "ldir-html-reader"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR HTML reader frontend — converts HTML to S-IR v2"
 repository.workspace = true
 readme = "README.md"

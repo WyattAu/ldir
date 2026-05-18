@@ -10,8 +10,6 @@
 //! - CON-ECS-010: Bump allocator for dense array growth
 //! - REQ-4.1.3: 64-byte cache-line alignment for attribute arrays
 
-#![allow(dead_code)]
-
 /// A simple bump allocator that stores values contiguously.
 ///
 /// Allocation appends to an internal `Vec<T>`, returning the index.
@@ -30,6 +28,7 @@
 /// assert_eq!(arena.get(b), Some(&20));
 /// assert_eq!(arena.len(), 2);
 /// ```
+#[allow(dead_code)]
 pub struct Arena<T> {
     /// Contiguous storage for allocated values.
     /// Per REQ-4.1.3, dense arrays should be 64-byte cache-line aligned
@@ -37,6 +36,7 @@ pub struct Arena<T> {
     data: Vec<T>,
 }
 
+#[allow(dead_code)]
 impl<T> Arena<T> {
     /// Creates a new empty arena.
     pub const fn new() -> Self {

@@ -16,8 +16,6 @@
 //! - REQ-3.2.5: Fixed-point coordinate system
 //! - YP-PAGINATION-001: Pagination specification
 
-#![allow(dead_code)]
-
 pub mod page_break;
 
 use crate::fp266::Fp266;

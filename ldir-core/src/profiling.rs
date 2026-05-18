@@ -9,11 +9,10 @@
 //! - REQ-8.2: Exportable traces in Chrome Trace Format
 //! - REQ-11.4.2: Chrome Trace Format and Tracy export
 
-#![allow(dead_code)]
-
 use std::time::{Duration, Instant};
 
 /// A recorded profiling span with start/end timestamps.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ProfileSpan {
     /// Human-readable name of the span (e.g. `"compile_sir"`).
@@ -26,24 +25,28 @@ pub struct ProfileSpan {
 
 impl ProfileSpan {
     /// Elapsed duration of this span.
+    #[allow(dead_code)]
     pub fn duration(&self) -> Duration {
         self.end.duration_since(self.start)
     }
 }
 
 /// Opaque handle returned by [`FrameProfiler::begin`].
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub struct ProfileHandle {
     index: usize,
 }
 
 /// Collects profiling spans and exports to Chrome Trace Format JSON.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct FrameProfiler {
     base: Instant,
     spans: Vec<Option<ProfileSpan>>,
 }
 
+#[allow(dead_code)]
 impl FrameProfiler {
     /// Creates a new `FrameProfiler` with the current instant as the base timestamp.
     pub fn new() -> Self {

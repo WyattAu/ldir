@@ -6,18 +6,18 @@
 //! Glyph IDs are NOT remapped — they retain their original values so
 //! that `CIDToGIDMap: Identity` works correctly in the PDF.
 
-#![allow(dead_code)]
-
 use std::collections::HashSet;
 
 use ttf_parser::Tag;
 
 /// Tracks which glyph IDs are used in a document.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct FontSubset {
     glyph_ids: HashSet<u32>,
 }
 
+#[allow(dead_code)]
 impl FontSubset {
     /// Create an empty subset.
     pub fn new() -> Self {

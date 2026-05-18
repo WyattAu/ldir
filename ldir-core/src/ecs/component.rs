@@ -13,8 +13,6 @@
 //! - REQ-4.1.2: Structure of Arrays layout for all node attributes
 //! - REQ-4.1.4: No raw pointers or Box/Rc/Arc; all relations via 32-bit indices
 
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
@@ -23,6 +21,7 @@ use crate::ecs::entity::Entity;
 /// Component type identifier. Supports up to 256 component types.
 ///
 /// Per NC-ECS-007: max component size is 64 bytes (fits one cache line).
+#[allow(dead_code)]
 pub type ComponentId = u8;
 
 /// A sparse set mapping keys to dense array indices.
@@ -39,6 +38,7 @@ pub type ComponentId = u8;
 /// - DEF-SPARSE-SET: s = (sparse, dense, entities)
 /// - THM-ECS-ACCESS: O(1) component access
 /// - LEM-ECS-003: Swap-and-pop preserves dense compactness
+#[allow(dead_code)]
 pub struct SparseSet<K> {
     /// Sparse array: key → dense index. O(1) lookup.
     sparse: HashMap<K, usize>,
@@ -52,6 +52,7 @@ where
     K: Eq + std::hash::Hash + Clone,
 {
     /// Creates a new empty sparse set.
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             sparse: HashMap::new(),
@@ -110,11 +111,13 @@ where
     }
 
     /// Returns the number of entries.
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.dense.len()
     }
 
     /// Returns `true` if the set is empty.
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.dense.is_empty()
     }
@@ -160,6 +163,7 @@ where
 /// - REQ-4.1.4: No Box/Rc/Arc for document nodes
 /// - THM-ECS-ACCESS: O(1) component access
 /// - THM-ECS-CACHE-FRIENDLY: Cache-linear single-component iteration
+#[allow(dead_code)]
 pub struct ComponentStore<T> {
     /// Dense array of component data. Per REQ-4.1.3, should be
     /// 64-byte cache-line aligned (custom allocator in Phase B).
@@ -170,6 +174,7 @@ pub struct ComponentStore<T> {
     sparse: SparseSet<Entity>,
 }
 
+#[allow(dead_code)]
 impl<T> ComponentStore<T> {
     /// Creates a new empty component store.
     pub fn new() -> Self {

@@ -1,7 +1,5 @@
 //! Optical margin alignment for hanging punctuation.
 
-#![allow(dead_code)]
-
 /// Characters that should hang into the left margin.
 pub const HANGING_CHARS_START: &[char] = &['"', '\u{201C}', '(', '[', '{', '\u{00AB}', '\u{2018}'];
 
@@ -11,6 +9,7 @@ pub const HANGING_CHARS_END: &[char] = &[
 ];
 
 /// Default optical margin overhang in ems.
+#[allow(dead_code)]
 const DEFAULT_OVERHANG_EM: f64 = 0.3;
 
 /// Check if a line needs optical margin adjustment.
@@ -22,6 +21,7 @@ const DEFAULT_OVERHANG_EM: f64 = 0.3;
 /// # Arguments
 /// * `line` - The text content of the line (trimmed of leading/trailing whitespace)
 /// * `em_size` - The font size in points (used to convert em-based overhang to points)
+#[allow(dead_code)]
 pub fn optical_margin_adjustment(line: &str, em_size: f64) -> (f64, f64) {
     let overhang = em_size * DEFAULT_OVERHANG_EM;
     let left = if line.starts_with(|c: char| HANGING_CHARS_START.contains(&c)) {

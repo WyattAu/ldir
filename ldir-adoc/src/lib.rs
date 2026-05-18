@@ -6,8 +6,7 @@
     clippy::collapsible_if,
     clippy::manual_strip,
     clippy::manual_split_once,
-    clippy::nonminimal_bool,
-    dead_code
+    clippy::nonminimal_bool
 )]
 
 mod parser;

@@ -3,6 +3,7 @@ name = "ldir-docx"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR DOCX backend — converts S-IR v2 to DOCX (OOXML)"
 repository.workspace = true
 readme = "README.md"

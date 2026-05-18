@@ -3,6 +3,7 @@ name = "ldir-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR core: fp26_6 arithmetic, ECS, S-IR validator, compiler, and G-IR emitter"
 repository.workspace = true
 readme = "README.md"

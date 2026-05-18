@@ -1,11 +1,10 @@
 //! OpenType/TrueType table definitions — extracted from real font data.
 
-#![allow(dead_code)]
-
 #[allow(unused_imports)]
 use ttf_parser::Rect as TtfRect;
 
 /// Cmap table info extracted from a TrueType font.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct CmapTable {
     pub num_tables: u16,
@@ -16,6 +15,7 @@ pub struct CmapTable {
 
 impl CmapTable {
     /// Extract cmap info from a parsed face.
+    #[allow(dead_code)]
     pub fn from_face(face: &ttf_parser::Face) -> Option<Self> {
         let cmap = face.tables().cmap?;
         Some(Self {
@@ -28,6 +28,7 @@ impl CmapTable {
 }
 
 /// Head table info extracted from a TrueType font.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct HeadTable {
     pub major_version: u16,
@@ -40,6 +41,7 @@ pub struct HeadTable {
 impl HeadTable {
     /// Extract head table info from a parsed face.
     /// In ttf-parser 0.25, `head` is a non-optional struct in FaceTables.
+    #[allow(dead_code)]
     pub fn from_face(face: &ttf_parser::Face) -> Self {
         let head = &face.tables().head;
         Self {
@@ -56,6 +58,7 @@ impl HeadTable {
 }
 
 /// Hhea table info extracted from a TrueType font.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct HheaTable {
     pub ascender: i16,
@@ -68,6 +71,7 @@ pub struct HheaTable {
 impl HheaTable {
     /// Extract hhea table info from a parsed face.
     /// In ttf-parser 0.25, `hhea` is a non-optional struct in FaceTables.
+    #[allow(dead_code)]
     pub fn from_face(face: &ttf_parser::Face) -> Self {
         let hhea = &face.tables().hhea;
         Self {
@@ -81,6 +85,7 @@ impl HheaTable {
 }
 
 /// Hmtx table info extracted from a TrueType font.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct HmtxTable {
     pub num_metrics: u16,
@@ -90,6 +95,7 @@ pub struct HmtxTable {
 
 impl HmtxTable {
     /// Extract hmtx info for a subset of glyph IDs.
+    #[allow(dead_code)]
     pub fn from_face_subset(face: &ttf_parser::Face, glyph_ids: &[u32]) -> Self {
         let upem = face.units_per_em();
         let mut advance_widths = Vec::with_capacity(glyph_ids.len());

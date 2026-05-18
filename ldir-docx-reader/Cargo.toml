@@ -3,6 +3,7 @@ name = "ldir-docx-reader"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR DOCX reader — converts DOCX (.docx) to S-IR v2"
 repository.workspace = true
 readme = "README.md"

@@ -3,6 +3,7 @@ name = "ldir-typst"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR Typst frontend — converts Typst (.typ) to S-IR v2"
 repository.workspace = true
 readme = "README.md"

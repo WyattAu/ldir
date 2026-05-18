@@ -12,14 +12,13 @@
 //! - THM-ECS-CAPACITY: Maximum entity count is 2^32 - 1
 //! - ALG-ECS-CREATE: Entity creation algorithm
 
-#![allow(dead_code)]
-
 use std::fmt;
 
 /// Raw entity slot index — a 32-bit value.
 ///
 /// Per REQ-3.1.6, entity IDs are 32-bit values.
 /// Slot 0 is reserved as the null/sentinel entity per REQ-3.1.2.
+#[allow(dead_code)]
 pub type EntityId = u32;
 
 /// A versioned entity reference consisting of a slot index and generation counter.
@@ -33,6 +32,7 @@ pub type EntityId = u32;
 /// - DEF-ENTITY: E = (e_id, g_gen)
 /// - REQ-3.1.6: 32-bit generation indices as entity identifiers
 /// - THM-ECS-CAPACITY: Maximum entity count is 2^32 - 1
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Entity {
     /// Slot index in the entity allocator.
@@ -44,6 +44,7 @@ pub struct Entity {
 
 impl Entity {
     /// Creates a new entity reference with the given slot index and generation.
+    #[allow(dead_code)]
     pub const fn new(index: u32, generation: u32) -> Self {
         Self { index, generation }
     }
@@ -75,6 +76,7 @@ impl fmt::Debug for Entity {
 /// - ALG-ECS-CREATE: Entity creation algorithm (lines 3-8)
 /// - ALG-ECS-DESTROY: Entity destruction algorithm (lines 36-38)
 /// - PRE-ECS-002: Entity generation validity check
+#[allow(dead_code)]
 pub struct EntityAllocator {
     /// Next slot index for fresh allocation.
     next_slot: u32,
@@ -85,6 +87,7 @@ pub struct EntityAllocator {
     free_list: Vec<u32>,
 }
 
+#[allow(dead_code)]
 impl EntityAllocator {
     /// Creates a new entity allocator with no live entities.
     pub const fn new() -> Self {

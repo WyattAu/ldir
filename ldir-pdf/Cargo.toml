@@ -3,6 +3,7 @@ name = "ldir-pdf"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR PDF/A-4 output backend"
 repository.workspace = true
 readme = "README.md"

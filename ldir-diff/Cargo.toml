@@ -3,6 +3,7 @@ name = "ldir-diff"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR IR structural diff tool"
 repository.workspace = true
 readme = "README.md"

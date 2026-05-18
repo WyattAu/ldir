@@ -3,6 +3,7 @@ name = "ldir-opt"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR IR optimizer — applies transformation passes to S-IR v2 modules"
 repository.workspace = true
 readme = "README.md"

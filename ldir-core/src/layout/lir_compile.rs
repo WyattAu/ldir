@@ -5,8 +5,6 @@
 //! a positioned [`LIRDocument`](ldir_ir::lir::LIRDocument) tree with resolved
 //! geometry, line-broken paragraphs, and page breaks.
 
-#![allow(dead_code)]
-
 use indexmap::IndexMap;
 use std::collections::HashMap;
 
@@ -118,6 +116,7 @@ struct LirCompiler<'a> {
 }
 
 impl<'a> LirCompiler<'a> {
+    #[allow(dead_code)]
     fn new(module: &'a SIRModuleV2, ctx: &'a CompileContext) -> Self {
         Self::with_bib(module, ctx, None, "ieee")
     }

@@ -1,7 +1,5 @@
 //! Preview compilation manager for the LSP server.
 
-#![allow(dead_code)]
-
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -57,6 +55,7 @@ pub struct PreviewManager {
     enabled: Arc<AtomicBool>,
     running: Arc<AtomicBool>,
     pending: Arc<Mutex<Option<PendingCompile>>>,
+    #[allow(dead_code)]
     client: Client,
 }
 

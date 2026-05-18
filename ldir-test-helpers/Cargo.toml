@@ -3,6 +3,11 @@ name = "ldir-test-helpers"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme = "README.md"
 description = "Shared test utilities for LDIR crates"
+keywords = ["testing", "test-helpers", "document", "typesetting"]
+categories = ["development-tools"]
 
 [dependencies]

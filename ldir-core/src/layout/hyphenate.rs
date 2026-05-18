@@ -4,8 +4,6 @@
 //! boundaries using common English patterns, affix rules, and user-specified
 //! hyphenation points.
 
-#![allow(dead_code)]
-
 /// A position within a word where a hyphen can be inserted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HyphenPoint {

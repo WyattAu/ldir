@@ -7,8 +7,6 @@
 //! All coordinates use [`Fp266`] (26.6 fixed-point)
 //! per REQ-3.2.5 and THM-KP-DETERMINISM.
 
-#![allow(dead_code)]
-
 pub mod cache;
 pub mod fast_path;
 #[cfg(not(target_arch = "wasm32"))]

@@ -3,6 +3,7 @@ name = "ldir-ir"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 description = "LDIR IR types: S-IR and G-IR data structures with rkyv serialization"
 repository.workspace = true
 readme = "README.md"
