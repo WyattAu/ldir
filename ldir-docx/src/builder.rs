@@ -1,6 +1,12 @@
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
 
+#[derive(Debug, thiserror::Error)]
+pub enum DocxError {
+    #[error("DOCX build error: {0}")]
+    BuildError(String),
+}
+
 pub struct DocxBuilder;
 
 impl Default for DocxBuilder {
@@ -14,7 +20,7 @@ impl DocxBuilder {
         Self
     }
 
-    pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, String> {
+    pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, DocxError> {
         let document_xml = self.render_document(module);
         let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -74,7 +80,7 @@ impl DocxBuilder {
         );
         zip.add_file("word/styles.xml", styles_xml.as_bytes(), false);
 
-        zip.finish()
+        zip.finish().map_err(DocxError::BuildError)
     }
 
     fn render_document(&self, module: &SIRModuleV2) -> String {
@@ -535,7 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_builds() -> Result<(), String> {
+    fn test_docx_builds() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
         let docx = DocxBuilder::new().build(&m)?;
         assert!(docx.len() > 100);
@@ -543,7 +549,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_starts_with_pk() -> Result<(), String> {
+    fn test_docx_starts_with_pk() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
         let docx = DocxBuilder::new().build(&m)?;
         assert_eq!(&docx[0..4], b"PK\x03\x04");
@@ -551,7 +557,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_contains_content_types() -> Result<(), String> {
+    fn test_docx_contains_content_types() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -560,7 +566,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_contains_document_xml() -> Result<(), String> {
+    fn test_docx_contains_document_xml() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -570,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_contains_heading() -> Result<(), String> {
+    fn test_docx_contains_heading() -> Result<(), Box<dyn std::error::Error>> {
         let m = make_simple_module();
         let docx = DocxBuilder::new().build(&m)?;
         let text = String::from_utf8_lossy(&docx);
@@ -580,7 +586,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_bold_italic() -> Result<(), String> {
+    fn test_docx_bold_italic() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body
@@ -631,7 +637,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_list() -> Result<(), String> {
+    fn test_docx_list() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
@@ -673,7 +679,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_table() -> Result<(), String> {
+    fn test_docx_table() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
@@ -732,7 +738,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_code_block() -> Result<(), String> {
+    fn test_docx_code_block() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body.push(
@@ -769,7 +775,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_thematic_break() -> Result<(), String> {
+    fn test_docx_thematic_break() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body
@@ -785,7 +791,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_xml_escaping() -> Result<(), String> {
+    fn test_docx_xml_escaping() -> Result<(), Box<dyn std::error::Error>> {
         let mut m = SIRModuleV2::new();
         m.body.push(Node::new(0, NodeType::Document));
         m.body
@@ -830,7 +836,7 @@ mod tests {
     }
 
     #[test]
-    fn test_docx_empty_module() -> Result<(), String> {
+    fn test_docx_empty_module() -> Result<(), Box<dyn std::error::Error>> {
         let m = SIRModuleV2::new();
         let docx = DocxBuilder::new().build(&m)?;
         assert!(docx.len() > 100);

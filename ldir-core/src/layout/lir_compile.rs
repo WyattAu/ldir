@@ -312,7 +312,11 @@ impl<'a> LirCompiler<'a> {
 
         let font_size = Fp266::from_int(font_size_pt);
         let shaped = if font_data.is_empty() {
-            crate::shaping::fast_path::shape_ascii(text, font_size, 0)
+            if text.is_ascii() {
+                crate::shaping::fast_path::shape_ascii(text, font_size, 0)
+            } else {
+                crate::shaping::fast_path::shape_unicode_basic(&[], text, font_size, 0)
+            }
         } else {
             crate::shaping::shape_text(font_data, text, font_size)
         };
@@ -678,7 +682,16 @@ impl<'a> LirCompiler<'a> {
 
                     let fs = Fp266::from_int(font_size);
                     let shaped = if font_data.is_empty() {
-                        crate::shaping::fast_path::shape_ascii(line_text, fs, FONT_ID_MONO)
+                        if line_text.is_ascii() {
+                            crate::shaping::fast_path::shape_ascii(line_text, fs, FONT_ID_MONO)
+                        } else {
+                            crate::shaping::fast_path::shape_unicode_basic(
+                                &[],
+                                line_text,
+                                fs,
+                                FONT_ID_MONO,
+                            )
+                        }
                     } else {
                         crate::shaping::shape_text(font_data, line_text, fs)
                     };
@@ -754,7 +767,11 @@ impl<'a> LirCompiler<'a> {
                     .unwrap_or(&[]);
 
                 let shaped = if font_data.is_empty() {
-                    crate::shaping::fast_path::shape_ascii(&text, font_size, 0)
+                    if text.is_ascii() {
+                        crate::shaping::fast_path::shape_ascii(&text, font_size, 0)
+                    } else {
+                        crate::shaping::fast_path::shape_unicode_basic(&[], &text, font_size, 0)
+                    }
                 } else {
                     crate::shaping::shape_text(font_data, &text, font_size)
                 };

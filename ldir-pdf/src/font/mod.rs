@@ -9,7 +9,7 @@ mod loader;
 mod subset;
 mod tables;
 
-pub use loader::FontFace;
+pub use loader::{FontFace, FontLoadError};
 #[allow(unused_imports)]
 pub(crate) use loader::{FontMetrics, PdfFontInfo};
 #[allow(unused_imports)]

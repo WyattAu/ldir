@@ -1998,6 +1998,7 @@ name = "ldir-docx"
 version = "0.1.0"
 dependencies = [
  "ldir-ir",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2014,6 +2015,7 @@ version = "0.1.0"
 dependencies = [
  "ldir-html",
  "ldir-ir",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2110,6 +2112,8 @@ dependencies = [
  "pdf-writer",
  "png 0.18.1",
  "rayon",
+ "self_cell",
+ "thiserror 2.0.18",
  "ttf-parser 0.25.1",
 ]
 
@@ -3261,6 +3265,12 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
+name = "self_cell"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b12e76d157a900eb52e81bc6e9f3069344290341720e9178cde2407113ac8d89"
 
 [[package]]
 name = "semver"

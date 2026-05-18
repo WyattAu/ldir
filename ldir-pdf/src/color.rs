@@ -1,5 +1,17 @@
 #![allow(dead_code)]
 
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum IccProfileError {
+    #[error("ICC profile data too small: {0} bytes")]
+    TooSmall(usize),
+    #[error("invalid ICC profile: {0}")]
+    InvalidProfile(String),
+    #[error("unknown ICC color space: {0}")]
+    UnknownColorSpace(String),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IccColorSpace {
     Rgb,
@@ -16,12 +28,14 @@ pub struct IccProfile {
 }
 
 impl IccProfile {
-    pub fn from_bytes(data: Vec<u8>) -> Result<Self, String> {
+    pub fn from_bytes(data: Vec<u8>) -> Result<Self, IccProfileError> {
         if data.len() < 132 {
-            return Err("ICC profile too small".into());
+            return Err(IccProfileError::TooSmall(data.len()));
         }
         if &data[36..40] != b"acsp" {
-            return Err("Invalid ICC profile: missing acsp signature".into());
+            return Err(IccProfileError::InvalidProfile(
+                "missing acsp signature".into(),
+            ));
         }
 
         let color_space = match &data[16..20] {
@@ -29,7 +43,7 @@ impl IccProfile {
             b"CMYK" => IccColorSpace::Cmyk,
             b"GRAY" => IccColorSpace::Gray,
             b"Lab " => IccColorSpace::Lab,
-            other => return Err(format!("Unsupported ICC color space: {:?}", other)),
+            other => return Err(IccProfileError::UnknownColorSpace(format!("{:?}", other))),
         };
 
         let components = match color_space {

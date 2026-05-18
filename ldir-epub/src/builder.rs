@@ -1,6 +1,12 @@
 use ldir_html::{HtmlOptions, HtmlRenderer, MathFormat};
 use ldir_ir::sir::v2::module::SIRModuleV2;
 
+#[derive(Debug, thiserror::Error)]
+pub enum EpubError {
+    #[error("EPUB build error: {0}")]
+    BuildError(String),
+}
+
 pub struct EpubOptions {
     pub include_toc: bool,
     pub css: Option<String>,
@@ -34,7 +40,7 @@ impl EpubBuilder {
         Self { options }
     }
 
-    pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, String> {
+    pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, EpubError> {
         let title = module.metadata.title.as_deref().unwrap_or("Untitled");
         let author = module.metadata.author.as_deref().unwrap_or("Unknown");
         let lang = &module.metadata.language;
@@ -66,7 +72,7 @@ impl EpubBuilder {
         zip.add_file("OEBPS/style.css", css.as_bytes(), false);
         zip.add_file("OEBPS/chapter1.xhtml", chapter_xhtml.as_bytes(), false);
 
-        zip.finish()
+        zip.finish().map_err(EpubError::BuildError)
     }
 }
 

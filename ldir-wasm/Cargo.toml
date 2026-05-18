@@ -29,5 +29,8 @@ features = [
     "Window",
 ]
 
+[features]
+unstable = []
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3"

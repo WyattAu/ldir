@@ -42,8 +42,12 @@ pub fn version() -> String {
 /// 3. Compiles S-IR to G-IR
 /// 4. Renders G-IR to an RGBA pixel buffer
 ///
-/// Returns raw RGBA pixel data (width × height × 4 bytes).
-/// Returns an empty buffer on failure.
+/// Returns raw RGBA pixel data (width * height * 4 bytes).
+///
+/// **Unstable:** This function is not yet implemented. Enable with
+/// `features = ["unstable"]` to access the API surface.
+#[cfg(feature = "unstable")]
+#[wasm_bindgen]
 pub fn compile_and_render(_sir_bytes: &[u8]) -> Vec<u8> {
-    Vec::new()
+    todo!("compile_and_render requires GPU renderer integration (ldir-vello)")
 }

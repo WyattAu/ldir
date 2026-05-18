@@ -18,6 +18,8 @@ flate2 = "1"
 png = "0.18"
 jpeg-decoder = "0.3"
 rayon = { workspace = true }
+self_cell = "1"
+thiserror = { workspace = true }
 
 [dev-dependencies]
 ldir-test-helpers = { workspace = true }

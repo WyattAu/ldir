@@ -3,8 +3,26 @@
 //! Parses TrueType/OpenType font data and extracts metrics needed
 //! for PDF font embedding (FontDescriptor, widths, ToUnicode CMap).
 
+use self_cell::self_cell;
+use ttf_parser::Face as TtfFace;
 use ttf_parser::GlyphId;
 use ttf_parser::Rect as TtfRect;
+
+#[derive(Debug, thiserror::Error)]
+pub enum FontLoadError {
+    #[error("font data is empty")]
+    EmptyData,
+    #[error("failed to parse font: {0}")]
+    ParseError(String),
+}
+
+self_cell!(
+    struct FontFaceInner {
+        owner: Vec<u8>,
+        #[covariant]
+        dependent: TtfFace,
+    }
+);
 
 /// Metrics for a single glyph, scaled to PDF units (1/1000 em).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -55,25 +73,14 @@ pub struct PdfFontInfo {
 
 /// A loaded font face, parsed from TrueType/OpenType data.
 pub struct FontFace {
-    data: Vec<u8>,
-    face: ttf_parser::Face<'static>,
+    inner: FontFaceInner,
     /// Cached font info for PDF embedding.
     info: PdfFontInfo,
 }
 
-// SAFETY: FontFace owns `data` and creates a `Face<'static>` from it.
-// The `data` field is never moved or dropped while `face` is alive,
-// because both are dropped together when FontFace is dropped.
-// This is the standard pattern for self-referential font data in Rust.
-#[allow(unsafe_code)]
-unsafe impl Send for FontFace {}
-#[allow(unsafe_code)]
-unsafe impl Sync for FontFace {}
-
 impl Clone for FontFace {
     fn clone(&self) -> Self {
-        // Re-parse from the owned data to reconstruct the self-referential struct.
-        Self::from_bytes(&self.data).unwrap_or_else(|e| {
+        Self::from_bytes(self.inner.borrow_owner()).unwrap_or_else(|e| {
             unreachable!("font data should be valid when cloning FontFace: {e}")
         })
     }
@@ -85,38 +92,24 @@ impl FontFace {
     /// # Errors
     ///
     /// Returns an error if the font data is empty or invalid.
-    pub fn from_bytes(data: &[u8]) -> Result<FontFace, String> {
+    pub fn from_bytes(data: &[u8]) -> Result<FontFace, FontLoadError> {
         if data.is_empty() {
-            return Err("font data is empty".into());
+            return Err(FontLoadError::EmptyData);
         }
 
-        // We need to extend the lifetime to 'static for self-referential struct.
-        // This is safe because FontFace owns the data and both are dropped together.
         let data_owned = data.to_vec();
-        let face = ttf_parser::Face::parse(&data_owned, 0)
-            .map_err(|e| format!("failed to parse font: {e}"))?;
+        let inner = FontFaceInner::try_new(data_owned, |data| {
+            ttf_parser::Face::parse(data, 0).map_err(|e| FontLoadError::ParseError(format!("{e}")))
+        })?;
 
-        let info = extract_font_info(&face);
+        let info = extract_font_info(inner.borrow_dependent());
 
-        // SAFETY: transmute the face lifetime from 'a to 'static.
-        // This is safe because:
-        // 1. `data_owned` is stored in the same struct
-        // 2. Both are dropped together
-        // 3. Clone re-parses from owned data (see impl Clone above)
-        #[allow(unsafe_code)]
-        let face: ttf_parser::Face<'static> =
-            unsafe { std::mem::transmute::<ttf_parser::Face<'_>, ttf_parser::Face<'static>>(face) };
-
-        Ok(FontFace {
-            data: data_owned,
-            face,
-            info,
-        })
+        Ok(FontFace { inner, info })
     }
 
     /// Raw font bytes for embedding in PDF.
     pub fn raw_bytes(&self) -> &[u8] {
-        &self.data
+        self.inner.borrow_owner()
     }
 
     /// Font information for PDF FontDescriptor.
@@ -131,7 +124,7 @@ impl FontFace {
 
     /// Map a character to a glyph ID via the font's cmap table.
     pub fn glyph_id_for_char(&self, ch: char) -> Option<u32> {
-        self.face.glyph_index(ch).map(|id| id.0 as u32)
+        self.face().glyph_index(ch).map(|id| id.0 as u32)
     }
 
     /// Get metrics for a glyph, scaled to 1/1000 em units.
@@ -139,12 +132,13 @@ impl FontFace {
         let gid = GlyphId(glyph_id as u16);
         let upem = self.info.units_per_em as f32;
         let scale = 1000.0 / upem;
+        let face = self.face();
 
-        let advance = self.face.glyph_hor_advance(gid)? as f32 * scale;
+        let advance = face.glyph_hor_advance(gid)? as f32 * scale;
 
-        let lsb = self.face.glyph_hor_side_bearing(gid).unwrap_or(0) as f32 * scale;
+        let lsb = face.glyph_hor_side_bearing(gid).unwrap_or(0) as f32 * scale;
 
-        let bbox = self.face.glyph_bounding_box(gid).map(|r| GlyphBBox {
+        let bbox = face.glyph_bounding_box(gid).map(|r| GlyphBBox {
             x_min: r.x_min as f32 * scale,
             y_min: r.y_min as f32 * scale,
             x_max: r.x_max as f32 * scale,
@@ -163,7 +157,7 @@ impl FontFace {
         let gid = GlyphId(glyph_id as u16);
         let upem = self.info.units_per_em as f32;
         let scale = 1000.0 / upem;
-        self.face.glyph_hor_advance(gid).map(|w| w as f32 * scale)
+        self.face().glyph_hor_advance(gid).map(|w| w as f32 * scale)
     }
 
     /// Map a glyph ID back to a Unicode codepoint (for ToUnicode CMap).
@@ -171,8 +165,9 @@ impl FontFace {
     /// Returns the first codepoint that maps to this glyph.
     pub fn glyph_to_unicode(&self, glyph_id: u32) -> Option<char> {
         let gid = GlyphId(glyph_id as u16);
+        let face = self.face();
         let mut result: Option<char> = None;
-        if let Some(cmap) = self.face.tables().cmap {
+        if let Some(cmap) = face.tables().cmap {
             for i in 0..cmap.subtables.len() {
                 if let Some(subtable) = cmap.subtables.get(i)
                     && subtable.is_unicode()
@@ -195,13 +190,13 @@ impl FontFace {
     }
 
     /// Internal access to the ttf-parser face (for PDF embedding).
-    pub(crate) fn face(&self) -> &ttf_parser::Face<'static> {
-        &self.face
+    pub(crate) fn face(&self) -> &ttf_parser::Face<'_> {
+        self.inner.borrow_dependent()
     }
 
     /// Iterate over all glyph-to-unicode mappings.
     pub fn iter_cmap(&self) -> impl Iterator<Item = (u32, char)> + '_ {
-        CmapIterator::new(&self.face)
+        CmapIterator::new(self.face())
     }
 }
 
