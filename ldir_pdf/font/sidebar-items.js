@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["FontFace"]};
+window.SIDEBAR_ITEMS = {"enum":["FontLoadError"],"struct":["FontFace"]};
