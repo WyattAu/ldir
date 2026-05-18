@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["V2_FORMATS"],"fn":["detect_format_from_extension","detect_input_format","emit_pdf","find_font_variant","list_system_fonts","load_font_variants","load_font_variants_from_db","main","merge_modules","parse_docx_to_sir_v2","parse_input_to_sir_v2","parse_to_sir_v2","resolve_font","try_query_style","write_output"],"struct":["Cli","FontVariant"]};
+window.SIDEBAR_ITEMS = {"mod":["cli"]};
