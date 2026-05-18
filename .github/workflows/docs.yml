@@ -9,6 +9,8 @@ on:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'docs/**'
+      - 'man/**'
+      - 'completions/**'
 
 permissions:
   contents: write
@@ -31,12 +33,24 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Build documentation
+      - name: Install mdBook
+        uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook
+
+      - name: Build Rust documentation
         run: cargo doc --workspace --exclude ldir-wasm --no-deps
+
+      - name: Build mdBook documentation
+        run: mdbook build docs/book
 
       - name: Add landing page
         run: |
           cp docs/index.html target/doc/index.html
+
+      - name: Merge mdBook output into doc output
+        run: |
+          cp -r docs/book/book/* target/doc/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

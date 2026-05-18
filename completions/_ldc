@@ -1,0 +1,63 @@
+#compdef ldc
+
+autoload -U is-at-least
+
+_ldc() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-o+[Output file path. Defaults to first input stem + extension based on format]:OUTPUT:_files' \
+'--output=[Output file path. Defaults to first input stem + extension based on format]:OUTPUT:_files' \
+'-f+[Output format]:FORMAT:(pdf gir sir html epub txt docx sir2 ldir)' \
+'--format=[Output format]:FORMAT:(pdf gir sir html epub txt docx sir2 ldir)' \
+'--font=[Primary font family name (e.g., "DejaVu Sans", "Noto Serif"). Auto-detected from system fonts if not specified]:FONT_FAMILY:_default' \
+'--font-mono=[Monospace font family name (e.g., "DejaVu Sans Mono"). Auto-detected from system fonts if not specified]:FONT_FAMILY:_default' \
+'--font-path=[Path to primary font file (.ttf/.otf). Overrides --font when specified]:PATH:_files' \
+'--title=[Document title for PDF metadata]:TITLE:_default' \
+'--author=[Document author for PDF metadata]:AUTHOR:_default' \
+'--subject=[Document subject for PDF metadata]:SUBJECT:_default' \
+'--margin=[Page margin in inches (applied uniformly to all sides)]:INCHES:_default' \
+'--page-size=[Page size preset ("a4", "letter", "legal")]:SIZE:_default' \
+'--page-width=[Custom page width in points (overrides --page-size)]:WIDTH_PT:_default' \
+'--page-height=[Custom page height in points (overrides --page-size)]:HEIGHT_PT:_default' \
+'--header-left=[Header left template (supports %page, %pages, %title, %author, %date)]:TEMPLATE:_default' \
+'--header-center=[Header center template]:TEMPLATE:_default' \
+'--header-right=[Header right template]:TEMPLATE:_default' \
+'--footer-left=[Footer left template]:TEMPLATE:_default' \
+'--footer-center=[Footer center template]:TEMPLATE:_default' \
+'--footer-right=[Footer right template (default\: %page)]:TEMPLATE:_default' \
+'--bibliography=[Path to BibTeX (.bib) file for citations]:PATH:_files' \
+'--pdfa-level=[PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b)]:LEVEL:_default' \
+'--list-fonts[List available system fonts and exit]' \
+'--no-header-rule[Disable header rule line]' \
+'--no-footer-rule[Disable footer rule line]' \
+'--drop-caps[Enable drop caps for the first paragraph after headings]' \
+'--lir[Use the L-IR layout pipeline (S-IR → L-IR → G-IR) instead of direct compilation]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'*::inputs -- Input file(s). Multiple files are merged with offset IDs. Supported\: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx:_files' \
+&& ret=0
+}
+
+(( $+functions[_ldc_commands] )) ||
+_ldc_commands() {
+    local commands; commands=()
+    _describe -t commands 'ldc commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_ldc" ]; then
+    _ldc "$@"
+else
+    compdef _ldc ldc
+fi

@@ -103,6 +103,11 @@ wasmtime = "28"
 # ECS reference
 shipyard = "0.11"
 
+# CLI
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+clap_mangen = "0.2"
+
 # Concurrency
 crossbeam = "0.8"
 dashmap = "5"

@@ -312,3 +312,43 @@ jobs:
             echo "::warning::Some PDFs have PDF/A conformance issues. Full PDF/A support tracked in X-3."
           fi
         continue-on-error: true
+
+  completions-check:
+    name: Completions & Man Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-completions-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Generate completions and man pages
+        run: cargo run -p ldc --example generate-completions
+
+      - name: Check completions match checked-in files
+        run: |
+          diff -r completions/ target/completions/ || {
+            echo "::error::Shell completions are out of date. Run: cargo run -p ldc --example generate-completions && cp target/completions/* completions/"
+            exit 1
+          }
+
+      - name: Check man pages match checked-in files
+        run: |
+          diff -r man/ target/man/ || {
+            echo "::error::Man pages are out of date. Run: cargo run -p ldc --example generate-completions && cp target/man/* man/"
+            exit 1
+          }

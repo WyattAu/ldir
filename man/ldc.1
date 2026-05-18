@@ -1,0 +1,122 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH ldc 1  "ldc 0.1.0" 
+.SH NAME
+ldc \- LDIR compiler CLI: compile documents to PDF and other formats
+.SH SYNOPSIS
+\fBldc\fR [\fB\-o\fR|\fB\-\-output\fR] [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-font\fR] [\fB\-\-font\-mono\fR] [\fB\-\-font\-path\fR] [\fB\-\-list\-fonts\fR] [\fB\-\-title\fR] [\fB\-\-author\fR] [\fB\-\-subject\fR] [\fB\-\-margin\fR] [\fB\-\-page\-size\fR] [\fB\-\-page\-width\fR] [\fB\-\-page\-height\fR] [\fB\-\-header\-left\fR] [\fB\-\-header\-center\fR] [\fB\-\-header\-right\fR] [\fB\-\-footer\-left\fR] [\fB\-\-footer\-center\fR] [\fB\-\-footer\-right\fR] [\fB\-\-no\-header\-rule\fR] [\fB\-\-no\-footer\-rule\fR] [\fB\-\-drop\-caps\fR] [\fB\-\-bibliography\fR] [\fB\-\-lir\fR] [\fB\-\-pdfa\-level\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIINPUTS\fR] 
+.SH DESCRIPTION
+LDIR Compiler — compile documents to PDF and other formats.
+.PP
+Input formats: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx (auto\-detected) Output formats: .pdf, .html, .epub, .txt, .docx, .sir2, .ldir (\-\-format or auto\-detected)
+.SH OPTIONS
+.TP
+\fB\-o\fR, \fB\-\-output\fR \fI<OUTPUT>\fR
+Output file path. Defaults to first input stem + extension based on format
+.TP
+\fB\-f\fR, \fB\-\-format\fR \fI<FORMAT>\fR [default: pdf]
+Output format
+.br
+
+.br
+\fIPossible values:\fR
+.RS 14
+.IP \(bu 2
+pdf
+.IP \(bu 2
+gir
+.IP \(bu 2
+sir
+.IP \(bu 2
+html
+.IP \(bu 2
+epub
+.IP \(bu 2
+txt
+.IP \(bu 2
+docx
+.IP \(bu 2
+sir2
+.IP \(bu 2
+ldir
+.RE
+.TP
+\fB\-\-font\fR \fI<FONT_FAMILY>\fR
+Primary font family name (e.g., "DejaVu Sans", "Noto Serif"). Auto\-detected from system fonts if not specified
+.TP
+\fB\-\-font\-mono\fR \fI<FONT_FAMILY>\fR
+Monospace font family name (e.g., "DejaVu Sans Mono"). Auto\-detected from system fonts if not specified
+.TP
+\fB\-\-font\-path\fR \fI<PATH>\fR
+Path to primary font file (.ttf/.otf). Overrides \-\-font when specified
+.TP
+\fB\-\-list\-fonts\fR
+List available system fonts and exit
+.TP
+\fB\-\-title\fR \fI<TITLE>\fR
+Document title for PDF metadata
+.TP
+\fB\-\-author\fR \fI<AUTHOR>\fR
+Document author for PDF metadata
+.TP
+\fB\-\-subject\fR \fI<SUBJECT>\fR
+Document subject for PDF metadata
+.TP
+\fB\-\-margin\fR \fI<INCHES>\fR [default: 1]
+Page margin in inches (applied uniformly to all sides)
+.TP
+\fB\-\-page\-size\fR \fI<SIZE>\fR
+Page size preset ("a4", "letter", "legal")
+.TP
+\fB\-\-page\-width\fR \fI<WIDTH_PT>\fR
+Custom page width in points (overrides \-\-page\-size)
+.TP
+\fB\-\-page\-height\fR \fI<HEIGHT_PT>\fR
+Custom page height in points (overrides \-\-page\-size)
+.TP
+\fB\-\-header\-left\fR \fI<TEMPLATE>\fR
+Header left template (supports %page, %pages, %title, %author, %date)
+.TP
+\fB\-\-header\-center\fR \fI<TEMPLATE>\fR
+Header center template
+.TP
+\fB\-\-header\-right\fR \fI<TEMPLATE>\fR
+Header right template
+.TP
+\fB\-\-footer\-left\fR \fI<TEMPLATE>\fR
+Footer left template
+.TP
+\fB\-\-footer\-center\fR \fI<TEMPLATE>\fR
+Footer center template
+.TP
+\fB\-\-footer\-right\fR \fI<TEMPLATE>\fR
+Footer right template (default: %page)
+.TP
+\fB\-\-no\-header\-rule\fR
+Disable header rule line
+.TP
+\fB\-\-no\-footer\-rule\fR
+Disable footer rule line
+.TP
+\fB\-\-drop\-caps\fR
+Enable drop caps for the first paragraph after headings
+.TP
+\fB\-\-bibliography\fR \fI<PATH>\fR
+Path to BibTeX (.bib) file for citations
+.TP
+\fB\-\-lir\fR
+Use the L\-IR layout pipeline (S\-IR → L\-IR → G\-IR) instead of direct compilation
+.TP
+\fB\-\-pdfa\-level\fR \fI<LEVEL>\fR [default: 4]
+PDF/A conformance level ("4" for PDF/A\-4, "2b" for PDF/A\-2b)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help (see a summary with \*(Aq\-h\*(Aq)
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.TP
+[\fIINPUTS\fR]
+Input file(s). Multiple files are merged with offset IDs. Supported: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx
+.SH VERSION
+v0.1.0

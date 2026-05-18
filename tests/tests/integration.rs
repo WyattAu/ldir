@@ -8,14 +8,15 @@ use std::path::PathBuf;
 fn ldc_bin() -> PathBuf {
     let target = std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".into());
     let target = PathBuf::from(target);
+    let bin_name = if cfg!(windows) { "ldc.exe" } else { "ldc" };
     if target.is_relative() {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let workspace_root = manifest_dir
             .parent()
             .expect("tests/ should be inside workspace");
-        workspace_root.join(target).join("debug").join("ldc")
+        workspace_root.join(target).join("debug").join(bin_name)
     } else {
-        target.join("debug").join("ldc")
+        target.join("debug").join(bin_name)
     }
 }
 

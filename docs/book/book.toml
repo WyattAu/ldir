@@ -1,0 +1,13 @@
+[book]
+title = "LDIR Documentation"
+authors = ["WyattAu"]
+language = "en"
+multilingual = false
+src = "src"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "rust"
+git-repository-url = "https://github.com/WyattAu/ldir"

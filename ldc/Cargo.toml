@@ -27,5 +27,15 @@ ldir-org = { workspace = true }
 ldir-docx-reader = { workspace = true }
 anyhow = { workspace = true }
 clap = { version = "4", features = ["derive"] }
+clap_complete = { workspace = true }
+clap_mangen = { workspace = true }
 ttf-parser = { workspace = true }
 fontdb = { workspace = true }
+
+[[bin]]
+name = "ldc"
+path = "src/main.rs"
+
+[[example]]
+name = "generate-completions"
+path = "examples/generate_completions.rs"

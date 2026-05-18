@@ -289,7 +289,9 @@ fn bench_cjk_insert_breaks(c: &mut Criterion) {
     c.bench_function("BM-LAYOUT-001/cjk_insert_breaks_80chars", |b| {
         b.iter(|| {
             let bump = Bump::new();
-            black_box(insert_cjk_breaks(&cjk_text, &cjk_items, &bump))
+            let result = insert_cjk_breaks(&cjk_text, &cjk_items, &bump);
+            // Consume result to prove the compiler the bump lifetime is not escaped.
+            black_box(result.len());
         })
     });
 }
