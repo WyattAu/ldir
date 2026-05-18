@@ -2,7 +2,6 @@
 title = "LDIR Documentation"
 authors = ["WyattAu"]
 language = "en"
-multilingual = false
 src = "src"
 
 [build]
