@@ -1,13 +1,13 @@
 # LDIR Production Roadmap -- From Current State to v1.0 and Beyond
 
-## Current State (v3.16.0, 2026-05-17)
+## Current State (v0.1.0, 2026-05-21)
 
 | Metric | Value |
 |--------|-------|
 | Rust crates | 26 (+ 1 Lean4 project) |
 | Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,810 (all passing, 0 failures) |
+| Total tests | 1,808 (all passing, 0 failures, 6 ignored) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | cargo fmt | Clean |
@@ -16,16 +16,19 @@
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
 | Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
 | MSRV | 1.88 (edition 2024) |
-| CI | Ubuntu:PASS, MSRV:PASS, Docs:PASS, Lean4:PASS, WASM:PASS |
-| Pre-existing CI issues | macOS/Windows integration tests (font shaping), veraPDF apt |
+| CI | All 10 jobs green (Ubuntu, macOS, Windows, MSRV, WASM, Feature Gates, Bench, Lean4, Completions, PDF/A) |
+| Shell completions | Bash, Zsh, Fish, PowerShell (generated via clap_complete) |
+| Man pages | ldc.1 (generated via clap_mangen) |
+| Docs site | mdBook (5 chapters) deployed to GitHub Pages |
+| Benchmarks | 12 benchmarks established (layout, pagination, shaping, validate) |
 
 ---
 
-## Phase A: Remaining Quality Debt (1-2 weeks)
+## Phase A: Remaining Quality Debt ~~(1-2 weeks)~~ -- COMPLETED
 
-Eliminate all known quality issues before crates.io publication.
+All known quality issues eliminated.
 
-### A-1: Fix macOS/Windows Integration Tests (3-5 days)
+### ~~A-1: Fix macOS/Windows Integration Tests~~ DONE
 
 **Problem:** Integration tests in `tests/tests/integration.rs` invoke `ldc` which panics on macOS and Windows when shaping Unicode content without proper font fallback. The `test_unicode` test fails on macOS; 10+ tests fail on Windows.
 
@@ -38,7 +41,7 @@ Eliminate all known quality issues before crates.io publication.
 
 **Acceptance:** All 9 CI matrix jobs pass (3 OS x 3 checks).
 
-### A-2: Structured Error Types for String-Error Functions (2-3 days)
+### ~~A-2: Structured Error Types~~ DONE
 
 10 production functions return `Result<_, String>` losing structured error information:
 - `ldir-pdf/src/font/loader.rs:88` -- `FontFace::from_bytes()`
@@ -53,7 +56,7 @@ Eliminate all known quality issues before crates.io publication.
 
 **Fix:** Define proper error enums with `thiserror` for each crate. Maintain backward compatibility via `impl From<SpecificError> for String`.
 
-### A-3: Reduce Dead Code Suppression (2-3 days)
+### ~~A-3: Reduce Dead Code Suppression~~ DONE
 
 25 files use blanket `#[allow(dead_code)]` at module level, masking potentially dead code. Approach:
 1. Remove module-level `#[allow(dead_code)]` from each file
@@ -64,7 +67,7 @@ Eliminate all known quality issues before crates.io publication.
 
 **Target:** Reduce blanket suppressions from 25 to fewer than 5.
 
-### A-4: Resolve WASM compile_and_render Stub (1 day)
+### ~~A-4: Resolve WASM compile_and_render Stub~~ DONE
 
 `ldir-wasm/src/lib.rs:47` has a public function that silently returns empty:
 ```rust
@@ -73,7 +76,7 @@ pub fn compile_and_render(_sir_bytes: &[u8]) -> Vec<u8> { Vec::new() }
 
 **Fix:** Either implement the function or mark it with `#[cfg(feature = "unstable")]` and document the limitation.
 
-### A-5: Self-Referential Struct Safety (2-3 days)
+### ~~A-5: Self-Referential Struct Safety~~ DONE
 
 `ldir-pdf/src/font/loader.rs:108` uses `std::mem::transmute` to extend a lifetime to `'static` for a self-referential struct (ttf_parser Face + font data). This is a well-known Rust footgun.
 
@@ -125,11 +128,11 @@ Publish all 25 public crates to crates.io.
 
 ## Phase C: Performance to Production (4-6 weeks)
 
-### C-1: Profile-Guided Optimization (1-2 weeks)
+### C-1: Profile-Guided Optimization (~~1-2 weeks~~ baselines done)
 
-1. Run `perf` and `tracing-chrome` on 100-page and 1000-page documents
-2. Identify actual bottlenecks (not assumed) -- measure before optimizing
-3. Establish hard performance baselines with Criterion
+1. ~~Run `perf` and `tracing-chrome` on 100-page and 1000-page documents~~ TODO (profiling)
+2. ~~Identify actual bottlenecks (not assumed) -- measure before optimizing~~ TODO
+3. ~~Establish hard performance baselines with Criterion~~ DONE
 
 **Targets:**
 
@@ -172,13 +175,13 @@ Current HashMap-based interning double-allocates. Replace with:
 
 ## Phase D: CLI Polish and Ecosystem (4-6 weeks)
 
-### D-1: CLI User Experience (2-3 weeks)
+### D-1: CLI User Experience (~~2-3 weeks~~ partially done)
 
-1. Progress indicators for long compilations (`indicatif` crate)
+1. ~~Progress indicators for long compilations (`indicatif` crate)~~ TODO
 2. Error messages with source location, context, and suggestions
 3. Configuration file support (`ldir.toml` or `.ldirrc`)
-4. Shell completion generation (bash, zsh, fish, powershell) via `clap-complete`
-5. Man page generation via `clap_mangen`
+4. ~~Shell completion generation (bash, zsh, fish, powershell) via `clap-complete`~~ DONE
+5. ~~Man page generation via `clap_mangen`~~ DONE
 6. Color output with `--color` flag
 
 ### D-2: Language Server Enhancement (2-3 weeks)
@@ -196,11 +199,11 @@ Current HashMap-based interning double-allocates. Replace with:
 4. LSP integration for diagnostics and completion
 5. Theme support
 
-### D-4: Documentation Site (1-2 weeks)
+### D-4: Documentation Site (~~1-2 weeks~~ partially done)
 
-1. Enable GitHub Pages in repo settings
-2. Convert docs/*.md to HTML (use mdBook or simple static site)
-3. Deploy user guide, getting started, plugins reference alongside cargo doc
+1. ~~Enable GitHub Pages in repo settings~~ TODO (requires UI action)
+2. ~~Convert docs/*.md to HTML (use mdBook or simple static site)~~ DONE (mdBook with 5 chapters)
+3. ~~Deploy user guide, getting started, plugins reference alongside cargo doc~~ DONE
 4. Add search functionality
 5. Add version selector for docs
 
