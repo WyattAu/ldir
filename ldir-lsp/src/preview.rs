@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn test_preview_manager_creation() {
         assert_eq!(DEFAULT_DEBOUNCE_MS, 150);
-        let path = PathBuf::from("/tmp/ldir-preview");
+        let path = std::env::temp_dir().join("ldir-preview");
         assert!(path.ends_with("ldir-preview"));
     }
 
@@ -317,17 +317,18 @@ mod tests {
 
     #[test]
     fn test_output_path() {
-        let output_dir = PathBuf::from("/tmp/ldir-preview");
+        let output_dir = std::env::temp_dir().join("ldir-preview");
         let pdf = derive_pdf_path("file:///home/user/doc.md", &output_dir).unwrap();
-        assert_eq!(pdf.to_string_lossy(), "/tmp/ldir-preview/doc.pdf");
+        assert_eq!(pdf.file_name().unwrap().to_string_lossy(), "doc.pdf");
+        assert!(pdf.parent().unwrap().ends_with("ldir-preview"));
 
         let pdf = derive_pdf_path("file:///home/user/report.tex", &output_dir).unwrap();
-        assert_eq!(pdf.to_string_lossy(), "/tmp/ldir-preview/report.pdf");
+        assert_eq!(pdf.file_name().unwrap().to_string_lossy(), "report.pdf");
     }
 
     #[test]
     fn test_derive_pdf_path_invalid_uri() {
-        let output_dir = PathBuf::from("/tmp/ldir-preview");
+        let output_dir = std::env::temp_dir().join("ldir-preview");
         let result = derive_pdf_path("not-a-uri", &output_dir);
         assert!(result.is_err());
     }
@@ -352,10 +353,12 @@ mod tests {
 
     #[test]
     fn test_derive_pdf_path_no_extension() {
-        let output_dir = PathBuf::from("/tmp/out");
+        let output_dir = std::env::temp_dir().join("ldir-preview-out");
         let result = derive_pdf_path("file:///path/to/README", &output_dir);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().to_string_lossy(), "/tmp/out/README.pdf");
+        let pdf = result.unwrap();
+        assert_eq!(pdf.file_name().unwrap().to_string_lossy(), "README.pdf");
+        assert!(pdf.parent().unwrap().ends_with("ldir-preview-out"));
     }
 
     #[test]

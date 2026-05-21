@@ -267,7 +267,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core verapdf
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
+
+      - name: Install veraPDF
+        run: |
+          curl -sL https://github.com/veraPDF/veraPDF-apps/releases/download/v1.26.2/verapdf-installer-1.26.2.zip -o /tmp/verapdf.zip
+          unzip -q /tmp/verapdf.zip -d /tmp/verapdf-installer
+          cd /tmp/verapdf-installer
+          chmod +x verapdf-install
+          ./verapdf-install -q -dir /opt/verapdf
+          echo "/opt/verapdf/bin" >> "$GITHUB_PATH"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
