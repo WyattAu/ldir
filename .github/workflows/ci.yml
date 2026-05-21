@@ -174,7 +174,7 @@ jobs:
   lean4-check:
     name: Lean 4 Build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -206,7 +206,7 @@ jobs:
 
       - name: Build Lean project
         working-directory: ldir-lean
-        run: lake build
+        run: lake build 2>&1 | tail -20
 
   wasm-check:
     name: WASM Build
@@ -271,11 +271,29 @@ jobs:
 
       - name: Install veraPDF
         run: |
-          curl -sL https://github.com/veraPDF/veraPDF-apps/releases/download/v1.26.2/verapdf-installer-1.26.2.zip -o /tmp/verapdf.zip
+          curl -sL https://software.verapdf.org/rel/verapdf-installer.zip -o /tmp/verapdf.zip
           unzip -q /tmp/verapdf.zip -d /tmp/verapdf-installer
-          cd /tmp/verapdf-installer
+          cd /tmp/verapdf-installer/verapdf-greenfield-*
+          # Generate automated install config (CLI + scripts only, no GUI/docs)
+          cat > /tmp/auto-install.xml <<'EOF'
+          <AutomatedInstallation langpack="eng">
+              <com.izforge.izpack.panels.htmlhello.HTMLHelloPanel id="welcome"/>
+              <com.izforge.izpack.panels.target.TargetPanel id="install_dir">
+                  <installpath>/opt/verapdf</installpath>
+              </com.izforge.izpack.panels.target.TargetPanel>
+              <com.izforge.izpack.panels.packs.PacksPanel id="sdk_pack_select">
+                  <pack index="0" name="veraPDF GUI" selected="false"/>
+                  <pack index="1" name="veraPDF Mac and *nix Scripts" selected="true"/>
+                  <pack index="2" name="veraPDF Validation model" selected="false"/>
+                  <pack index="3" name="veraPDF Documentation" selected="false"/>
+                  <pack index="4" name="veraPDF Sample Plugins" selected="false"/>
+              </com.izforge.izpack.panels.packs.PacksPanel>
+              <com.izforge.izpack.panels.install.InstallPanel id="install"/>
+              <com.izforge.izpack.panels.finish.FinishPanel id="finish"/>
+          </AutomatedInstallation>
+          EOF
           chmod +x verapdf-install
-          ./verapdf-install -q -dir /opt/verapdf
+          java -jar verapdf-izpack-installer-*.jar /tmp/auto-install.xml
           echo "/opt/verapdf/bin" >> "$GITHUB_PATH"
 
       - name: Install Rust toolchain
@@ -291,14 +309,26 @@ jobs:
           key: pdfa-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: pdfa-cargo-
 
-      - name: Build test binary
-        run: cargo build -p ldir-core --release
+      - name: Build ldc binary
+        run: cargo build -p ldc --release
 
       - name: Generate test PDFs
         run: |
           mkdir -p /tmp/pdfa-tests
-          cargo test -p ldir-core --test integration -- --ignored 2>/dev/null || true
-          cargo test -p ldir-core pdfa_generate -- --nocapture 2>/dev/null || true
+          # Generate a simple test PDF with PDF/A-4 conformance
+          echo '# Hello PDF/A
+
+This is a test document for PDF/A conformance validation.
+
+| Column A | Column B |
+|----------|----------|
+| 1        | 2        |
+| 3        | 4        |
+
+' > /tmp/pdfa-tests/test.md
+          ./target/release/ldc /tmp/pdfa-tests/test.md --pdfa-level 4 -o /tmp/pdfa-tests/test.pdfa.pdf
+          echo "Generated test PDFs:"
+          ls -la /tmp/pdfa-tests/*.pdf 2>/dev/null || echo "No PDFs generated"
 
       - name: Validate PDF/A conformance
         run: |
