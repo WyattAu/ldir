@@ -318,11 +318,20 @@ mod tests {
     #[test]
     fn test_output_path() {
         let output_dir = std::env::temp_dir().join("ldir-preview");
-        let pdf = derive_pdf_path("file:///home/user/doc.md", &output_dir).unwrap();
+        // Use a URI with a drive letter on Windows, or an absolute Unix path.
+        #[cfg(windows)]
+        let uri = "file:///C:/Users/user/doc.md";
+        #[cfg(not(windows))]
+        let uri = "file:///home/user/doc.md";
+        let pdf = derive_pdf_path(uri, &output_dir).unwrap();
         assert_eq!(pdf.file_name().unwrap().to_string_lossy(), "doc.pdf");
         assert!(pdf.parent().unwrap().ends_with("ldir-preview"));
 
-        let pdf = derive_pdf_path("file:///home/user/report.tex", &output_dir).unwrap();
+        #[cfg(windows)]
+        let uri2 = "file:///C:/Users/user/report.tex";
+        #[cfg(not(windows))]
+        let uri2 = "file:///home/user/report.tex";
+        let pdf = derive_pdf_path(uri2, &output_dir).unwrap();
         assert_eq!(pdf.file_name().unwrap().to_string_lossy(), "report.pdf");
     }
 
@@ -354,7 +363,11 @@ mod tests {
     #[test]
     fn test_derive_pdf_path_no_extension() {
         let output_dir = std::env::temp_dir().join("ldir-preview-out");
-        let result = derive_pdf_path("file:///path/to/README", &output_dir);
+        #[cfg(windows)]
+        let uri = "file:///C:/path/to/README";
+        #[cfg(not(windows))]
+        let uri = "file:///path/to/README";
+        let result = derive_pdf_path(uri, &output_dir);
         assert!(result.is_ok());
         let pdf = result.unwrap();
         assert_eq!(pdf.file_name().unwrap().to_string_lossy(), "README.pdf");
