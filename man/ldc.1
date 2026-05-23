@@ -4,7 +4,7 @@
 .SH NAME
 ldc \- LDIR compiler CLI: compile documents to PDF and other formats
 .SH SYNOPSIS
-\fBldc\fR [\fB\-o\fR|\fB\-\-output\fR] [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-font\fR] [\fB\-\-font\-mono\fR] [\fB\-\-font\-path\fR] [\fB\-\-list\-fonts\fR] [\fB\-\-title\fR] [\fB\-\-author\fR] [\fB\-\-subject\fR] [\fB\-\-margin\fR] [\fB\-\-page\-size\fR] [\fB\-\-page\-width\fR] [\fB\-\-page\-height\fR] [\fB\-\-header\-left\fR] [\fB\-\-header\-center\fR] [\fB\-\-header\-right\fR] [\fB\-\-footer\-left\fR] [\fB\-\-footer\-center\fR] [\fB\-\-footer\-right\fR] [\fB\-\-no\-header\-rule\fR] [\fB\-\-no\-footer\-rule\fR] [\fB\-\-drop\-caps\fR] [\fB\-\-bibliography\fR] [\fB\-\-lir\fR] [\fB\-\-pdfa\-level\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIINPUTS\fR] 
+\fBldc\fR [\fB\-o\fR|\fB\-\-output\fR] [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-font\fR] [\fB\-\-font\-mono\fR] [\fB\-\-font\-path\fR] [\fB\-\-list\-fonts\fR] [\fB\-\-title\fR] [\fB\-\-author\fR] [\fB\-\-subject\fR] [\fB\-\-margin\fR] [\fB\-\-page\-size\fR] [\fB\-\-page\-width\fR] [\fB\-\-page\-height\fR] [\fB\-\-header\-left\fR] [\fB\-\-header\-center\fR] [\fB\-\-header\-right\fR] [\fB\-\-footer\-left\fR] [\fB\-\-footer\-center\fR] [\fB\-\-footer\-right\fR] [\fB\-\-no\-header\-rule\fR] [\fB\-\-no\-footer\-rule\fR] [\fB\-\-drop\-caps\fR] [\fB\-\-bibliography\fR] [\fB\-\-lir\fR] [\fB\-\-pdfa\-level\fR] [\fB\-\-color\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIINPUTS\fR] 
 .SH DESCRIPTION
 LDIR Compiler — compile documents to PDF and other formats.
 .PP
@@ -109,6 +109,9 @@ Use the L\-IR layout pipeline (S\-IR → L\-IR → G\-IR) instead of direct comp
 .TP
 \fB\-\-pdfa\-level\fR \fI<LEVEL>\fR [default: 4]
 PDF/A conformance level ("4" for PDF/A\-4, "2b" for PDF/A\-2b)
+.TP
+\fB\-\-color\fR \fI<WHEN>\fR [default: auto]
+Color output. Options: auto, always, never. Default: auto
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help (see a summary with \*(Aq\-h\*(Aq)

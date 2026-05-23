@@ -119,4 +119,8 @@ pub struct Cli {
     /// PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b).
     #[arg(long, value_name = "LEVEL", default_value = "4")]
     pub pdfa_level: String,
+
+    /// Color output. Options: auto, always, never. Default: auto.
+    #[arg(long, value_name = "WHEN", default_value = "auto")]
+    pub color: String,
 }

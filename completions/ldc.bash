@@ -23,7 +23,7 @@ _ldc() {
 
     case "${cmd}" in
         ldc)
-            opts="-o -f -h -V --output --format --font --font-mono --font-path --list-fonts --title --author --subject --margin --page-size --page-width --page-height --header-left --header-center --header-right --footer-left --footer-center --footer-right --no-header-rule --no-footer-rule --drop-caps --bibliography --lir --pdfa-level --help --version [INPUTS]..."
+            opts="-o -f -h -V --output --format --font --font-mono --font-path --list-fonts --title --author --subject --margin --page-size --page-width --page-height --header-left --header-center --header-right --footer-left --footer-center --footer-right --no-header-rule --no-footer-rule --drop-caps --bibliography --lir --pdfa-level --color --help --version [INPUTS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -114,6 +114,10 @@ _ldc() {
                     return 0
                     ;;
                 --pdfa-level)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

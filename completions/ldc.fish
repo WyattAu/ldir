@@ -26,6 +26,7 @@ complete -c ldc -l footer-center -d 'Footer center template' -r
 complete -c ldc -l footer-right -d 'Footer right template (default: %page)' -r
 complete -c ldc -l bibliography -d 'Path to BibTeX (.bib) file for citations' -r -F
 complete -c ldc -l pdfa-level -d 'PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b)' -r
+complete -c ldc -l color -d 'Color output. Options: auto, always, never. Default: auto' -r
 complete -c ldc -l list-fonts -d 'List available system fonts and exit'
 complete -c ldc -l no-header-rule -d 'Disable header rule line'
 complete -c ldc -l no-footer-rule -d 'Disable footer rule line'

@@ -37,6 +37,7 @@ _ldc() {
 '--footer-right=[Footer right template (default\: %page)]:TEMPLATE:_default' \
 '--bibliography=[Path to BibTeX (.bib) file for citations]:PATH:_files' \
 '--pdfa-level=[PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b)]:LEVEL:_default' \
+'--color=[Color output. Options\: auto, always, never. Default\: auto]:WHEN:_default' \
 '--list-fonts[List available system fonts and exit]' \
 '--no-header-rule[Disable header rule line]' \
 '--no-footer-rule[Disable footer rule line]' \

@@ -43,6 +43,7 @@ Register-ArgumentCompleter -Native -CommandName 'ldc' -ScriptBlock {
             [CompletionResult]::new('--footer-right', '--footer-right', [CompletionResultType]::ParameterName, 'Footer right template (default: %page)')
             [CompletionResult]::new('--bibliography', '--bibliography', [CompletionResultType]::ParameterName, 'Path to BibTeX (.bib) file for citations')
             [CompletionResult]::new('--pdfa-level', '--pdfa-level', [CompletionResultType]::ParameterName, 'PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b)')
+            [CompletionResult]::new('--color', '--color', [CompletionResultType]::ParameterName, 'Color output. Options: auto, always, never. Default: auto')
             [CompletionResult]::new('--list-fonts', '--list-fonts', [CompletionResultType]::ParameterName, 'List available system fonts and exit')
             [CompletionResult]::new('--no-header-rule', '--no-header-rule', [CompletionResultType]::ParameterName, 'Disable header rule line')
             [CompletionResult]::new('--no-footer-rule', '--no-footer-rule', [CompletionResultType]::ParameterName, 'Disable footer rule line')

@@ -15,7 +15,9 @@
 //! ```
 
 mod cli;
+mod status;
 
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -26,6 +28,7 @@ use ldir_ir::gir::GIRDocument;
 use ldir_ir::sir::v2::SIRModuleV2;
 
 use cli::Cli;
+use status::{Color, PipelineTimer, styled};
 
 const V2_FORMATS: &[&str] = &["html", "epub", "txt", "docx", "sir2", "ldir"];
 
@@ -101,11 +104,8 @@ fn merge_modules(inputs: &[PathBuf]) -> Result<SIRModuleV2> {
     for input in inputs {
         let mut module = parse_input_to_sir_v2(input)
             .with_context(|| format!("failed to parse {}", input.display()))?;
-        eprintln!(
-            "[ldir] parsed {} → {} nodes",
-            input.display(),
-            module.body.len()
-        );
+        let dim = styled("parse", Color::Dim);
+        eprintln!("  {dim} {} -> {} nodes", input.display(), module.body.len());
         for node in module.body.iter_mut() {
             node.id += id_offset;
             node.parent_id = node.parent_id.map(|p| p + id_offset);
@@ -124,7 +124,8 @@ fn write_output(module: &SIRModuleV2, output_path: &Path, format: &str) -> Resul
     match format {
         "html" => {
             let html = ldir_html::HtmlRenderer::new().render(module);
-            eprintln!("[ldir] generated HTML ({} bytes)", html.len());
+            let tag = styled("html", Color::Green);
+            eprintln!("  {tag} {} bytes", html.len());
             std::fs::write(output_path, &html)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
@@ -132,14 +133,16 @@ fn write_output(module: &SIRModuleV2, output_path: &Path, format: &str) -> Resul
             let epub_bytes = ldir_epub::EpubBuilder::new()
                 .build(module)
                 .map_err(|e| anyhow::anyhow!(e))?;
-            eprintln!("[ldir] generated EPUB ({} bytes)", epub_bytes.len());
+            let tag = styled("epub", Color::Green);
+            eprintln!("  {tag} {} bytes", epub_bytes.len());
             std::fs::write(output_path, &epub_bytes)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         "txt" => {
             let m = module.clone();
             let text = ldir_txt::TextRenderer::new().render(&m);
-            eprintln!("[ldir] generated text ({} bytes)", text.len());
+            let tag = styled("txt", Color::Green);
+            eprintln!("  {tag} {} bytes", text.len());
             std::fs::write(output_path, &text)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
@@ -147,33 +150,29 @@ fn write_output(module: &SIRModuleV2, output_path: &Path, format: &str) -> Resul
             let docx_bytes = ldir_docx::DocxBuilder::new()
                 .build(module)
                 .map_err(|e| anyhow::anyhow!(e))?;
-            eprintln!("[ldir] generated DOCX ({} bytes)", docx_bytes.len());
+            let tag = styled("docx", Color::Green);
+            eprintln!("  {tag} {} bytes", docx_bytes.len());
             std::fs::write(output_path, &docx_bytes)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         "sir2" => {
             let bytes = ldir_ir::sir::v2::SIRBinaryWriter::write(module);
-            eprintln!(
-                "[ldir] wrote S-IR v2 binary ({} bytes) → {}",
-                bytes.len(),
-                output_path.display()
-            );
+            let tag = styled("sir2", Color::Green);
+            eprintln!("  {tag} {} bytes -> {}", bytes.len(), output_path.display());
             std::fs::write(output_path, &bytes)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         "ldir" => {
             let text = ldir_ir::sir::v2::module_to_text(module);
-            eprintln!(
-                "[ldir] wrote .ldir text ({} bytes) → {}",
-                text.len(),
-                output_path.display()
-            );
+            let tag = styled("ldir", Color::Green);
+            eprintln!("  {tag} {} bytes -> {}", text.len(), output_path.display());
             std::fs::write(output_path, &text)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         _ => anyhow::bail!("unsupported output format: {}", format),
     }
-    eprintln!("[ldir] wrote {}", output_path.display());
+    let wrote = styled("wrote", Color::Green);
+    eprintln!("  {wrote} {}", output_path.display());
     Ok(())
 }
 
@@ -185,7 +184,8 @@ fn find_font_variant(base_path: &str, variant_names: &[&str]) -> Option<Vec<u8>>
             if let Ok(data) = std::fs::read(&candidate)
                 && ttf_parser::Face::parse(&data, 0).is_ok()
             {
-                eprintln!("[ldir]   variant: {}", candidate.display());
+                let dim = styled("variant", Color::Dim);
+                eprintln!("  {dim} {}", candidate.display());
                 return Some(data);
             }
         }
@@ -285,7 +285,8 @@ fn resolve_font(cli: &Cli, font_db: &FontDatabase) -> Option<(Arc<Vec<u8>>, Stri
         ttf_parser::Face::parse(&data, 0)
             .with_context(|| format!("invalid font file: {}", path.display()))
             .ok()?;
-        eprintln!("[ldir] using font: {}", path.display());
+        let tag = styled("font", Color::Green);
+        eprintln!("  {tag} {}", path.display());
         let path_str = path.to_string_lossy().to_string();
         return Some((Arc::new(data), path_str));
     }
@@ -294,15 +295,14 @@ fn resolve_font(cli: &Cli, font_db: &FontDatabase) -> Option<(Arc<Vec<u8>>, Stri
         && let Some(id) = font_db.query(family)
         && let Some(data) = font_db.face_data(id)
     {
-        eprintln!("[ldir] using font family: {} (from system fonts)", family);
+        let tag = styled("font", Color::Green);
+        eprintln!("  {tag} {} (system)", family);
         return Some((data, format!("system:{}", family)));
     }
 
     if let Some(ref family) = cli.font {
-        eprintln!(
-            "[ldir] warning: font family '{}' not found in system fonts",
-            family
-        );
+        let warn = styled("warn", Color::Yellow);
+        eprintln!("  {warn}: font family '{}' not found", family);
     }
 
     let candidates = [
@@ -318,7 +318,8 @@ fn resolve_font(cli: &Cli, font_db: &FontDatabase) -> Option<(Arc<Vec<u8>>, Stri
         if let Ok(data) = std::fs::read(path)
             && ttf_parser::Face::parse(&data, 0).is_ok()
         {
-            eprintln!("[ldir] using system font: {}", path);
+            let tag = styled("font", Color::Green);
+            eprintln!("  {tag} {}", path);
             return Some((Arc::new(data), path.to_string()));
         }
     }
@@ -326,7 +327,8 @@ fn resolve_font(cli: &Cli, font_db: &FontDatabase) -> Option<(Arc<Vec<u8>>, Stri
     if let Some(id) = font_db.query("DejaVu Sans")
         && let Some(data) = font_db.face_data(id)
     {
-        eprintln!("[ldir] using font family: DejaVu Sans (auto-detected)");
+        let tag = styled("font", Color::Green);
+        eprintln!("  {tag} DejaVu Sans (auto)");
         return Some((data, "system:DejaVu Sans".to_string()));
     }
 
@@ -348,7 +350,8 @@ fn load_font_variants_from_db(
         (fontdb::Weight::BOLD, fontdb::Style::Italic),
     ];
     if let Some((_, data)) = try_query_style(font_db, family, &bold_styles) {
-        eprintln!("[ldir] loaded bold font variant from database");
+        let tag = styled("font", Color::Dim);
+        eprintln!("  {tag} bold variant loaded");
         variants.push((1, data));
     }
 
@@ -357,7 +360,8 @@ fn load_font_variants_from_db(
         (fontdb::Weight::NORMAL, fontdb::Style::Oblique),
     ];
     if let Some((_, data)) = try_query_style(font_db, family, &italic_styles) {
-        eprintln!("[ldir] loaded italic font variant from database");
+        let tag = styled("font", Color::Dim);
+        eprintln!("  {tag} italic variant loaded");
         variants.push((2, data));
     }
 
@@ -366,7 +370,8 @@ fn load_font_variants_from_db(
         (fontdb::Weight::BOLD, fontdb::Style::Oblique),
     ];
     if let Some((_, data)) = try_query_style(font_db, family, &bold_italic_styles) {
-        eprintln!("[ldir] loaded bold italic font variant from database");
+        let tag = styled("font", Color::Dim);
+        eprintln!("  {tag} bold-italic variant loaded");
         variants.push((3, data));
     }
 
@@ -379,7 +384,8 @@ fn load_font_variants_from_db(
     if let Some(id) = mono_id
         && let Some(data) = font_db.face_data(id)
     {
-        eprintln!("[ldir] loaded monospace font variant from database");
+        let tag = styled("font", Color::Dim);
+        eprintln!("  {tag} monospace variant loaded");
         variants.push((4, data));
     }
 
@@ -471,34 +477,49 @@ fn emit_pdf(
     } else {
         ldir_pdf::converter::gir_to_pdf_with_fonts_and_options(gir_doc, &[], &options)
     };
+    let tag = styled("pdf", Color::Green);
+    let embed = if font_data.is_some() {
+        "embedded"
+    } else {
+        "fallback"
+    };
     eprintln!(
-        "[ldir] generated PDF ({} bytes){} ({} fonts)",
+        "  {tag} {} bytes ({}, {} fonts)",
         pdf_bytes.len(),
-        if font_data.is_some() {
-            " [embedded font]"
-        } else {
-            " [fallback Helvetica]"
-        },
-        total_fonts,
+        embed,
+        total_fonts
     );
 
     std::fs::write(output, &pdf_bytes)
         .with_context(|| format!("failed to write {}", output.display()))?;
-    eprintln!("[ldir] wrote {}", output.display());
+    let wrote = styled("wrote", Color::Green);
+    eprintln!("  {wrote} {}", output.display());
     Ok(())
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // Initialize color support
+    match cli.color.as_str() {
+        "always" => status::set_color(true),
+        "never" => status::set_color(false),
+        _ => {
+            // auto: enable if stderr is a terminal
+            let is_tty = std::io::stderr().is_terminal();
+            status::set_color(is_tty);
+        }
+    }
+
     if cli.inputs.is_empty() && !cli.list_fonts {
         anyhow::bail!("no input files specified. Usage: ldc <INPUT> [INPUTS...] -o <OUTPUT>");
     }
 
+    let mut timer = PipelineTimer::new(4);
     let mut font_db = FontDatabase::new();
     let loaded = font_db.load_system_fonts();
     if loaded > 0 {
-        eprintln!("[ldir] loaded {} system fonts", loaded);
+        timer.step(&format!("loaded {} system fonts", loaded));
     }
 
     if cli.list_fonts {
@@ -543,7 +564,12 @@ fn main() -> Result<()> {
         if let Some(ref author) = cli.author {
             module.metadata.author = Some(author.clone());
         }
-        eprintln!("[ldir] merged → S-IR v2 ({} nodes)", module.body.len());
+        timer.step(&format!(
+            "parsed & merged {} files ({} nodes)",
+            cli.inputs.len(),
+            module.body.len()
+        ));
+        timer.flush();
         return write_output(&module, &output, effective_format);
     }
 
@@ -551,7 +577,7 @@ fn main() -> Result<()> {
     let font_data = font_info.as_ref().map(|(arc, _)| arc.clone());
     let font_path_str = font_info.as_ref().map(|(_, s)| s.clone());
     if font_data.is_none() {
-        eprintln!("[ldir] warning: no font found, using ASCII monospace stub");
+        timer.warn("no font found, using ASCII monospace stub");
     }
 
     let primary_family = cli.font.as_deref().unwrap_or("DejaVu Sans");
@@ -562,11 +588,8 @@ fn main() -> Result<()> {
         && !path_str.starts_with("system:")
     {
         for (id, data) in load_font_variants(path_str) {
-            eprintln!(
-                "[ldir] loaded font variant (id={}): {} bytes",
-                id,
-                data.len()
-            );
+            let tag = styled("font", Color::Dim);
+            eprintln!("  {tag} variant id={} {} bytes", id, data.len());
             variant_fonts.push((id, Arc::new(data)));
         }
     }
@@ -585,7 +608,11 @@ fn main() -> Result<()> {
     if let Some(ref author) = cli.author {
         module.metadata.author = Some(author.clone());
     }
-    eprintln!("[ldir] merged → S-IR v2 ({} nodes)", module.body.len());
+    timer.step(&format!(
+        "parsed & merged {} files ({} nodes)",
+        cli.inputs.len(),
+        module.body.len()
+    ));
 
     let (pw, ph) = if let Some((w, h)) = page_dims {
         (w, h)
@@ -625,23 +652,23 @@ fn main() -> Result<()> {
         use ldir_core::compile_sir_to_lir;
         use ldir_pdf::lir_render::render_lir_to_gir;
 
-        eprintln!("[ldir] compiling via L-IR pipeline (S-IR → L-IR → G-IR)");
+        timer.step("compiling via L-IR pipeline (S-IR -> L-IR -> G-IR)");
         let lir_doc = compile_sir_to_lir(&module, &ctx)
             .map_err(|e| anyhow::anyhow!("L-IR compilation failed: {e}"))?;
-        eprintln!("[ldir] L-IR layout → {} pages", lir_doc.pages.len());
+        timer.step(&format!("L-IR layout -> {} pages", lir_doc.pages.len()));
         let gir = render_lir_to_gir(&lir_doc);
-        eprintln!("[ldir] L-IR → G-IR render complete");
+        timer.step("L-IR -> G-IR render");
         gir
     } else if let Some(ref bib_path) = cli.bibliography {
         let bib_content = std::fs::read_to_string(bib_path)
             .with_context(|| format!("failed to read bibliography: {}", bib_path.display()))?;
         let bib_entries = ldir_core::compiler::bibtex::parse_bib(&bib_content)
             .map_err(|e| anyhow::anyhow!("BibTeX parse error: {}", e))?;
-        eprintln!(
-            "[ldir] loaded bibliography: {} entries from {}",
+        timer.step(&format!(
+            "loaded bibliography: {} entries from {}",
             bib_entries.len(),
             bib_path.display()
-        );
+        ));
         ldir_core::compiler::v2_compile::compile_v2_document_with_bib(
             &module,
             &mut ctx,
@@ -652,10 +679,10 @@ fn main() -> Result<()> {
         ldir_core::compiler::v2_compile::compile_v2_document(&module, &mut ctx)
             .map_err(|e| anyhow::anyhow!("v2 compilation failed: {e}"))?
     };
-    eprintln!("[ldir] compiled → {} pages", gir_doc.page_count());
+    timer.step(&format!("compiled -> {} pages", gir_doc.page_count()));
 
     if let Err(errors) = ldir_core::verifier::check_gir(&gir_doc) {
-        eprintln!("[ldir] G-IR verification warnings:");
+        timer.warn(&format!("G-IR verification: {} warnings", errors.len()));
         for err in &errors {
             eprintln!("  - {}", err);
         }
@@ -667,21 +694,21 @@ fn main() -> Result<()> {
             let bytes = ldir_core::emitter::binary::emit_gir(&gir_doc);
             std::fs::write(&output, &bytes)
                 .with_context(|| format!("failed to write {}", output.display()))?;
-            eprintln!(
-                "[ldir] wrote G-IR binary ({} bytes) → {}",
+            timer.finish(&format!(
+                "wrote G-IR binary ({} bytes) -> {}",
                 bytes.len(),
                 output.display()
-            );
+            ));
         }
         "sir" => {
             let bytes = ldir_ir::sir::v2::serialize_module(&module);
             std::fs::write(&output, &bytes)
                 .with_context(|| format!("failed to write {}", output.display()))?;
-            eprintln!(
-                "[ldir] wrote S-IR v2 ({} bytes) → {}",
+            timer.finish(&format!(
+                "wrote S-IR v2 ({} bytes) -> {}",
                 bytes.len(),
                 output.display()
-            );
+            ));
         }
         _ => anyhow::bail!("unsupported output format: {}", effective_format),
     }
