@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["parse_tex"]};
+window.SIDEBAR_ITEMS = {"fn":["parse_tex","parse_tex_warnings","parse_tex_with_warnings"]};

@@ -15,12 +15,12 @@ structs containing an opcode and 8 x i32 argument slots.</li>
 </ul>
 <h3 id="key-types"><a class="doc-anchor" href="#key-types">§</a>Key Types</h3>
 <ul>
-<li>[<code>SIRDocument</code>] / [<code>SIRInstruction</code>] — S-IR document and instruction types</li>
-<li>[<code>SIROpcode</code>] / [<code>BlockType</code>] — S-IR opcodes and block classifications</li>
-<li>[<code>StyleModifier</code>] — Inline style flags (bold, italic, mono)</li>
-<li>[<code>LIRDocument</code>] / [<code>LIRNode</code>] — L-IR layout tree with 23 node types</li>
-<li>[<code>Fp266</code>] — 26.6 fixed-point number for geometry</li>
-<li>[<code>GIRDocument</code>] / [<code>GIRCommand</code>] — G-IR rendering command buffer</li>
+<li><a href="sir/struct.SIRDocument.html" title="struct ldir_ir::sir::SIRDocument"><code>sir::SIRDocument</code></a> / <a href="sir/struct.SIRInstruction.html" title="struct ldir_ir::sir::SIRInstruction"><code>sir::SIRInstruction</code></a> — S-IR document and instruction types</li>
+<li><a href="sir/enum.SIROpcode.html" title="enum ldir_ir::sir::SIROpcode"><code>sir::SIROpcode</code></a> / <a href="sir/enum.BlockType.html" title="enum ldir_ir::sir::BlockType"><code>sir::BlockType</code></a> — S-IR opcodes and block classifications</li>
+<li><a href="sir/style/struct.StyleModifier.html" title="struct ldir_ir::sir::style::StyleModifier"><code>sir::StyleModifier</code></a> — Inline style flags (bold, italic, mono)</li>
+<li><a href="lir/types/struct.LIRDocument.html" title="struct ldir_ir::lir::types::LIRDocument"><code>lir::LIRDocument</code></a> / <a href="lir/types/enum.LIRNode.html" title="enum ldir_ir::lir::types::LIRNode"><code>lir::LIRNode</code></a> — L-IR layout tree with 23 node types</li>
+<li><a href="fp266/struct.Fp266.html" title="struct ldir_ir::fp266::Fp266"><code>fp266::Fp266</code></a> — 26.6 fixed-point number for geometry</li>
+<li><a href="gir/struct.GIRDocument.html" title="struct ldir_ir::gir::GIRDocument"><code>gir::GIRDocument</code></a> / <a href="gir/struct.GIRCommand.html" title="struct ldir_ir::gir::GIRCommand"><code>gir::GIRCommand</code></a> — G-IR rendering command buffer</li>
 </ul>
 <h3 id="quick-start"><a class="doc-anchor" href="#quick-start">§</a>Quick Start</h3>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ldir_ir::sir::{SIRDocument, SIRInstruction, SIROpcode, BlockType, ROOT_SENTINEL};

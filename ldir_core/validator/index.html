@@ -3,12 +3,12 @@ S-IR validator module.</p>
 <p>Validates S-IR document well-formedness per the Lean 4 predicates in
 <code>ProofIRWellformedness.lean</code>. Each check is a separate function:</p>
 <ul>
-<li>[<code>entity_unique</code>]: AX-001 / <code>entityUnique</code> — all entity IDs distinct</li>
-<li>[<code>parent_exists</code>]: AX-002 / <code>parentExists</code> — parent references valid</li>
-<li>[<code>acyclicity</code>]: AX-003 / <code>isAcyclic</code> — no circular parent chains</li>
-<li>[<code>root_count</code>]: DEF-004.5 / <code>hasSingleRoot</code> — exactly one root</li>
-<li>[<code>block_nesting</code>]: DEF-004.6 — valid block nesting</li>
-<li>[<code>payload_integrity</code>]: AX-004 — payload offsets in bounds</li>
+<li><code>entity_unique</code>: AX-001 / <code>entityUnique</code> — all entity IDs distinct</li>
+<li><code>parent_exists</code>: AX-002 / <code>parentExists</code> — parent references valid</li>
+<li><code>acyclicity</code>: AX-003 / <code>isAcyclic</code> — no circular parent chains</li>
+<li><code>root_count</code>: DEF-004.5 / <code>hasSingleRoot</code> — exactly one root</li>
+<li><code>block_nesting</code>: DEF-004.6 — valid block nesting</li>
+<li><code>payload_integrity</code>: AX-004 — payload offsets in bounds</li>
 </ul>
-<p>The main entry point is [<code>validate_sir</code>].</p>
+<p>The main entry point is <code>validate_sir</code>.</p>
 </div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="acyclicity/index.html" title="mod ldir_core::validator::acyclicity">acyclicity</a></dt><dd>AX-003 / <code>isAcyclic</code>: Check that no circular parent chains exist.</dd><dt><a class="mod" href="block_nesting/index.html" title="mod ldir_core::validator::block_nesting">block_<wbr>nesting</a></dt><dd>DEF-004.6: Check that block nesting is valid.</dd><dt><a class="mod" href="entity_unique/index.html" title="mod ldir_core::validator::entity_unique">entity_<wbr>unique</a></dt><dd>AX-001 / <code>entityUnique</code>: Check that all entity IDs are distinct.</dd><dt><a class="mod" href="parent_exists/index.html" title="mod ldir_core::validator::parent_exists">parent_<wbr>exists</a></dt><dd>AX-002 / <code>parentExists</code>: Check that every parent reference points to an existing entity.</dd><dt><a class="mod" href="payload_integrity/index.html" title="mod ldir_core::validator::payload_integrity">payload_<wbr>integrity</a></dt><dd>AX-004: Check that payload offsets are within bounds.</dd><dt><a class="mod" href="root_count/index.html" title="mod ldir_core::validator::root_count">root_<wbr>count</a></dt><dd>DEF-004.5 / <code>hasSingleRoot</code>: Check that exactly one root node exists.</dd></dl><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><dl class="item-table"><dt><a class="fn" href="fn.validate_sir.html" title="fn ldir_core::validator::validate_sir">validate_<wbr>sir</a></dt><dd>IF-VALIDATE-001: Validate S-IR well-formedness.</dd></dl></section></div></main></body></html>

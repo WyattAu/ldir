@@ -3,14 +3,14 @@
 <a href=#3 id=3 data-nosnippet>3</a>//! Validates S-IR document well-formedness per the Lean 4 predicates in
 <a href=#4 id=4 data-nosnippet>4</a>//! `ProofIRWellformedness.lean`. Each check is a separate function:
 <a href=#5 id=5 data-nosnippet>5</a>//!
-<a href=#6 id=6 data-nosnippet>6</a>//! - [`entity_unique`]: AX-001 / `entityUnique` — all entity IDs distinct
-<a href=#7 id=7 data-nosnippet>7</a>//! - [`parent_exists`]: AX-002 / `parentExists` — parent references valid
-<a href=#8 id=8 data-nosnippet>8</a>//! - [`acyclicity`]: AX-003 / `isAcyclic` — no circular parent chains
-<a href=#9 id=9 data-nosnippet>9</a>//! - [`root_count`]: DEF-004.5 / `hasSingleRoot` — exactly one root
-<a href=#10 id=10 data-nosnippet>10</a>//! - [`block_nesting`]: DEF-004.6 — valid block nesting
-<a href=#11 id=11 data-nosnippet>11</a>//! - [`payload_integrity`]: AX-004 — payload offsets in bounds
+<a href=#6 id=6 data-nosnippet>6</a>//! - `entity_unique`: AX-001 / `entityUnique` — all entity IDs distinct
+<a href=#7 id=7 data-nosnippet>7</a>//! - `parent_exists`: AX-002 / `parentExists` — parent references valid
+<a href=#8 id=8 data-nosnippet>8</a>//! - `acyclicity`: AX-003 / `isAcyclic` — no circular parent chains
+<a href=#9 id=9 data-nosnippet>9</a>//! - `root_count`: DEF-004.5 / `hasSingleRoot` — exactly one root
+<a href=#10 id=10 data-nosnippet>10</a>//! - `block_nesting`: DEF-004.6 — valid block nesting
+<a href=#11 id=11 data-nosnippet>11</a>//! - `payload_integrity`: AX-004 — payload offsets in bounds
 <a href=#12 id=12 data-nosnippet>12</a>//!
-<a href=#13 id=13 data-nosnippet>13</a>//! The main entry point is [`validate_sir`].
+<a href=#13 id=13 data-nosnippet>13</a>//! The main entry point is `validate_sir`.
 <a href=#14 id=14 data-nosnippet>14</a>
 <a href=#15 id=15 data-nosnippet>15</a></span><span class="kw">pub mod </span>acyclicity;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">pub mod </span>block_nesting;
