@@ -1,13 +1,13 @@
 # LDIR Production Roadmap -- From Current State to v1.0 and Beyond
 
-## Current State (v0.1.0, 2026-05-21)
+## Current State (v0.1.0, 2026-05-29)
 
 | Metric | Value |
 |--------|-------|
 | Rust crates | 26 (+ 1 Lean4 project) |
-| Rust LOC | ~72,400 |
+| Rust LOC | ~74,000 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,808 (all passing, 0 failures, 6 ignored) |
+| Total tests | 1,812 (all passing, 0 failures, 5 ignored) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | cargo fmt | Clean |
@@ -21,6 +21,11 @@
 | Man pages | ldc.1 (generated via clap_mangen) |
 | Docs site | mdBook (5 chapters) deployed to GitHub Pages |
 | Benchmarks | 12 benchmarks established (layout, pagination, shaping, validate) |
+| CLI features | --color flag, --config (ldir.toml), styled pipeline output, PipelineTimer |
+| Source tracking | SourceSpan on all 6 text parsers (TeX, MD, Typst, Adoc, Org, HTML) |
+| TeX macros | \newcommand, \renewcommand, \def with parameter substitution |
+| WASM playground | Bold/italic rendering, images, table headers, Export HTML button |
+| Profiling | 810-page compile: 8.1s (LineIndex O(log n) optimization) |
 
 ---
 
@@ -128,21 +133,33 @@ Publish all 25 public crates to crates.io.
 
 ## Phase C: Performance to Production (4-6 weeks)
 
-### C-1: Profile-Guided Optimization (~~1-2 weeks~~ baselines done)
+### C-1: Profile-Guided Optimization -- PARTIALLY DONE
 
-1. ~~Run `perf` and `tracing-chrome` on 100-page and 1000-page documents~~ TODO (profiling)
-2. ~~Identify actual bottlenecks (not assumed) -- measure before optimizing~~ TODO
-3. ~~Establish hard performance baselines with Criterion~~ DONE
+1. ~~Run `perf` on 810-page document~~ DONE
+2. ~~Identify actual bottlenecks~~ DONE (Knuth-Plass 68.7%, deflate 18.3%, span lookup 7%)
+3. ~~Optimize markdown span lookup O(n) -> O(log n)~~ DONE (LineIndex + binary search, 12% improvement)
+4. ~~Establish hard performance baselines with Criterion~~ DONE
 
-**Targets:**
+**Profiling results (810-page MD to PDF):**
 
-| Metric | Baseline (v3.16) | Target |
-|--------|-------------------|--------|
-| 100-page MD to PDF | ~5s (estimated) | <2s |
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Wall time | 9.25s | 8.94s | 3.4% |
+| Compile step | 8.4s | 8.1s | 3.6% |
+| Parse step | 0.8s | 0.1s | 87% (LineIndex) |
+
+**Bottleneck analysis:**
+- Knuth-Plass line breaking: 68.7% of CPU (compute_adjustment_ratio, retain filter)
+- PDF deflate compression: 18.3% (already parallel via rayon par_iter)
+- Text shaping: cached, minimal overhead
+
+**Targets (remaining):**
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| 100-page MD to PDF | ~1s | <500ms |
 | Memory (100-page doc) | Unknown | <50MB |
-| Incremental recompile (1-word change) | ~50ms (estimated) | <10ms |
 | Shape cache hit rate | Unknown | >90% |
-| Startup time (ldc) | Unknown | <100ms |
 
 ### C-2: PDF Output Streaming (1-2 weeks)
 
@@ -157,12 +174,9 @@ Currently the entire PDF is built in memory. For large documents:
 2. Lazy glyph loading -- only load glyphs actually used
 3. Target: subset a 15MB CJK font to <500KB for typical documents
 
-### C-4: Parallel Page Compilation (2-3 weeks)
+### C-4: Parallel Page Compilation -- ATTEMPTED, REVERTED (see notes)
 
-1. Use `rayon` for parallel compilation of independent pages
-2. Pages are independent after layout -- ideal for parallelism
-3. Benchmark scaling from 1 to 8 threads
-4. Target: >4x speedup on 8-core machines
+Parallel paragraph pre-computation (rayon) regressed 9.25s -> 12s. Infrastructure kept. Requires architectural refactor: separate pure "layout computation" from sequential "command emission". Current `CompileContext` is monolithic mutable state.
 
 ### C-5: String Interning (1 week)
 
@@ -175,14 +189,14 @@ Current HashMap-based interning double-allocates. Replace with:
 
 ## Phase D: CLI Polish and Ecosystem (4-6 weeks)
 
-### D-1: CLI User Experience (~~2-3 weeks~~ partially done)
+### D-1: CLI User Experience -- MOSTLY DONE
 
-1. ~~Progress indicators for long compilations (`indicatif` crate)~~ TODO
-2. Error messages with source location, context, and suggestions
-3. Configuration file support (`ldir.toml` or `.ldirrc`)
+1. ~~Progress indicators for long compilations (`indicatif` crate)~~ DONE (PipelineTimer with styled output)
+2. ~~Error messages with source location~~ DONE (SourceSpan on all 6 text parsers)
+3. ~~Configuration file support (`ldir.toml`)~~ DONE (flat TOML, --config flag, CLI overrides)
 4. ~~Shell completion generation (bash, zsh, fish, powershell) via `clap-complete`~~ DONE
 5. ~~Man page generation via `clap_mangen`~~ DONE
-6. Color output with `--color` flag
+6. ~~Color output with `--color` flag~~ DONE (always/never/auto, std::io::IsTerminal)
 
 ### D-2: Language Server Enhancement (2-3 weeks)
 
@@ -207,24 +221,26 @@ Current HashMap-based interning double-allocates. Replace with:
 4. Add search functionality
 5. Add version selector for docs
 
-### D-5: WASM Playground Enhancement (2-3 weeks)
+### D-5: WASM Playground Enhancement -- PARTIALLY DONE
 
-1. In-browser MD/TeX/Typst to HTML rendering
-2. Interactive editor with syntax highlighting (CodeMirror 6)
-3. Live preview panel
-4. Shareable document URLs
-5. Embed in documentation site
+1. ~~In-browser MD to HTML rendering~~ DONE (with bold/italic, images, table headers)
+2. ~~Interactive editor with split-pane preview~~ DONE (resizable, dark mode)
+3. ~~Export HTML button~~ DONE
+4. ~~Compilation timing display~~ DONE
+5. Shareable document URLs
+6. TeX/Typst input format support
 
 ---
 
 ## Phase E: Advanced Typesetting (6-10 weeks)
 
-### E-1: TeX Macro Expansion (3-4 weeks)
+### E-1: TeX Macro Expansion -- PARTIALLY DONE
 
-1. `\newcommand`, `\def`, `\let` macro definitions
-2. Macro argument parsing with proper brace matching
-3. Conditional compilation (`\ifx`, `\ifnum`, `\ifdim`)
-4. Common real-world macro packages (amsmath subset, graphicx subset)
+1. ~~`\newcommand`, `\renewcommand`, `\def` macro definitions~~ DONE
+2. ~~Macro argument parsing with proper brace matching~~ DONE (parameter substitution)
+3. ~~Recursive expansion with depth limit~~ DONE (max 100)
+4. Conditional compilation (`\ifx`, `\ifnum`, `\ifdim`)
+5. Common real-world macro packages (amsmath subset, graphicx subset)
 
 ### E-2: Multi-Column Layout (2-3 weeks)
 
