@@ -6,29 +6,43 @@
 use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 
-use crate::fp266::Fp266;
-
-use super::badness::{compute_adjustment_ratio, compute_badness, compute_demerits};
+use super::badness::{compute_badness, compute_demerits};
 use super::optical_margin::optical_margin_penalty_reduction;
 use super::types::*;
+
+#[cfg(test)]
+use crate::fp266::Fp266;
 
 /// An active node in the DP algorithm, representing a candidate line break position.
 #[derive(Debug, Clone)]
 struct ActiveNode {
-    /// Position in the items array where this break occurs (break after this index).
     position: usize,
-    /// Cumulative width from start to this position.
-    cumulative_width: Fp266,
-    /// Cumulative stretch from start to this position.
-    cumulative_stretch: Fp266,
-    /// Cumulative shrink from start to this position.
-    cumulative_shrink: Fp266,
-    /// Total demerits up to this break.
+    cumulative_width: f64,
+    cumulative_stretch: f64,
+    cumulative_shrink: f64,
     total_demerits: f64,
-    /// Fitness class of the line ending at this break.
     fitness: FitnessClass,
-    /// Index in the `nodes` array of the previous break (for traceback).
     previous_break: usize,
+}
+
+/// Compute the adjustment ratio using pre-converted f64 values.
+///
+/// Inlined version that avoids Fp266→f64 conversions in the hot inner loop.
+/// See YP-LAYOUT-KNUTHPLASS-001 DEF-ADJ-RATIO for the mathematical specification.
+#[inline]
+fn adjustment_ratio(line_width: f64, content_width: f64, stretch: f64, shrink: f64) -> f64 {
+    let gap = line_width - content_width;
+    if gap > 0.0 {
+        if stretch < 1e-10 { 0.0 } else { gap / stretch }
+    } else if gap < 0.0 {
+        if shrink < 1e-10 {
+            f64::NEG_INFINITY
+        } else {
+            gap / shrink
+        }
+    } else {
+        0.0
+    }
 }
 
 /// Run the Knuth-Plass line-breaking algorithm.
@@ -37,10 +51,10 @@ struct ActiveNode {
 /// Returns the indices where breaks should occur (after the item at each index).
 ///
 /// # Algorithm (ALG-KP-BREAK)
-/// 1. Precompute prefix sums of width/stretch/shrink
+/// 1. Precompute prefix sums of width/stretch/shrink as f64
 /// 2. Initialize active node list with position 0
 /// 3. For each item, try every active node as a potential previous break
-/// 4. Compute adjustment ratio using cumulative differences
+/// 4. Compute adjustment ratio using cumulative differences (f64, no conversion)
 /// 5. Keep feasible breaks; deactivate infeasible nodes
 /// 6. At end, choose the active node with minimum total demerits
 /// 7. Trace back to recover break positions
@@ -58,30 +72,29 @@ pub fn linebreak<'bump>(
 
     let n = items.len();
 
-    // Precompute prefix sums for O(1) line content queries (arena-allocated).
+    // Precompute prefix sums as f64 — eliminates Fp266→f64 conversions in the hot loop.
+    // (arena-allocated).
     let mut prefix_w = BumpVec::with_capacity_in(n + 1, bump);
     let mut prefix_s = BumpVec::with_capacity_in(n + 1, bump);
     let mut prefix_h = BumpVec::with_capacity_in(n + 1, bump);
-    prefix_w.push(Fp266::ZERO);
-    prefix_s.push(Fp266::ZERO);
-    prefix_h.push(Fp266::ZERO);
+    prefix_w.push(0.0f64);
+    prefix_s.push(0.0f64);
+    prefix_h.push(0.0f64);
     for i in 0..n {
-        prefix_w.push(prefix_w[i] + items[i].width);
-        prefix_s.push(prefix_s[i] + items[i].stretchability);
-        prefix_h.push(prefix_h[i] + items[i].shrinkability);
+        prefix_w.push(prefix_w[i] + items[i].width.to_f64());
+        prefix_s.push(prefix_s[i] + items[i].stretchability.to_f64());
+        prefix_h.push(prefix_h[i] + items[i].shrinkability.to_f64());
     }
+
+    // Pre-cache line_width as f64 — used in every iteration of the hot loop.
+    let line_width_f64 = options.line_width.to_f64();
+    let max_r = options.max_adjustment_ratio;
 
     // Quick check: if everything fits on one line AND there are no mandatory breaks, no breaks needed
     let has_mandatory = items.iter().any(|item| item.is_mandatory);
     if !has_mandatory {
-        let total_w = prefix_w[n];
-        let total_s = prefix_s[n];
-        let total_h = prefix_h[n];
-        let overall_r = compute_adjustment_ratio(options.line_width, total_w, total_s, total_h);
-        if !overall_r.is_infinite()
-            && !overall_r.is_nan()
-            && overall_r.abs() <= options.max_adjustment_ratio
-        {
+        let overall_r = adjustment_ratio(line_width_f64, prefix_w[n], prefix_s[n], prefix_h[n]);
+        if !overall_r.is_infinite() && !overall_r.is_nan() && overall_r.abs() <= max_r {
             return LineBreakResult {
                 breaks: vec![],
                 total_demerits: compute_badness(overall_r),
@@ -96,9 +109,9 @@ pub fn linebreak<'bump>(
     // Sentinel node at position 0 (break before first item)
     nodes.push(ActiveNode {
         position: 0,
-        cumulative_width: Fp266::ZERO,
-        cumulative_stretch: Fp266::ZERO,
-        cumulative_shrink: Fp266::ZERO,
+        cumulative_width: 0.0,
+        cumulative_stretch: 0.0,
+        cumulative_shrink: 0.0,
         total_demerits: 0.0,
         fitness: FitnessClass::new(),
         previous_break: 0,
@@ -107,10 +120,15 @@ pub fn linebreak<'bump>(
 
     // For each item, consider it as the end of a line (break after item i)
     for i in 0..n {
-        let mut new_active: BumpVec<'bump, usize> = BumpVec::with_capacity_in(active.len(), bump);
+        let cur_w = prefix_w[i + 1];
+        let cur_s = prefix_s[i + 1];
+        let cur_h = prefix_h[i + 1];
+
+        // Hoist per-item computations out of the inner loop (same for all active nodes).
+        let item = &items[i];
 
         // Handle mandatory breaks: force a break here
-        if items[i].is_mandatory {
+        if item.is_mandatory {
             // Find the best active node
             let best_a_idx = *active
                 .iter()
@@ -123,20 +141,19 @@ pub fn linebreak<'bump>(
                 .unwrap_or(&0);
             let best = &nodes[best_a_idx];
 
-            // Compute adjustment ratio for the forced line
-            let cw = prefix_w[i + 1] - best.cumulative_width;
-            let cs = prefix_s[i + 1] - best.cumulative_stretch;
-            let ch = prefix_h[i + 1] - best.cumulative_shrink;
-            let _r = compute_adjustment_ratio(options.line_width, cw, cs, ch);
+            let cw = cur_w - best.cumulative_width;
+            let cs = cur_s - best.cumulative_stretch;
+            let ch = cur_h - best.cumulative_shrink;
+            let _r = adjustment_ratio(line_width_f64, cw, cs, ch);
             let _badness = compute_badness(_r);
             let new_fitness = FitnessClass::from_ratio(_r);
 
             let node_idx = nodes.len();
             nodes.push(ActiveNode {
                 position: i + 1,
-                cumulative_width: prefix_w[i + 1],
-                cumulative_stretch: prefix_s[i + 1],
-                cumulative_shrink: prefix_h[i + 1],
+                cumulative_width: cur_w,
+                cumulative_stretch: cur_s,
+                cumulative_shrink: cur_h,
                 total_demerits: best.total_demerits
                     + compute_demerits(
                         _badness,
@@ -153,46 +170,46 @@ pub fn linebreak<'bump>(
             continue;
         }
 
+        // Hoist per-item values that don't depend on the active node.
+        let hyphen_demerit = if item.is_hyphenation {
+            options.hyphen_penalty
+        } else {
+            0.0
+        };
+        let optical_reduction = if options.optical_margins && !item.text.is_empty() {
+            optical_margin_penalty_reduction(item.text)
+        } else {
+            0.0
+        };
+
         // Try each active node as a potential previous break.
         // Keep only the BEST (min-demerits) new node per item to bound complexity at O(n²).
-        let mut best_new_idx: Option<usize> = None;
-        let mut best_new_demerits = f64::INFINITY;
+        // Save parameters only — defer node allocation to after the loop.
+        let mut best_total = f64::INFINITY;
+        let mut best_prev: usize = 0;
+        let mut best_fitness = FitnessClass::new();
+        let mut found = false;
 
         for &a_idx in &active {
             let node = &nodes[a_idx];
 
-            // Content on this line = cumulative from last break to current item
-            let content_w = prefix_w[i + 1] - node.cumulative_width;
-            let content_s = prefix_s[i + 1] - node.cumulative_stretch;
-            let content_h = prefix_h[i + 1] - node.cumulative_shrink;
+            let content_w = cur_w - node.cumulative_width;
+            let content_s = cur_s - node.cumulative_stretch;
+            let content_h = cur_h - node.cumulative_shrink;
 
-            let r = compute_adjustment_ratio(options.line_width, content_w, content_s, content_h);
+            let r = adjustment_ratio(line_width_f64, content_w, content_s, content_h);
 
             // Skip infeasible breaks
             if r.is_infinite() || r.is_nan() {
                 continue;
             }
-            if r < -(options.max_adjustment_ratio) || r > options.max_adjustment_ratio {
+            if r < -(max_r) || r > max_r {
                 continue;
             }
 
             let badness = compute_badness(r);
             let new_fitness = FitnessClass::from_ratio(r);
             let fitness_changed = new_fitness.demerit_delta(&node.fitness) > 0.0;
-
-            // Hyphenation penalty: add extra demerits for hyphenated breaks
-            let hyphen_demerit = if items[i].is_hyphenation {
-                options.hyphen_penalty
-            } else {
-                0.0
-            };
-
-            // Optical margin reduction: reduce demerits for lines with hanging punctuation
-            let optical_reduction = if options.optical_margins && !items[i].text.is_empty() {
-                optical_margin_penalty_reduction(items[i].text)
-            } else {
-                0.0
-            };
 
             let base_demerits = compute_demerits(
                 badness,
@@ -203,39 +220,44 @@ pub fn linebreak<'bump>(
             let demerits = (base_demerits + hyphen_demerit - optical_reduction).max(0.0);
             let total = node.total_demerits + demerits;
 
-            if total < best_new_demerits {
-                best_new_demerits = total;
-                let node_idx = nodes.len();
-                nodes.push(ActiveNode {
-                    position: i + 1,
-                    cumulative_width: prefix_w[i + 1],
-                    cumulative_stretch: prefix_s[i + 1],
-                    cumulative_shrink: prefix_h[i + 1],
-                    total_demerits: total,
-                    fitness: new_fitness,
-                    previous_break: a_idx,
-                });
-                best_new_idx = Some(node_idx);
+            if total < best_total {
+                best_total = total;
+                best_prev = a_idx;
+                best_fitness = new_fitness;
+                found = true;
             }
         }
 
-        // Add only the best new node (if any feasible break found)
-        if let Some(idx) = best_new_idx {
-            new_active.push(idx);
-        }
-
-        // Prune: remove active nodes that can never produce feasible breaks.
-        // A node at position p is dead if the content from p to current item i
-        // exceeds line_width with zero stretch available.
-        active.retain(|&a_idx| {
+        // Prune: manual compacting loop replaces BumpVec::retain to avoid
+        // drain-filter iterator overhead. Uses f64 arithmetic directly.
+        let mut write = 0;
+        for read in 0..active.len() {
+            let a_idx = active[read];
             let node = &nodes[a_idx];
-            let content_w = prefix_w[i + 1] - node.cumulative_width;
-            let content_s = prefix_s[i + 1] - node.cumulative_stretch;
+            let content_w = cur_w - node.cumulative_width;
+            let content_s = cur_s - node.cumulative_stretch;
             // Dead if content overflows AND no stretch to absorb the overflow
-            !(content_w > options.line_width && content_s <= Fp266::ZERO)
-        });
+            if !(content_w > line_width_f64 && content_s <= 0.0) {
+                active[write] = a_idx;
+                write += 1;
+            }
+        }
+        active.truncate(write);
 
-        active.extend(new_active);
+        // Add only the best new node (pushed once after loop — no wasted allocations)
+        if found {
+            let node_idx = nodes.len();
+            nodes.push(ActiveNode {
+                position: i + 1,
+                cumulative_width: cur_w,
+                cumulative_stretch: cur_s,
+                cumulative_shrink: cur_h,
+                total_demerits: best_total,
+                fitness: best_fitness,
+                previous_break: best_prev,
+            });
+            active.push(node_idx);
+        }
     }
 
     // Choose the active node with minimum demerits, excluding the sentinel
@@ -251,10 +273,9 @@ pub fn linebreak<'bump>(
             let last_line_w = prefix_w[n] - nodes[a].cumulative_width;
             let last_line_s = prefix_s[n] - nodes[a].cumulative_stretch;
             let last_line_h = prefix_h[n] - nodes[a].cumulative_shrink;
-            let r =
-                compute_adjustment_ratio(options.line_width, last_line_w, last_line_s, last_line_h);
+            let r = adjustment_ratio(line_width_f64, last_line_w, last_line_s, last_line_h);
             // Last line is allowed to be loose (left-aligned) — only reject if it overflows
-            !r.is_infinite() && !r.is_nan() && r >= -(options.max_adjustment_ratio)
+            !r.is_infinite() && !r.is_nan() && r >= -(max_r)
         })
         .min_by(|&&a, &&b| {
             nodes[a]

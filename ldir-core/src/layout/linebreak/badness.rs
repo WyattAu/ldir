@@ -69,7 +69,9 @@ pub fn compute_adjustment_ratio(
 /// See YP-LAYOUT-KNUTHPLASS-001 DEF-BADNESS.
 #[inline]
 pub fn compute_badness(r: f64) -> f64 {
-    100.0 * r.abs().powi(3)
+    let a = r.abs();
+    let a2 = a * a;
+    100.0 * a2 * a
 }
 
 /// Compute the demerits for a single line break.

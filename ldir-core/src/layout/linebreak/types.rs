@@ -82,6 +82,7 @@ impl FitnessClass {
         Self::default()
     }
 
+    #[inline]
     /// Compute fitness class from adjustment ratio.
     /// - Tight: -0.5 < r < 0
     /// - Normal: r == 0
@@ -95,6 +96,7 @@ impl FitnessClass {
         }
     }
 
+    #[inline]
     /// Compute fitness class difference (demerit penalty).
     pub fn demerit_delta(&self, other: &Self) -> f64 {
         let dt = (self.tight - other.tight).unsigned_abs()
