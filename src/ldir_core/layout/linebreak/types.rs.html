@@ -82,25 +82,27 @@
 <a href=#82 id=82 data-nosnippet>82</a>        <span class="self">Self</span>::default()
 <a href=#83 id=83 data-nosnippet>83</a>    }
 <a href=#84 id=84 data-nosnippet>84</a>
-<a href=#85 id=85 data-nosnippet>85</a>    <span class="doccomment">/// Compute fitness class from adjustment ratio.
-<a href=#86 id=86 data-nosnippet>86</a>    /// - Tight: -0.5 &lt; r &lt; 0
-<a href=#87 id=87 data-nosnippet>87</a>    /// - Normal: r == 0
-<a href=#88 id=88 data-nosnippet>88</a>    /// - Loose: 0 &lt; r &lt; 0.5
-<a href=#89 id=89 data-nosnippet>89</a>    /// - Very loose: r &gt;= 0.5
-<a href=#90 id=90 data-nosnippet>90</a>    </span><span class="kw">pub fn </span>from_ratio(r: f64) -&gt; <span class="self">Self </span>{
-<a href=#91 id=91 data-nosnippet>91</a>        <span class="self">Self </span>{
-<a href=#92 id=92 data-nosnippet>92</a>            tight: <span class="kw">if </span>-<span class="number">0.5 </span>&lt; r &amp;&amp; r &lt; <span class="number">0.0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>},
-<a href=#93 id=93 data-nosnippet>93</a>            loose: <span class="kw">if </span><span class="number">0.0 </span>&lt; r &amp;&amp; r &lt; <span class="number">0.5 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>},
-<a href=#94 id=94 data-nosnippet>94</a>            very_loose: <span class="kw">if </span>r &gt;= <span class="number">0.5 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>},
-<a href=#95 id=95 data-nosnippet>95</a>        }
-<a href=#96 id=96 data-nosnippet>96</a>    }
-<a href=#97 id=97 data-nosnippet>97</a>
-<a href=#98 id=98 data-nosnippet>98</a>    <span class="doccomment">/// Compute fitness class difference (demerit penalty).
-<a href=#99 id=99 data-nosnippet>99</a>    </span><span class="kw">pub fn </span>demerit_delta(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; f64 {
-<a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let </span>dt = (<span class="self">self</span>.tight - other.tight).unsigned_abs()
-<a href=#101 id=101 data-nosnippet>101</a>            + (<span class="self">self</span>.loose - other.loose).unsigned_abs()
-<a href=#102 id=102 data-nosnippet>102</a>            + (<span class="self">self</span>.very_loose - other.very_loose).unsigned_abs();
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">if </span>dt &gt; <span class="number">0 </span>{ <span class="number">1.0 </span>} <span class="kw">else </span>{ <span class="number">0.0 </span>}
-<a href=#104 id=104 data-nosnippet>104</a>    }
-<a href=#105 id=105 data-nosnippet>105</a>}
+<a href=#85 id=85 data-nosnippet>85</a>    <span class="attr">#[inline]
+<a href=#86 id=86 data-nosnippet>86</a>    </span><span class="doccomment">/// Compute fitness class from adjustment ratio.
+<a href=#87 id=87 data-nosnippet>87</a>    /// - Tight: -0.5 &lt; r &lt; 0
+<a href=#88 id=88 data-nosnippet>88</a>    /// - Normal: r == 0
+<a href=#89 id=89 data-nosnippet>89</a>    /// - Loose: 0 &lt; r &lt; 0.5
+<a href=#90 id=90 data-nosnippet>90</a>    /// - Very loose: r &gt;= 0.5
+<a href=#91 id=91 data-nosnippet>91</a>    </span><span class="kw">pub fn </span>from_ratio(r: f64) -&gt; <span class="self">Self </span>{
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="self">Self </span>{
+<a href=#93 id=93 data-nosnippet>93</a>            tight: <span class="kw">if </span>-<span class="number">0.5 </span>&lt; r &amp;&amp; r &lt; <span class="number">0.0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>},
+<a href=#94 id=94 data-nosnippet>94</a>            loose: <span class="kw">if </span><span class="number">0.0 </span>&lt; r &amp;&amp; r &lt; <span class="number">0.5 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>},
+<a href=#95 id=95 data-nosnippet>95</a>            very_loose: <span class="kw">if </span>r &gt;= <span class="number">0.5 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>},
+<a href=#96 id=96 data-nosnippet>96</a>        }
+<a href=#97 id=97 data-nosnippet>97</a>    }
+<a href=#98 id=98 data-nosnippet>98</a>
+<a href=#99 id=99 data-nosnippet>99</a>    <span class="attr">#[inline]
+<a href=#100 id=100 data-nosnippet>100</a>    </span><span class="doccomment">/// Compute fitness class difference (demerit penalty).
+<a href=#101 id=101 data-nosnippet>101</a>    </span><span class="kw">pub fn </span>demerit_delta(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; f64 {
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>dt = (<span class="self">self</span>.tight - other.tight).unsigned_abs()
+<a href=#103 id=103 data-nosnippet>103</a>            + (<span class="self">self</span>.loose - other.loose).unsigned_abs()
+<a href=#104 id=104 data-nosnippet>104</a>            + (<span class="self">self</span>.very_loose - other.very_loose).unsigned_abs();
+<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">if </span>dt &gt; <span class="number">0 </span>{ <span class="number">1.0 </span>} <span class="kw">else </span>{ <span class="number">0.0 </span>}
+<a href=#106 id=106 data-nosnippet>106</a>    }
+<a href=#107 id=107 data-nosnippet>107</a>}
 </code></pre></div></section></main></body></html>
