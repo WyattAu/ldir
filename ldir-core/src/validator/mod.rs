@@ -3,14 +3,14 @@
 //! Validates S-IR document well-formedness per the Lean 4 predicates in
 //! `ProofIRWellformedness.lean`. Each check is a separate function:
 //!
-//! - [`entity_unique`]: AX-001 / `entityUnique` — all entity IDs distinct
-//! - [`parent_exists`]: AX-002 / `parentExists` — parent references valid
-//! - [`acyclicity`]: AX-003 / `isAcyclic` — no circular parent chains
-//! - [`root_count`]: DEF-004.5 / `hasSingleRoot` — exactly one root
-//! - [`block_nesting`]: DEF-004.6 — valid block nesting
-//! - [`payload_integrity`]: AX-004 — payload offsets in bounds
+//! - `entity_unique`: AX-001 / `entityUnique` — all entity IDs distinct
+//! - `parent_exists`: AX-002 / `parentExists` — parent references valid
+//! - `acyclicity`: AX-003 / `isAcyclic` — no circular parent chains
+//! - `root_count`: DEF-004.5 / `hasSingleRoot` — exactly one root
+//! - `block_nesting`: DEF-004.6 — valid block nesting
+//! - `payload_integrity`: AX-004 — payload offsets in bounds
 //!
-//! The main entry point is [`validate_sir`].
+//! The main entry point is `validate_sir`.
 
 pub mod acyclicity;
 pub mod block_nesting;

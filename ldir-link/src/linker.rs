@@ -27,6 +27,7 @@ impl std::fmt::Display for LinkError {
 
 impl std::error::Error for LinkError {}
 
+#[must_use = "linking can fail; check the result"]
 pub fn link_modules(modules: Vec<SIRModuleV2>) -> Result<SIRModuleV2, LinkError> {
     if modules.is_empty() {
         return Err(LinkError::NoInputModules);

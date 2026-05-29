@@ -18,6 +18,7 @@ pub enum IccColorSpace {
     Lab,
 }
 
+#[derive(Debug, Clone)]
 pub struct IccProfile {
     pub data: Vec<u8>,
     pub name: String,
@@ -26,6 +27,7 @@ pub struct IccProfile {
 }
 
 impl IccProfile {
+    #[must_use = "parsing ICC profile can fail; check the result"]
     pub fn from_bytes(data: Vec<u8>) -> Result<Self, IccProfileError> {
         if data.len() < 132 {
             return Err(IccProfileError::TooSmall(data.len()));

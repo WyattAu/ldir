@@ -58,6 +58,7 @@ pub enum ImageFormat {
     Jpeg,
 }
 
+#[must_use = "loading an image can fail; check the result"]
 pub fn load_image(path: &Path) -> Result<ImageData, Error> {
     let data = std::fs::read(path)?;
     let format = detect_format(&data).ok_or(Error::UnsupportedFormat)?;
@@ -74,6 +75,7 @@ pub fn detect_format(data: &[u8]) -> Option<ImageFormat> {
     }
 }
 
+#[must_use = "decoding an image can fail; check the result"]
 pub fn decode_image(data: &[u8], format: ImageFormat) -> Result<ImageData, Error> {
     match format {
         ImageFormat::Png => decode_png(data),
@@ -81,6 +83,7 @@ pub fn decode_image(data: &[u8], format: ImageFormat) -> Result<ImageData, Error
     }
 }
 
+#[must_use = "decoding PNG can fail; check the result"]
 pub fn decode_png(data: &[u8]) -> Result<ImageData, Error> {
     let mut decoder = png::Decoder::new(std::io::Cursor::new(data));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
@@ -130,6 +133,7 @@ pub fn decode_png(data: &[u8]) -> Result<ImageData, Error> {
     })
 }
 
+#[must_use = "decoding JPEG can fail; check the result"]
 pub fn decode_jpeg(data: &[u8]) -> Result<ImageData, Error> {
     let mut decoder = jpeg_decoder::Decoder::new(data);
     let pixels = decoder

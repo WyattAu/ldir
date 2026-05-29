@@ -239,7 +239,7 @@ pub fn paginate(items: &[ParagraphBlock], options: &PaginationOptions) -> Pagina
 ///
 /// 1. Precompute prefix sums of paragraph heights for O(1) range queries.
 /// 2. For each candidate page (i..=j), compute feasibility and demerits.
-/// 3. DP: dp[j+1] = min_{i ≤ j, para[i..=j] fit} dp[i] + cost(i, j)
+/// 3. DP: dp\[j+1\] = min_{i ≤ j, para\[i..=j\] fit} dp\[i\] + cost(i, j)
 /// 4. Trace back to recover break positions.
 ///
 /// Time: O(n²) where n is paragraph count. Memory: O(n).

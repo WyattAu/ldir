@@ -13,6 +13,7 @@ use crate::font::FontFace;
 use crate::structure::StructureNode;
 
 /// An image to be embedded in the PDF.
+#[derive(Debug, Clone)]
 pub struct PdfImage {
     pub data: Vec<u8>,
     pub format: PdfImageFormat,

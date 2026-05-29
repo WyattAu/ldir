@@ -7,6 +7,7 @@ pub enum EpubError {
     BuildError(String),
 }
 
+#[derive(Debug)]
 pub struct EpubOptions {
     pub include_toc: bool,
     pub css: Option<String>,
@@ -21,6 +22,7 @@ impl Default for EpubOptions {
     }
 }
 
+#[derive(Debug)]
 pub struct EpubBuilder {
     options: EpubOptions,
 }
@@ -40,6 +42,7 @@ impl EpubBuilder {
         Self { options }
     }
 
+    #[must_use = "building EPUB can fail; check the result"]
     pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, EpubError> {
         let title = module.metadata.title.as_deref().unwrap_or("Untitled");
         let author = module.metadata.author.as_deref().unwrap_or("Unknown");

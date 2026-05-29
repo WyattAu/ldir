@@ -12,6 +12,7 @@ pub struct TeXParser<'a> {
     in_math: bool,
     footnote_counter: u32,
     current_span: Option<SourceSpan>,
+    warnings: Vec<(SourceSpan, String)>,
 }
 
 impl<'a> TeXParser<'a> {
@@ -24,10 +25,11 @@ impl<'a> TeXParser<'a> {
             in_math: false,
             footnote_counter: 0,
             current_span: None,
+            warnings: Vec::new(),
         }
     }
 
-    pub fn parse(&mut self) -> SIRDocument {
+    pub fn parse(mut self) -> (SIRDocument, Vec<(SourceSpan, String)>) {
         let root_id = self.next_entity_id();
         let payload_offset = self.doc.payload_mut().append(&[BlockType::Document as u8]);
         self.push_instr(SIRInstruction::new(
@@ -40,7 +42,8 @@ impl<'a> TeXParser<'a> {
         self.skip_preamble();
         self.parse_body(root_id);
 
-        std::mem::take(&mut self.doc)
+        let warnings = std::mem::take(&mut self.warnings);
+        (std::mem::take(&mut self.doc), warnings)
     }
 
     fn next_entity_id(&mut self) -> u32 {
@@ -656,6 +659,13 @@ impl<'a> TeXParser<'a> {
                 self.parse_tabular_env(parent_id);
             }
             _ => {
+                let span = self
+                    .tokens
+                    .get(self.pos)
+                    .map(|st| st.span)
+                    .unwrap_or_else(SourceSpan::unknown);
+                self.warnings
+                    .push((span, format!("unknown environment: \\begin{{{}}}", name)));
                 self.skip_to_end(name);
             }
         }

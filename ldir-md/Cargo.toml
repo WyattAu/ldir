@@ -7,7 +7,7 @@ rust-version.workspace = true
 description = "LDIR Markdown input format parser"
 repository.workspace = true
 readme = "README.md"
-keywords = ["markdown", "parser", "document", "input"]
+keywords = ["markdown", "parser", "document", "input", "commonmark"]
 categories = ["text-processing"]
 
 [dependencies]

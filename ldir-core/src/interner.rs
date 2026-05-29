@@ -10,6 +10,7 @@ use std::collections::HashMap;
 /// the same text return the same ID, avoiding duplicate allocations.
 ///
 /// Lookup by ID is O(1) via a parallel `Vec<String>` index.
+#[derive(Debug)]
 pub struct StringInterner {
     /// Maps string content to its assigned ID.
     strings: HashMap<String, u32>,

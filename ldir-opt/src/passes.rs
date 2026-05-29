@@ -8,6 +8,7 @@ use ldir_ir::sir::v2::nodes::NodeType;
 // 1. Dead Node Elimination
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct DeadNodeElimination;
 
 impl Pass for DeadNodeElimination {
@@ -55,6 +56,7 @@ impl Pass for DeadNodeElimination {
 // 2. Dead Style Elimination
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct DeadStyleElimination;
 
 impl Pass for DeadStyleElimination {
@@ -91,6 +93,7 @@ impl Pass for DeadStyleElimination {
 // 3. Dead Resource Elimination
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct DeadResourceElimination;
 
 impl DeadResourceElimination {
@@ -169,6 +172,7 @@ impl Pass for DeadResourceElimination {
 // 4. Empty Block Collapse
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct EmptyBlockCollapse;
 
 impl Pass for EmptyBlockCollapse {
@@ -216,6 +220,7 @@ impl Pass for EmptyBlockCollapse {
 // 5. Style Inlining
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct StyleInlining;
 
 impl StyleInlining {
@@ -347,6 +352,7 @@ impl Pass for StyleInlining {
 // 6. Counter Propagation
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct CounterPropagation;
 
 impl Pass for CounterPropagation {
@@ -411,6 +417,7 @@ impl Pass for CounterPropagation {
 // 7. Label Deduplication
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct LabelDeduplication;
 
 impl Pass for LabelDeduplication {
@@ -449,6 +456,7 @@ impl Pass for LabelDeduplication {
 // 8. Text Node Merging
 // ---------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct TextNodeMerging;
 
 impl Pass for TextNodeMerging {

@@ -1,8 +1,8 @@
 //! S-IR v2 -> L-IR layout compiler.
 //!
-//! Takes a [`SIRModuleV2`](ldir_ir::sir::v2::SIRModuleV2) and a
-//! [`CompileContext`](crate::compiler::context::CompileContext) and produces
-//! a positioned [`LIRDocument`](ldir_ir::lir::LIRDocument) tree with resolved
+//! Takes a [`SIRModuleV2`] and a
+//! [`CompileContext`] and produces
+//! a positioned [`LIRDocument`] tree with resolved
 //! geometry, line-broken paragraphs, and page breaks.
 
 use indexmap::IndexMap;

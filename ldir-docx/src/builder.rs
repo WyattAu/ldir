@@ -20,6 +20,7 @@ impl DocxBuilder {
         Self
     }
 
+    #[must_use = "building DOCX can fail; check the result"]
     pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, DocxError> {
         let document_xml = self.render_document(module);
         let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

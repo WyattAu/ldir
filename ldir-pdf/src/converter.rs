@@ -13,6 +13,7 @@ use crate::font::FontFace;
 use crate::writer::{PdfDocumentBuilder, PdfImage, PdfImageFormat};
 
 /// Options for PDF generation.
+#[derive(Debug)]
 pub struct PdfOptions {
     /// Document title.
     pub title: Option<String>,

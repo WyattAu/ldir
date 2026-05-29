@@ -19,12 +19,12 @@
 //!
 //! ## Key Types
 //!
-//! - [`SIRDocument`] / [`SIRInstruction`] — S-IR document and instruction types
-//! - [`SIROpcode`] / [`BlockType`] — S-IR opcodes and block classifications
-//! - [`StyleModifier`] — Inline style flags (bold, italic, mono)
-//! - [`LIRDocument`] / [`LIRNode`] — L-IR layout tree with 23 node types
-//! - [`Fp266`] — 26.6 fixed-point number for geometry
-//! - [`GIRDocument`] / [`GIRCommand`] — G-IR rendering command buffer
+//! - [`sir::SIRDocument`] / [`sir::SIRInstruction`] — S-IR document and instruction types
+//! - [`sir::SIROpcode`] / [`sir::BlockType`] — S-IR opcodes and block classifications
+//! - [`sir::StyleModifier`] — Inline style flags (bold, italic, mono)
+//! - [`lir::LIRDocument`] / [`lir::LIRNode`] — L-IR layout tree with 23 node types
+//! - [`fp266::Fp266`] — 26.6 fixed-point number for geometry
+//! - [`gir::GIRDocument`] / [`gir::GIRCommand`] — G-IR rendering command buffer
 //!
 //! ## Quick Start
 //!

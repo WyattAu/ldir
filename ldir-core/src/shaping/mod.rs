@@ -4,7 +4,7 @@
 //! Uses HarfBuzz for real font-aware shaping with an ASCII fast-path
 //! for simple text (REQ-4.3.1.1).
 //!
-//! All coordinates use [`Fp266`] (26.6 fixed-point)
+//! All coordinates use `Fp266` (26.6 fixed-point)
 //! per REQ-3.2.5 and THM-KP-DETERMINISM.
 
 pub mod cache;

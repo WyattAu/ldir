@@ -7,7 +7,7 @@
 //! ## Wasm Plugins
 //!
 //! When the `wasm-plugins` feature is enabled, a Wasmtime-based sandboxed
-//! plugin host is available via the [`wasm_host`] module. Wasm plugins
+//! plugin host is available via the `wasm_host` module. Wasm plugins
 //! export a defined ABI and run with fuel injection (instruction limits).
 //!
 //! ## Usage

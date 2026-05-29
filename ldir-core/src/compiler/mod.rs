@@ -316,7 +316,7 @@ pub fn compile_sir_with_font_variants(
 /// `page_dims` is optional explicit `(width_pt, height_pt)`.
 /// `drop_caps` enables drop caps for the first paragraph after headings.
 ///
-/// **Prefer [`compile_v2_document`](super::v2_compile::compile_v2_document) for new code.**
+/// **Prefer `compile_v2_document` in `compiler::v2_compile` for new code.**
 /// This v1 entry point is retained for backward compatibility.
 #[allow(clippy::too_many_arguments)]
 pub fn compile_sir_with_font_variants_and_options(

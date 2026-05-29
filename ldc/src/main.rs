@@ -24,6 +24,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use ldir_core::error::LdirError;
 use ldir_core::font::db::FontDatabase;
 use ldir_ir::gir::GIRDocument;
 use ldir_ir::sir::v2::SIRModuleV2;
@@ -91,11 +92,16 @@ fn parse_input_to_sir_v2(path: &Path) -> Result<SIRModuleV2> {
     if format == "docx" {
         let bytes =
             std::fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
-        Ok(parse_docx_to_sir_v2(&bytes))
+        let mut module = parse_docx_to_sir_v2(&bytes);
+        module.header.source_path = Some(path.display().to_string());
+        Ok(module)
     } else {
         let text = std::fs::read_to_string(path)
             .with_context(|| format!("failed to read {}", path.display()))?;
-        Ok(parse_to_sir_v2(&text, format))
+        let mut module = parse_to_sir_v2(&text, format);
+        module.header.source_path = Some(path.display().to_string());
+        module.header.source_format = Some(format.to_string());
+        Ok(module)
     }
 }
 
@@ -474,8 +480,20 @@ fn emit_pdf(
             .filter_map(|data| ldir_pdf::font::FontFace::from_bytes(data).ok())
             .collect();
 
+        if font_faces.len() < font_data_vec.len() {
+            let warn = styled("warn", Color::Yellow);
+            eprintln!(
+                "  {warn}: {} font variants failed to load, using fallback",
+                font_data_vec.len() - font_faces.len()
+            );
+        }
+
         ldir_pdf::converter::gir_to_pdf_with_fonts_and_options(gir_doc, &font_faces, &options)
     } else {
+        let warn = styled("warn", Color::Yellow);
+        eprintln!(
+            "  {warn}: no embedded fonts available, using viewer-resident Helvetica fallback"
+        );
         ldir_pdf::converter::gir_to_pdf_with_fonts_and_options(gir_doc, &[], &options)
     };
     let tag = styled("pdf", Color::Green);
@@ -496,6 +514,16 @@ fn emit_pdf(
     let wrote = styled("wrote", Color::Green);
     eprintln!("  {wrote} {}", output.display());
     Ok(())
+}
+
+fn source_location_from_error(module: &SIRModuleV2, err: &LdirError) -> String {
+    if let Some(entity_id) = err.entity_id
+        && let Some(node) = module.body.get(entity_id)
+        && let Some(ref span) = node.source_span
+    {
+        return format!(" at {}:{}", span.line, span.col);
+    }
+    String::new()
 }
 
 fn main() -> Result<()> {
@@ -618,6 +646,20 @@ fn main() -> Result<()> {
         module.body.len()
     ));
 
+    for input in &cli.inputs {
+        let tex_warnings = ldir_tex::parse_tex_warnings(
+            &std::fs::read_to_string(input)
+                .with_context(|| format!("failed to read {}", input.display()))?,
+        );
+        if !tex_warnings.is_empty() {
+            let warn = styled("warn", Color::Yellow);
+            for (span, msg) in &tex_warnings {
+                eprintln!("  {warn}: {}:{}", input.display(), span);
+                eprintln!("    {}", msg);
+            }
+        }
+    }
+
     let (pw, ph) = if let Some((w, h)) = page_dims {
         (w, h)
     } else if let Some(name) = page_size_name {
@@ -656,9 +698,10 @@ fn main() -> Result<()> {
         use ldir_core::compile_sir_to_lir;
         use ldir_pdf::lir_render::render_lir_to_gir;
 
+        let source_file = module.header.source_path.as_deref().unwrap_or("<unknown>");
         timer.step("compiling via L-IR pipeline (S-IR -> L-IR -> G-IR)");
         let lir_doc = compile_sir_to_lir(&module, &ctx)
-            .map_err(|e| anyhow::anyhow!("L-IR compilation failed: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("L-IR compilation failed ({source_file}): {e}"))?;
         timer.step(&format!("L-IR layout -> {} pages", lir_doc.pages.len()));
         let gir = render_lir_to_gir(&lir_doc);
         timer.step("L-IR -> G-IR render");
@@ -667,28 +710,40 @@ fn main() -> Result<()> {
         let bib_content = std::fs::read_to_string(bib_path)
             .with_context(|| format!("failed to read bibliography: {}", bib_path.display()))?;
         let bib_entries = ldir_core::compiler::bibtex::parse_bib(&bib_content)
-            .map_err(|e| anyhow::anyhow!("BibTeX parse error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("BibTeX parse error ({}): {}", bib_path.display(), e))?;
         timer.step(&format!(
             "loaded bibliography: {} entries from {}",
             bib_entries.len(),
             bib_path.display()
         ));
+        let source_file = module.header.source_path.as_deref().unwrap_or("<unknown>");
         ldir_core::compiler::v2_compile::compile_v2_document_with_bib(
             &module,
             &mut ctx,
             &bib_entries,
         )
-        .map_err(|e| anyhow::anyhow!("v2 compilation failed: {e}"))?
+        .map_err(|e| {
+            let loc = source_location_from_error(&module, &e);
+            anyhow::anyhow!("compilation failed ({}): {}{loc}", source_file, e)
+        })?
     } else {
-        ldir_core::compiler::v2_compile::compile_v2_document(&module, &mut ctx)
-            .map_err(|e| anyhow::anyhow!("v2 compilation failed: {e}"))?
+        let source_file = module.header.source_path.as_deref().unwrap_or("<unknown>");
+        ldir_core::compiler::v2_compile::compile_v2_document(&module, &mut ctx).map_err(|e| {
+            let loc = source_location_from_error(&module, &e);
+            anyhow::anyhow!("compilation failed ({}): {}{loc}", source_file, e)
+        })?
     };
     timer.step(&format!("compiled -> {} pages", gir_doc.page_count()));
 
     if let Err(errors) = ldir_core::verifier::check_gir(&gir_doc) {
-        timer.warn(&format!("G-IR verification: {} warnings", errors.len()));
+        let source_file = module.header.source_path.as_deref().unwrap_or("<unknown>");
+        timer.warn(&format!(
+            "G-IR verification ({}): {} warnings",
+            source_file,
+            errors.len()
+        ));
         for err in &errors {
-            eprintln!("  - {}", err);
+            eprintln!("  {}: {}", source_file, err);
         }
     }
 

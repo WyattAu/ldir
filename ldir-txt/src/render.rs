@@ -23,6 +23,7 @@ impl Default for TextOptions {
 }
 
 /// Renders S-IR v2 modules to plain text.
+#[derive(Debug)]
 pub struct TextRenderer {
     options: TextOptions,
     heading_counter: [u32; 6],

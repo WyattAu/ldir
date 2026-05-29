@@ -2,7 +2,7 @@
 //!
 //! These types represent the output of line-breaking (Knuth-Plass or
 //! simplified) and serve as input to the pagination algorithm.
-//! All dimensions use [`Fp266`] (26.6 fixed-point) per REQ-3.2.5.
+//! All dimensions use `Fp266` (26.6 fixed-point) per REQ-3.2.5.
 
 use crate::fp266::Fp266;
 

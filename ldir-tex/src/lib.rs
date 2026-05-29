@@ -47,6 +47,7 @@ mod macro_expander;
 mod parser;
 
 use ldir_ir::sir::SIRDocument;
+use ldir_ir::sir::v2::SourceSpan;
 
 /// Parse a TeX/LaTeX string into an S-IR document.
 ///
@@ -54,10 +55,25 @@ use ldir_ir::sir::SIRDocument;
 /// figures, tables, footnotes) into S-IR instructions. The preamble
 /// (`\documentclass`, `\usepackage`, etc.) is silently skipped.
 pub fn parse_tex(tex: &str) -> SIRDocument {
+    let (doc, _warnings) = parse_tex_with_warnings(tex);
+    doc
+}
+
+/// Parse a TeX/LaTeX string and return the SIRIR document plus any warnings.
+///
+/// Warnings include unknown environments that were silently skipped.
+pub fn parse_tex_with_warnings(tex: &str) -> (SIRDocument, Vec<(SourceSpan, String)>) {
     let spanned = lexer::TeXLexer::new(tex).tokenize_with_spans();
     let expanded = macro_expander::expand_macros(spanned);
-    let mut p = parser::TeXParser::new(&expanded);
+    let p = parser::TeXParser::new(&expanded);
     p.parse()
+}
+
+/// Parse TeX/LaTeX and return only the warnings (for use in ldc where the
+/// document is parsed through the V1 path).
+pub fn parse_tex_warnings(tex: &str) -> Vec<(SourceSpan, String)> {
+    let (_, warnings) = parse_tex_with_warnings(tex);
+    warnings
 }
 
 #[cfg(test)]

@@ -19,7 +19,7 @@ pub fn check_gir(doc: &GIRDocument) -> Result<(), Vec<String>> {
     let mut errors: Vec<String> = Vec::new();
 
     if doc.is_empty() {
-        errors.push("GIR-WF-001: document has no pages".to_string());
+        errors.push("GIR-WF-001: document has no pages (input produced no output)".to_string());
         return Err(errors);
     }
 
@@ -27,7 +27,10 @@ pub fn check_gir(doc: &GIRDocument) -> Result<(), Vec<String>> {
         let prefix = format!("page {}", page_idx);
 
         if page.is_empty() {
-            errors.push(format!("{}: GIR-WF-004: page has no commands", prefix));
+            errors.push(format!(
+                "{}: GIR-WF-004: page has no commands (empty page produced during layout)",
+                prefix
+            ));
         }
 
         check_coordinate_range(&prefix, page, &mut errors);
