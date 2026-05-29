@@ -37,6 +37,7 @@
         }
         .toolbar button:hover { background: #1177bb; }
         .toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .toolbar .timing { font-size: 11px; color: #6af; margin-left: auto; }
 
         .split { display: flex; flex: 1; overflow: hidden; }
         .editor-pane { width: 50%; overflow: hidden; display: flex; flex-direction: column; }
@@ -229,6 +230,7 @@
         <h1>ldir</h1>
         <span class="version" id="version">loading...</span>
         <button onclick="compile()" id="compileBtn">Compile</button>
+        <button onclick="exportHtml()">Export HTML</button>
     </div>
     <div class="split" id="split">
         <div class="editor-pane" id="editorPane">
@@ -262,7 +264,11 @@ Visit [ldir on GitHub](https://github.com/WyattAu/ldir) for more info.
 
 ---
 
-*Italic text* and **bold text** work too.
+*Italic text* and **bold text** work. ~~Strikethrough~~ too.
+
+### Code with `inline code` and a link
+
+Visit [ldir on GitHub](https://github.com/WyattAu/ldir) for more info.
 </textarea>
             </div>
         </div>
@@ -271,9 +277,10 @@ Visit [ldir on GitHub](https://github.com/WyattAu/ldir) for more info.
             <div class="loading">Loading WASM module...</div>
         </div>
     </div>
-    <div class="statusbar">
-        <span id="stats">0 characters &middot; 0 words &middot; 0 lines</span>
-    </div>
+        <div class="statusbar">
+            <span id="stats">0 characters &middot; 0 words &middot; 0 lines</span>
+            <span id="timing"></span>
+        </div>
 
     <script type="module">
         import init, { compile_markdown_to_html, version } from '../pkg/ldir_wasm.js';
@@ -323,12 +330,28 @@ Visit [ldir on GitHub](https://github.com/WyattAu/ldir) for more info.
         window.compile = function() {
             const md = document.getElementById('editor').value;
             const preview = document.getElementById('preview');
+            const timingEl = document.getElementById('timing');
             preview.classList.add('compiling');
             requestAnimationFrame(() => {
+                const t0 = performance.now();
                 const html = compile_markdown_to_html(md);
+                const dt = (performance.now() - t0).toFixed(1);
+                timingEl.textContent = dt + 'ms';
                 preview.classList.remove('compiling');
                 preview.innerHTML = html || '<div class="loading">Empty document</div>';
             });
+        };
+
+        window.exportHtml = function() {
+            const html = document.getElementById('preview').innerHTML;
+            const doc = `<!DOCTYPE html>\n<html><head><meta charset="UTF-8"><title>ldir export</title></head><body>${html}</body></html>`;
+            const blob = new Blob([doc], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document.html';
+            a.click();
+            URL.revokeObjectURL(url);
         };
 
         // ── Resizable split pane ──

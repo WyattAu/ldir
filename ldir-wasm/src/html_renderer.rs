@@ -18,6 +18,7 @@ struct BlockSpan {
     block_type: BlockType,
     heading_level: u32,
     child_count: usize,
+    is_header_row: bool,
 }
 
 fn render_sir_to_html(doc: &SIRDocument) -> String {
@@ -32,11 +33,14 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
         }
     }
 
-    let mut style_stack: Vec<StyleModifier> = Vec::new();
     let mut open_blocks: Vec<BlockSpan> = Vec::new();
     let mut entity_to_block: HashMap<u32, usize> = HashMap::new();
 
-    for instr in doc.iter() {
+    let instrs: Vec<_> = doc.iter().collect();
+    let mut i = 0;
+
+    while i < instrs.len() {
+        let instr = instrs[i];
         match instr.opcode() {
             SIROpcode::PushBlock => {
                 let bt = read_block_type(doc, instr.payload_offset());
@@ -48,13 +52,21 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
 
                 let span_idx = open_blocks.len();
                 entity_to_block.insert(instr.entity_id(), span_idx);
+                let is_header_row = if bt == BlockType::TableRow {
+                    let payload = doc.payload().get(instr.payload_offset(), 2);
+                    payload.is_some_and(|b| b.len() >= 2 && b[1] == 1)
+                } else {
+                    false
+                };
+
                 open_blocks.push(BlockSpan {
                     block_type: bt,
                     heading_level,
                     child_count: 0,
+                    is_header_row,
                 });
 
-                emit_block_open(&mut html, bt, heading_level);
+                emit_block_open(&mut html, bt, heading_level, is_header_row);
             }
             SIROpcode::SetContent => {
                 let parent_id = instr.parent_id();
@@ -64,6 +76,7 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
                     .unwrap_or(BlockType::Document);
 
                 if bt == BlockType::Document {
+                    i += 1;
                     continue;
                 }
 
@@ -73,17 +86,39 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
                         let highlighted = highlight_code(text, language);
                         let with_lines = add_line_numbers(&highlighted);
                         html.push_str(&with_lines);
+                    } else if bt == BlockType::Image {
+                        let src = escape_attr(text);
+                        let alt = escape_html(text);
+                        html.push_str(&format!("<img src=\"{src}\" alt=\"{alt}\">"));
                     } else {
                         let escaped = escape_html(text);
+
+                        let mut style_stack: Vec<StyleModifier> = Vec::new();
+                        let mut j = i + 1;
+                        while j < instrs.len()
+                            && instrs[j].opcode() == SIROpcode::ApplyStyle
+                            && instrs[j].parent_id() == parent_id
+                        {
+                            let packed = instrs[j].payload_offset();
+                            let (mods, is_push) = StyleModifier::from_packed(packed);
+                            if is_push {
+                                style_stack.push(mods);
+                                j += 1;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        let styled = wrap_with_styles(&style_stack, &escaped);
 
                         if let Some(url) = link_url_for_block.get(&parent_id) {
                             html.push_str(&format!(
                                 "<a href=\"{}\">{}</a>",
                                 escape_attr(url),
-                                escaped
+                                styled
                             ));
                         } else {
-                            html.push_str(&escaped);
+                            html.push_str(&styled);
                         }
                     }
                 }
@@ -91,32 +126,79 @@ fn render_sir_to_html(doc: &SIRDocument) -> String {
                 if let Some(&idx) = parent_block_idx {
                     open_blocks[idx].child_count += 1;
                 }
+
+                i += 1;
+                continue;
             }
-            SIROpcode::ApplyStyle => {
-                let packed = instr.payload_offset();
-                let (mods, is_push) = StyleModifier::from_packed(packed);
-                if is_push {
-                    style_stack.push(mods);
-                } else {
-                    style_stack.pop();
-                }
-            }
-            SIROpcode::LinkData => {
-                if let Some(url) = doc.payload_text(instr) {
-                    let parent_id = instr.parent_id();
-                    link_url_for_block.insert(parent_id, url.to_string());
-                }
-            }
-            SIROpcode::InsertMath => {}
+            SIROpcode::ApplyStyle | SIROpcode::LinkData | SIROpcode::InsertMath => {}
         }
+        i += 1;
     }
 
     while let Some(span) = open_blocks.pop() {
-        emit_block_close(&mut html, span.block_type, span.heading_level);
+        emit_block_close(
+            &mut html,
+            span.block_type,
+            span.heading_level,
+            span.is_header_row,
+        );
     }
 
     html.push_str("</div>");
     html
+}
+
+fn wrap_with_styles(style_stack: &[StyleModifier], text: &str) -> String {
+    let mut bold = false;
+    let mut italic = false;
+    let mut mono = false;
+    let mut strike = false;
+    for style in style_stack {
+        if style.contains(StyleModifier::BOLD) {
+            bold = true;
+        }
+        if style.contains(StyleModifier::ITALIC) {
+            italic = true;
+        }
+        if style.contains(StyleModifier::MONO) {
+            mono = true;
+        }
+        if style.contains(StyleModifier::STRIKE) {
+            strike = true;
+        }
+    }
+
+    if !bold && !italic && !mono && !strike {
+        return text.to_string();
+    }
+
+    let mut result = String::with_capacity(text.len() + 40);
+    if bold {
+        result.push_str("<strong>");
+    }
+    if italic {
+        result.push_str("<em>");
+    }
+    if mono {
+        result.push_str("<code>");
+    }
+    if strike {
+        result.push_str("<del>");
+    }
+    result.push_str(text);
+    if strike {
+        result.push_str("</del>");
+    }
+    if mono {
+        result.push_str("</code>");
+    }
+    if italic {
+        result.push_str("</em>");
+    }
+    if bold {
+        result.push_str("</strong>");
+    }
+    result
 }
 
 fn detect_language(code: &str) -> &str {
@@ -446,7 +528,7 @@ fn read_heading_level(doc: &SIRDocument, payload_offset: u32) -> u32 {
     1
 }
 
-fn emit_block_open(html: &mut String, bt: BlockType, heading_level: u32) {
+fn emit_block_open(html: &mut String, bt: BlockType, heading_level: u32, is_header_row: bool) {
     match bt {
         BlockType::Document => {}
         BlockType::Paragraph => {
@@ -480,7 +562,11 @@ fn emit_block_open(html: &mut String, bt: BlockType, heading_level: u32) {
             html.push_str("<tr>");
         }
         BlockType::TableCell => {
-            html.push_str("<td>");
+            if is_header_row {
+                html.push_str("<th>");
+            } else {
+                html.push_str("<td>");
+            }
         }
         BlockType::Footnote => {}
         BlockType::FootnoteBlock => {
@@ -492,7 +578,7 @@ fn emit_block_open(html: &mut String, bt: BlockType, heading_level: u32) {
     }
 }
 
-fn emit_block_close(html: &mut String, bt: BlockType, heading_level: u32) {
+fn emit_block_close(html: &mut String, bt: BlockType, heading_level: u32, is_header_row: bool) {
     match bt {
         BlockType::Document => {}
         BlockType::Paragraph => {
@@ -520,7 +606,11 @@ fn emit_block_close(html: &mut String, bt: BlockType, heading_level: u32) {
             html.push_str("</tr>");
         }
         BlockType::TableCell => {
-            html.push_str("</td>");
+            if is_header_row {
+                html.push_str("</th>");
+            } else {
+                html.push_str("</td>");
+            }
         }
         BlockType::Footnote => {}
         BlockType::FootnoteBlock => {
@@ -664,13 +754,19 @@ mod tests {
     #[test]
     fn test_bold_text() {
         let html = render_markdown("**bold**");
-        assert!(html.contains("bold"), "missing bold text in: {html}");
+        assert!(
+            html.contains("<strong>bold</strong>"),
+            "missing <strong> tags in: {html}"
+        );
     }
 
     #[test]
     fn test_italic_text() {
         let html = render_markdown("*italic*");
-        assert!(html.contains("italic"), "missing italic text in: {html}");
+        assert!(
+            html.contains("<em>italic</em>"),
+            "missing <em> tags in: {html}"
+        );
     }
 
     #[test]
@@ -727,6 +823,7 @@ mod tests {
     #[test]
     fn test_inline_code() {
         let html = render_markdown("use `cargo build`");
+        assert!(html.contains("<code>"), "missing <code> tag in: {html}");
         assert!(
             html.contains("cargo build"),
             "missing inline code text in: {html}"
@@ -736,7 +833,8 @@ mod tests {
     #[test]
     fn test_image() {
         let html = render_markdown("![alt text](image.png)");
-        assert!(html.contains("image.png"), "missing image src in: {html}");
+        assert!(html.contains("<img"), "missing <img> tag in: {html}");
+        assert!(html.contains("src=\"image.png\""), "missing src in: {html}");
     }
 
     #[test]
