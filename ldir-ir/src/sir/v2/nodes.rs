@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::sir::v2::metadata::Dimension;
+use crate::sir::v2::source_span::SourceSpan;
 
 /// Node type enumeration.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -173,6 +174,7 @@ pub struct Node {
     pub label: Option<String>,
     pub style: Option<String>,
     pub counter: Option<String>,
+    pub source_span: Option<SourceSpan>,
 }
 
 impl Node {
@@ -185,6 +187,7 @@ impl Node {
             label: None,
             style: None,
             counter: None,
+            source_span: None,
         }
     }
 
@@ -205,6 +208,11 @@ impl Node {
 
     pub fn with_counter(mut self, counter: impl Into<String>) -> Self {
         self.counter = Some(counter.into());
+        self
+    }
+
+    pub fn with_source_span(mut self, span: SourceSpan) -> Self {
+        self.source_span = Some(span);
         self
     }
 

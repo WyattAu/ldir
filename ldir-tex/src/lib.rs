@@ -53,8 +53,8 @@ use ldir_ir::sir::SIRDocument;
 /// figures, tables, footnotes) into S-IR instructions. The preamble
 /// (`\documentclass`, `\usepackage`, etc.) is silently skipped.
 pub fn parse_tex(tex: &str) -> SIRDocument {
-    let tokens = lexer::TeXLexer::new(tex).tokenize();
-    let mut p = parser::TeXParser::new(&tokens);
+    let spanned = lexer::TeXLexer::new(tex).tokenize_with_spans();
+    let mut p = parser::TeXParser::new(&spanned);
     p.parse()
 }
 

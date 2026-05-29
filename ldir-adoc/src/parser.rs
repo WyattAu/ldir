@@ -1,6 +1,7 @@
 //! Recursive descent parser for Asciidoc → S-IR v2.
 
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::SourceSpan;
 use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, FloatPlacement, ListType, Node, NodeType};
 
 pub fn parse_asciidoc(text: &str) -> SIRModuleV2 {
@@ -47,6 +48,10 @@ impl AsciidocParser {
         let id = self.next_id;
         self.next_id += 1;
         id
+    }
+
+    fn source_span(&self) -> SourceSpan {
+        SourceSpan::new(self.pos as u32 + 1, 0, 0, 0)
     }
 
     fn skip_blank(&mut self) {
@@ -523,9 +528,11 @@ impl AsciidocParser {
     ) {
         for node_type in child_nodes {
             let child_id = self.gen_id();
-            module
-                .body
-                .push(Node::new(child_id, node_type).with_parent(parent_id));
+            module.body.push(
+                Node::new(child_id, node_type)
+                    .with_parent(parent_id)
+                    .with_source_span(self.source_span()),
+            );
             if let Some(parent) = module.body.get_mut(parent_id) {
                 parent.add_child(child_id);
             }
@@ -535,7 +542,9 @@ impl AsciidocParser {
     fn parse_document(&mut self) -> SIRModuleV2 {
         let mut module = SIRModuleV2::from_source("asciidoc", "<input>");
         let doc_id = self.gen_id();
-        module.body.push(Node::new(doc_id, NodeType::Document));
+        module
+            .body
+            .push(Node::new(doc_id, NodeType::Document).with_source_span(self.source_span()));
 
         let mut title_set = false;
         let mut author_set = false;
@@ -654,7 +663,9 @@ impl AsciidocParser {
                     };
 
                     let heading_id = self.gen_id();
-                    let mut heading_node = Node::new(heading_id, heading_type).with_parent(doc_id);
+                    let mut heading_node = Node::new(heading_id, heading_type)
+                        .with_parent(doc_id)
+                        .with_source_span(self.source_span());
                     if let Some(NodeType::Text { content }) = inline_nodes.first() {
                         heading_node.counter = Some(content.clone());
                     }
@@ -677,7 +688,8 @@ impl AsciidocParser {
                     module.body.push(
                         Node::new(admon_id, NodeType::BlockQuote)
                             .with_parent(doc_id)
-                            .with_style(style_name),
+                            .with_style(style_name)
+                            .with_source_span(self.source_span()),
                     );
                     self.add_children(&mut module, admon_id, inline_nodes);
                     if let Some(doc) = module.body.get_mut(doc_id) {
@@ -698,7 +710,8 @@ impl AsciidocParser {
                                 start: None,
                             },
                         )
-                        .with_parent(doc_id),
+                        .with_parent(doc_id)
+                        .with_source_span(self.source_span()),
                     );
 
                     while !self.at_end() {
@@ -709,15 +722,18 @@ impl AsciidocParser {
                         } else {
                             break;
                         }
+                        let item_pos = self.pos;
                         let Some(item_text) = self.advance() else {
                             break;
                         };
                         let content = item_text.trim_start_matches('*').trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module.body.push(
+                            Node::new(item_id, NodeType::ListItem)
+                                .with_parent(list_id)
+                                .with_source_span(SourceSpan::new(item_pos as u32 + 1, 0, 0, 0)),
+                        );
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -742,7 +758,8 @@ impl AsciidocParser {
                                 start: None,
                             },
                         )
-                        .with_parent(doc_id),
+                        .with_parent(doc_id)
+                        .with_source_span(self.source_span()),
                     );
 
                     while !self.at_end() {
@@ -753,15 +770,18 @@ impl AsciidocParser {
                         } else {
                             break;
                         }
+                        let item_pos = self.pos;
                         let Some(item_text) = self.advance() else {
                             break;
                         };
                         let content = item_text.trim_start_matches('.').trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module.body.push(
+                            Node::new(item_id, NodeType::ListItem)
+                                .with_parent(list_id)
+                                .with_source_span(SourceSpan::new(item_pos as u32 + 1, 0, 0, 0)),
+                        );
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -776,6 +796,7 @@ impl AsciidocParser {
                 }
 
                 if trimmed.starts_with("[source") || trimmed.starts_with("[code") {
+                    let span = self.source_span();
                     let lang = if let Some(start) = trimmed.find(',') {
                         let lang_str = trimmed[start + 1..].trim_end_matches(']').trim();
                         if lang_str.is_empty() {
@@ -808,7 +829,8 @@ impl AsciidocParser {
                                         content: String::new(),
                                     },
                                 )
-                                .with_parent(doc_id),
+                                .with_parent(doc_id)
+                                .with_source_span(span),
                             );
                             if !code_content.is_empty() {
                                 let text_id = self.gen_id();
@@ -819,7 +841,8 @@ impl AsciidocParser {
                                             content: code_content,
                                         },
                                     )
-                                    .with_parent(cb_id),
+                                    .with_parent(cb_id)
+                                    .with_source_span(span),
                                 );
                                 if let Some(cb) = module.body.get_mut(cb_id) {
                                     cb.add_child(text_id);
@@ -836,6 +859,7 @@ impl AsciidocParser {
                 }
 
                 if trimmed == "----" || trimmed == "...." {
+                    let span = self.source_span();
                     let mut literal_content = String::new();
                     let delimiter = trimmed.to_string();
                     self.advance();
@@ -857,7 +881,8 @@ impl AsciidocParser {
                                 content: String::new(),
                             },
                         )
-                        .with_parent(doc_id),
+                        .with_parent(doc_id)
+                        .with_source_span(span),
                     );
                     if !literal_content.is_empty() {
                         let text_id = self.gen_id();
@@ -868,7 +893,8 @@ impl AsciidocParser {
                                     content: literal_content,
                                 },
                             )
-                            .with_parent(cb_id),
+                            .with_parent(cb_id)
+                            .with_source_span(span),
                         );
                         if let Some(cb) = module.body.get_mut(cb_id) {
                             cb.add_child(text_id);
@@ -882,6 +908,7 @@ impl AsciidocParser {
                 }
 
                 if trimmed.starts_with("[quote]") {
+                    let span = self.source_span();
                     self.advance();
                     let mut quote_content = String::new();
                     while let Some(ql) = self.peek() {
@@ -897,9 +924,11 @@ impl AsciidocParser {
                     }
                     let inline_nodes = Self::parse_inline_content(&quote_content);
                     let bq_id = self.gen_id();
-                    module
-                        .body
-                        .push(Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id));
+                    module.body.push(
+                        Node::new(bq_id, NodeType::BlockQuote)
+                            .with_parent(doc_id)
+                            .with_source_span(span),
+                    );
                     self.add_children(&mut module, bq_id, inline_nodes);
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(bq_id);
@@ -909,6 +938,7 @@ impl AsciidocParser {
                 }
 
                 if Self::is_table_delimiter(line) {
+                    let span = self.source_span();
                     self.advance();
                     let mut rows: Vec<Vec<String>> = Vec::new();
                     let mut num_cols = 0usize;
@@ -957,7 +987,8 @@ impl AsciidocParser {
                                     header_row: false,
                                 },
                             )
-                            .with_parent(doc_id),
+                            .with_parent(doc_id)
+                            .with_source_span(span),
                         );
 
                         for (row_idx, row) in rows.iter().enumerate() {
@@ -965,7 +996,8 @@ impl AsciidocParser {
                             let row_id = self.gen_id();
                             module.body.push(
                                 Node::new(row_id, NodeType::TableRow { is_header })
-                                    .with_parent(table_id),
+                                    .with_parent(table_id)
+                                    .with_source_span(span),
                             );
                             if let Some(tbl) = module.body.get_mut(table_id) {
                                 tbl.add_child(row_id);
@@ -981,7 +1013,8 @@ impl AsciidocParser {
                                             rowspan: 1,
                                         },
                                     )
-                                    .with_parent(row_id),
+                                    .with_parent(row_id)
+                                    .with_source_span(span),
                                 );
                                 if let Some(row_node) = module.body.get_mut(row_id) {
                                     row_node.add_child(tc_id);
@@ -994,7 +1027,8 @@ impl AsciidocParser {
                                             content: cell_text.clone(),
                                         },
                                     )
-                                    .with_parent(tc_id),
+                                    .with_parent(tc_id)
+                                    .with_source_span(span),
                                 );
                                 if let Some(tc) = module.body.get_mut(tc_id) {
                                     tc.add_child(text_id);
@@ -1010,6 +1044,7 @@ impl AsciidocParser {
                     continue;
                 }
 
+                let para_span = self.source_span();
                 let mut para_text = String::new();
                 while let Some(pl) = self.peek() {
                     let pt = pl.trim();
@@ -1042,9 +1077,11 @@ impl AsciidocParser {
                 if !para_text.is_empty() {
                     let inline_nodes = Self::parse_inline_content(&para_text);
                     let para_id = self.gen_id();
-                    module
-                        .body
-                        .push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
+                    module.body.push(
+                        Node::new(para_id, NodeType::Paragraph)
+                            .with_parent(doc_id)
+                            .with_source_span(para_span),
+                    );
                     self.add_children(&mut module, para_id, inline_nodes);
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(para_id);

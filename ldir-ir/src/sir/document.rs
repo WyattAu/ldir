@@ -18,6 +18,7 @@
 
 use crate::sir::instruction::{EntityId, SIRInstruction};
 use crate::sir::payload::PayloadRegion;
+use crate::sir::v2::SourceSpan;
 
 /// Ordered collection of S-IR instructions representing a document.
 ///
@@ -44,6 +45,8 @@ pub struct SIRDocument {
     payload: PayloadRegion,
     /// Footnote entries: (number, text).
     pub footnotes: Vec<(u32, String)>,
+    /// Source spans for instructions, indexed by instruction position.
+    pub source_spans: Vec<Option<SourceSpan>>,
 }
 
 impl SIRDocument {
@@ -54,6 +57,7 @@ impl SIRDocument {
             instructions: Vec::new(),
             payload: PayloadRegion::new(),
             footnotes: Vec::new(),
+            source_spans: Vec::new(),
         }
     }
 
@@ -63,6 +67,7 @@ impl SIRDocument {
             instructions: Vec::with_capacity(capacity),
             payload: PayloadRegion::new(),
             footnotes: Vec::new(),
+            source_spans: Vec::new(),
         }
     }
 
@@ -218,6 +223,7 @@ impl SIRDocument {
             instructions,
             payload: PayloadRegion::new(),
             footnotes: Vec::new(),
+            source_spans: Vec::new(),
         })
     }
 
@@ -256,6 +262,7 @@ impl SIRDocument {
             instructions,
             payload,
             footnotes: Vec::new(),
+            source_spans: Vec::new(),
         })
     }
 }

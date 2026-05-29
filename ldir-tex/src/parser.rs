@@ -1,20 +1,21 @@
 use ldir_ir::sir::{
-    BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode, StyleModifier,
+    BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode, SourceSpan, StyleModifier,
 };
 
-use crate::lexer::Token;
+use crate::lexer::{SpannedToken, Token};
 
 pub struct TeXParser<'a> {
-    tokens: &'a [Token],
+    tokens: &'a [SpannedToken],
     pos: usize,
     doc: SIRDocument,
     next_id: u32,
     in_math: bool,
     footnote_counter: u32,
+    current_span: Option<SourceSpan>,
 }
 
 impl<'a> TeXParser<'a> {
-    pub fn new(tokens: &'a [Token]) -> Self {
+    pub fn new(tokens: &'a [SpannedToken]) -> Self {
         Self {
             tokens,
             pos: 0,
@@ -22,13 +23,14 @@ impl<'a> TeXParser<'a> {
             next_id: 0,
             in_math: false,
             footnote_counter: 0,
+            current_span: None,
         }
     }
 
     pub fn parse(&mut self) -> SIRDocument {
         let root_id = self.next_entity_id();
         let payload_offset = self.doc.payload_mut().append(&[BlockType::Document as u8]);
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::PushBlock,
             root_id,
             ROOT_SENTINEL,
@@ -48,13 +50,28 @@ impl<'a> TeXParser<'a> {
     }
 
     fn peek(&self) -> Option<&Token> {
-        self.tokens.get(self.pos)
+        self.tokens.get(self.pos).map(|st| &st.token)
     }
 
     fn advance(&mut self) -> Option<&Token> {
-        let tok = self.tokens.get(self.pos);
+        self.current_span = self.tokens.get(self.pos).map(|st| st.span);
+        let tok = self.tokens.get(self.pos).map(|st| &st.token);
         self.pos += 1;
         tok
+    }
+
+    fn token_at(&self, idx: usize) -> Option<&Token> {
+        self.tokens.get(idx).map(|st| &st.token)
+    }
+
+    fn push_instr(&mut self, instr: SIRInstruction) {
+        self.doc.push(instr);
+        self.doc.source_spans.push(self.current_span);
+    }
+
+    fn push_instr_with_payload(&mut self, instr: SIRInstruction, payload: &[u8]) {
+        self.doc.push_with_payload(instr, payload);
+        self.doc.source_spans.push(self.current_span);
     }
 
     fn skip_preamble(&mut self) {
@@ -92,10 +109,10 @@ impl<'a> TeXParser<'a> {
     }
 
     fn is_begin_env(&self, env_name: &str) -> bool {
-        if let Some(Token::ControlSequence(name)) = self.tokens.get(self.pos)
+        if let Some(Token::ControlSequence(name)) = self.token_at(self.pos)
             && name == "begin"
-            && let Some(Token::BraceOpen) = self.tokens.get(self.pos + 1)
-            && let Some(Token::Text(env)) = self.tokens.get(self.pos + 2)
+            && let Some(Token::BraceOpen) = self.token_at(self.pos + 1)
+            && let Some(Token::Text(env)) = self.token_at(self.pos + 2)
         {
             return env == env_name;
         }
@@ -318,7 +335,7 @@ impl<'a> TeXParser<'a> {
                         self.flush_paragraph(&mut text_buffer, parent_id);
                         self.emit_link(parent_id, &url);
                         let content_id = self.next_entity_id();
-                        self.doc.push_with_payload(
+                        self.push_instr_with_payload(
                             SIRInstruction::new(SIROpcode::SetContent, content_id, parent_id, 0),
                             url.as_bytes(),
                         );
@@ -330,7 +347,7 @@ impl<'a> TeXParser<'a> {
                         self.flush_paragraph(&mut text_buffer, parent_id);
                         self.emit_link(parent_id, &url);
                         let content_id = self.next_entity_id();
-                        self.doc.push_with_payload(
+                        self.push_instr_with_payload(
                             SIRInstruction::new(SIROpcode::SetContent, content_id, parent_id, 0),
                             text.as_bytes(),
                         );
@@ -645,10 +662,10 @@ impl<'a> TeXParser<'a> {
     }
 
     fn is_end_env(&self, env_name: &str) -> bool {
-        if let Some(Token::ControlSequence(name)) = self.tokens.get(self.pos)
+        if let Some(Token::ControlSequence(name)) = self.token_at(self.pos)
             && name == "end"
-            && let Some(Token::BraceOpen) = self.tokens.get(self.pos + 1)
-            && let Some(Token::Text(env)) = self.tokens.get(self.pos + 2)
+            && let Some(Token::BraceOpen) = self.token_at(self.pos + 1)
+            && let Some(Token::Text(env)) = self.token_at(self.pos + 2)
         {
             return env == env_name;
         }
@@ -670,7 +687,7 @@ impl<'a> TeXParser<'a> {
         let content = items.join("\n");
         if !content.is_empty() {
             let content_id = self.next_entity_id();
-            self.doc.push_with_payload(
+            self.push_instr_with_payload(
                 SIRInstruction::new(SIROpcode::SetContent, content_id, list_id, 0),
                 content.as_bytes(),
             );
@@ -779,7 +796,7 @@ impl<'a> TeXParser<'a> {
                     let caption = self.parse_group_content();
                     if !caption.is_empty() {
                         let content_id = self.next_entity_id();
-                        self.doc.push_with_payload(
+                        self.push_instr_with_payload(
                             SIRInstruction::new(SIROpcode::SetContent, content_id, fig_id, 0),
                             caption.as_bytes(),
                         );
@@ -817,7 +834,7 @@ impl<'a> TeXParser<'a> {
                     let caption = self.parse_group_content();
                     if !caption.is_empty() {
                         let content_id = self.next_entity_id();
-                        self.doc.push_with_payload(
+                        self.push_instr_with_payload(
                             SIRInstruction::new(SIROpcode::SetContent, content_id, table_id, 0),
                             caption.as_bytes(),
                         );
@@ -957,7 +974,7 @@ impl<'a> TeXParser<'a> {
 
         if num_cols > 0 {
             let num_cols_id = self.next_entity_id();
-            self.doc.push_with_payload(
+            self.push_instr_with_payload(
                 SIRInstruction::new(SIROpcode::SetContent, num_cols_id, table_id, 0),
                 num_cols.to_string().as_bytes(),
             );
@@ -966,7 +983,7 @@ impl<'a> TeXParser<'a> {
         if !alignments.is_empty() {
             let align_str: String = alignments.iter().collect();
             let align_id = self.next_entity_id();
-            self.doc.push_with_payload(
+            self.push_instr_with_payload(
                 SIRInstruction::new(SIROpcode::SetContent, align_id, table_id, 0),
                 align_str.as_bytes(),
             );
@@ -1197,7 +1214,7 @@ impl<'a> TeXParser<'a> {
             }
         }
         let payload_offset = self.doc.payload_mut().append(&payload);
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::PushBlock,
             block_id,
             parent_id,
@@ -1205,7 +1222,7 @@ impl<'a> TeXParser<'a> {
         ));
         if !content.is_empty() {
             let content_id = self.next_entity_id();
-            self.doc.push_with_payload(
+            self.push_instr_with_payload(
                 SIRInstruction::new(SIROpcode::SetContent, content_id, block_id, 0),
                 content.as_bytes(),
             );
@@ -1224,7 +1241,7 @@ impl<'a> TeXParser<'a> {
         let mut payload = vec![block_type as u8];
         payload.push(if numbered { 1u8 } else { 0u8 });
         let payload_offset = self.doc.payload_mut().append(&payload);
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::PushBlock,
             block_id,
             parent_id,
@@ -1232,7 +1249,7 @@ impl<'a> TeXParser<'a> {
         ));
         if !content.is_empty() {
             let content_id = self.next_entity_id();
-            self.doc.push_with_payload(
+            self.push_instr_with_payload(
                 SIRInstruction::new(SIROpcode::SetContent, content_id, block_id, 0),
                 content.as_bytes(),
             );
@@ -1264,7 +1281,7 @@ impl<'a> TeXParser<'a> {
         } else {
             StyleModifier::pop()
         };
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::ApplyStyle,
             id,
             parent_id,
@@ -1277,7 +1294,7 @@ impl<'a> TeXParser<'a> {
         let id = self.next_entity_id();
         let mut url_bytes = url.to_string().into_bytes();
         url_bytes.push(0);
-        self.doc.push_with_payload(
+        self.push_instr_with_payload(
             SIRInstruction::new(SIROpcode::LinkData, id, parent_id, 0),
             &url_bytes,
         );

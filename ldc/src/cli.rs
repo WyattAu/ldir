@@ -123,4 +123,8 @@ pub struct Cli {
     /// Color output. Options: auto, always, never. Default: auto.
     #[arg(long, value_name = "WHEN", default_value = "auto")]
     pub color: String,
+
+    /// Path to configuration file. Default: ./ldir.toml
+    #[arg(long, value_name = "PATH")]
+    pub config: Option<PathBuf>,
 }

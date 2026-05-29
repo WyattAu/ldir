@@ -1,5 +1,13 @@
 use std::fmt;
 
+use ldir_ir::sir::v2::SourceSpan;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpannedToken {
+    pub token: Token,
+    pub span: SourceSpan,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     ControlSequence(String),
@@ -54,19 +62,60 @@ impl<'a> TeXLexer<'a> {
         Self { input }
     }
 
+    #[cfg(test)]
     pub fn tokenize(&mut self) -> Vec<Token> {
+        self.tokenize_with_spans()
+            .into_iter()
+            .map(|st| st.token)
+            .collect()
+    }
+
+    pub fn tokenize_with_spans(&mut self) -> Vec<SpannedToken> {
         let mut tokens = Vec::new();
         let chars: Vec<char> = self.input.chars().collect();
+        let byte_offsets: Vec<u32> = {
+            let mut v = Vec::with_capacity(chars.len());
+            let mut off = 0u32;
+            for &c in &chars {
+                v.push(off);
+                off += c.len_utf8() as u32;
+            }
+            v
+        };
+        let total_bytes = self.input.len() as u32;
         let len = chars.len();
         let mut i = 0;
+        let mut line = 1u32;
+        let mut col = 1u32;
+
+        let end_byte = |end_i: usize| -> u32 {
+            if end_i < len {
+                byte_offsets[end_i]
+            } else {
+                total_bytes
+            }
+        };
+
+        let make_span = |s_line: u32, s_col: u32, s_byte: u32, e_i: usize| -> SourceSpan {
+            let e_byte = end_byte(e_i);
+            SourceSpan::new(s_line, s_col, s_byte, e_byte - s_byte)
+        };
 
         while i < len {
+            let start_i = i;
+            let start_line = line;
+            let start_col = col;
+            let start_byte = byte_offsets[i];
             let c = chars[i];
 
             match c {
                 '\\' => {
                     if i + 1 < len && chars[i + 1] == '\\' {
-                        tokens.push(Token::LineBreak);
+                        let span = make_span(start_line, start_col, start_byte, i + 2);
+                        tokens.push(SpannedToken {
+                            token: Token::LineBreak,
+                            span,
+                        });
                         i += 2;
                     } else {
                         i += 1;
@@ -78,7 +127,11 @@ impl<'a> TeXLexer<'a> {
                                     name.push(chars[i]);
                                     i += 1;
                                 }
-                                tokens.push(Token::ControlSequence(name));
+                                let span = make_span(start_line, start_col, start_byte, i);
+                                tokens.push(SpannedToken {
+                                    token: Token::ControlSequence(name),
+                                    span,
+                                });
                             } else {
                                 i += 1;
                                 let tok = match next {
@@ -95,33 +148,58 @@ impl<'a> TeXLexer<'a> {
                                     '\n' | '\r' => Token::Text(" ".into()),
                                     _ => Token::Text(next.to_string()),
                                 };
-                                tokens.push(tok);
+                                let span = make_span(start_line, start_col, start_byte, i);
+                                tokens.push(SpannedToken { token: tok, span });
                             }
                         }
                     }
                 }
                 '{' => {
-                    tokens.push(Token::BraceOpen);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::BraceOpen,
+                        span,
+                    });
                     i += 1;
                 }
                 '}' => {
-                    tokens.push(Token::BraceClose);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::BraceClose,
+                        span,
+                    });
                     i += 1;
                 }
                 '[' => {
-                    tokens.push(Token::BracketOpen);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::BracketOpen,
+                        span,
+                    });
                     i += 1;
                 }
                 ']' => {
-                    tokens.push(Token::BracketClose);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::BracketClose,
+                        span,
+                    });
                     i += 1;
                 }
                 '$' => {
                     if i + 1 < len && chars[i + 1] == '$' {
-                        tokens.push(Token::DoubleDollar);
+                        let span = make_span(start_line, start_col, start_byte, i + 2);
+                        tokens.push(SpannedToken {
+                            token: Token::DoubleDollar,
+                            span,
+                        });
                         i += 2;
                     } else {
-                        tokens.push(Token::DollarSign);
+                        let span = make_span(start_line, start_col, start_byte, i + 1);
+                        tokens.push(SpannedToken {
+                            token: Token::DollarSign,
+                            span,
+                        });
                         i += 1;
                     }
                 }
@@ -135,46 +213,82 @@ impl<'a> TeXLexer<'a> {
                     if i < len && chars[i] == '\n' {
                         i += 1;
                     }
-                    tokens.push(Token::Comment(comment));
+                    let span = make_span(start_line, start_col, start_byte, i);
+                    tokens.push(SpannedToken {
+                        token: Token::Comment(comment),
+                        span,
+                    });
                 }
                 '&' => {
-                    tokens.push(Token::Ampersand);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::Ampersand,
+                        span,
+                    });
                     i += 1;
                 }
                 '^' => {
-                    tokens.push(Token::Caret);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::Caret,
+                        span,
+                    });
                     i += 1;
                 }
                 '_' => {
-                    tokens.push(Token::Underscore);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::Underscore,
+                        span,
+                    });
                     i += 1;
                 }
                 '~' => {
-                    tokens.push(Token::Tilde);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::Tilde,
+                        span,
+                    });
                     i += 1;
                 }
                 '#' => {
-                    tokens.push(Token::Hash);
+                    let span = make_span(start_line, start_col, start_byte, i + 1);
+                    tokens.push(SpannedToken {
+                        token: Token::Hash,
+                        span,
+                    });
                     i += 1;
                 }
                 '\n' => {
                     i += 1;
                     if i < len && chars[i] == '\n' {
-                        tokens.push(Token::Text("\n\n".into()));
+                        let span = make_span(start_line, start_col, start_byte, i + 1);
                         i += 1;
                         while i < len && chars[i] == '\n' {
                             i += 1;
                         }
+                        tokens.push(SpannedToken {
+                            token: Token::Text("\n\n".into()),
+                            span,
+                        });
                     } else {
-                        tokens.push(Token::Text(" ".into()));
+                        let span = make_span(start_line, start_col, start_byte, i);
+                        tokens.push(SpannedToken {
+                            token: Token::Text(" ".into()),
+                            span,
+                        });
                     }
                 }
                 ' ' | '\t' => {
-                    tokens.push(Token::Text(" ".into()));
                     i += 1;
                     while i < len && (chars[i] == ' ' || chars[i] == '\t') {
                         i += 1;
                     }
+                    let span = make_span(start_line, start_col, start_byte, i);
+                    tokens.push(SpannedToken {
+                        token: Token::Text(" ".into()),
+                        span,
+                    });
                 }
                 _ => {
                     let mut text = String::new();
@@ -203,8 +317,21 @@ impl<'a> TeXLexer<'a> {
                         i += 1;
                     }
                     if !text.is_empty() {
-                        tokens.push(Token::Text(text));
+                        let span = make_span(start_line, start_col, start_byte, i);
+                        tokens.push(SpannedToken {
+                            token: Token::Text(text),
+                            span,
+                        });
                     }
+                }
+            }
+
+            for ch in &chars[start_i..i] {
+                if *ch == '\n' {
+                    line += 1;
+                    col = 1;
+                } else {
+                    col += 1;
                 }
             }
         }

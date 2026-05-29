@@ -1,6 +1,7 @@
 //! Recursive descent parser for Org-mode → S-IR v2.
 
 use ldir_ir::sir::v2::SIRModuleV2;
+use ldir_ir::sir::v2::SourceSpan;
 use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, FloatPlacement, ListType, Node, NodeType};
 
 pub fn parse_org(text: &str) -> SIRModuleV2 {
@@ -49,6 +50,10 @@ impl OrgParser {
         let id = self.next_id;
         self.next_id += 1;
         id
+    }
+
+    fn source_span(&self) -> SourceSpan {
+        SourceSpan::new(self.pos as u32 + 1, 0, 0, 0)
     }
 
     fn skip_blank(&mut self) {
@@ -400,9 +405,11 @@ impl OrgParser {
     ) {
         for node_type in child_nodes {
             let child_id = self.gen_id();
-            module
-                .body
-                .push(Node::new(child_id, node_type).with_parent(parent_id));
+            module.body.push(
+                Node::new(child_id, node_type)
+                    .with_parent(parent_id)
+                    .with_source_span(self.source_span()),
+            );
             if let Some(parent) = module.body.get_mut(parent_id) {
                 parent.add_child(child_id);
             }
@@ -412,7 +419,9 @@ impl OrgParser {
     fn parse_document(&mut self) -> SIRModuleV2 {
         let mut module = SIRModuleV2::from_source("org", "<input>");
         let doc_id = self.gen_id();
-        module.body.push(Node::new(doc_id, NodeType::Document));
+        module
+            .body
+            .push(Node::new(doc_id, NodeType::Document).with_source_span(self.source_span()));
 
         self.skip_blank();
 
@@ -454,9 +463,11 @@ impl OrgParser {
 
                 if Self::is_horizontal_rule(line) {
                     let hr_id = self.gen_id();
-                    module
-                        .body
-                        .push(Node::new(hr_id, NodeType::ThematicBreak).with_parent(doc_id));
+                    module.body.push(
+                        Node::new(hr_id, NodeType::ThematicBreak)
+                            .with_parent(doc_id)
+                            .with_source_span(self.source_span()),
+                    );
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(hr_id);
                     }
@@ -491,7 +502,9 @@ impl OrgParser {
                     };
 
                     let heading_id = self.gen_id();
-                    let mut heading_node = Node::new(heading_id, heading_type).with_parent(doc_id);
+                    let mut heading_node = Node::new(heading_id, heading_type)
+                        .with_parent(doc_id)
+                        .with_source_span(self.source_span());
                     if let Some(NodeType::Text { content }) = inline_nodes.first() {
                         heading_node.counter = Some(content.clone());
                     }
@@ -508,6 +521,7 @@ impl OrgParser {
                 }
 
                 if let Some((block_type, block_arg)) = Self::is_block_start(line) {
+                    let span = self.source_span();
                     self.advance();
                     let mut block_content = String::new();
                     while let Some(bl) = self.peek() {
@@ -526,9 +540,11 @@ impl OrgParser {
                         "QUOTE" => {
                             let inline_nodes = Self::parse_inline_content(&block_content);
                             let bq_id = self.gen_id();
-                            module
-                                .body
-                                .push(Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id));
+                            module.body.push(
+                                Node::new(bq_id, NodeType::BlockQuote)
+                                    .with_parent(doc_id)
+                                    .with_source_span(span),
+                            );
                             self.add_children(&mut module, bq_id, inline_nodes);
                             if let Some(doc) = module.body.get_mut(doc_id) {
                                 doc.add_child(bq_id);
@@ -545,7 +561,8 @@ impl OrgParser {
                                         content: String::new(),
                                     },
                                 )
-                                .with_parent(doc_id),
+                                .with_parent(doc_id)
+                                .with_source_span(span),
                             );
                             if !block_content.is_empty() {
                                 let text_id = self.gen_id();
@@ -556,7 +573,8 @@ impl OrgParser {
                                             content: block_content,
                                         },
                                     )
-                                    .with_parent(cb_id),
+                                    .with_parent(cb_id)
+                                    .with_source_span(span),
                                 );
                                 if let Some(cb) = module.body.get_mut(cb_id) {
                                     cb.add_child(text_id);
@@ -576,7 +594,8 @@ impl OrgParser {
                                         content: String::new(),
                                     },
                                 )
-                                .with_parent(doc_id),
+                                .with_parent(doc_id)
+                                .with_source_span(span),
                             );
                             if !block_content.is_empty() {
                                 let text_id = self.gen_id();
@@ -587,7 +606,8 @@ impl OrgParser {
                                             content: block_content,
                                         },
                                     )
-                                    .with_parent(cb_id),
+                                    .with_parent(cb_id)
+                                    .with_source_span(span),
                                 );
                                 if let Some(cb) = module.body.get_mut(cb_id) {
                                     cb.add_child(text_id);
@@ -604,7 +624,8 @@ impl OrgParser {
                             module.body.push(
                                 Node::new(group_id, NodeType::Group)
                                     .with_parent(doc_id)
-                                    .with_style(format!("export:{}", fmt)),
+                                    .with_style(format!("export:{}", fmt))
+                                    .with_source_span(span),
                             );
                             self.add_children(&mut module, group_id, inline_nodes);
                             if let Some(doc) = module.body.get_mut(doc_id) {
@@ -614,9 +635,11 @@ impl OrgParser {
                         _ => {
                             let inline_nodes = Self::parse_inline_content(&block_content);
                             let group_id = self.gen_id();
-                            module
-                                .body
-                                .push(Node::new(group_id, NodeType::Group).with_parent(doc_id));
+                            module.body.push(
+                                Node::new(group_id, NodeType::Group)
+                                    .with_parent(doc_id)
+                                    .with_source_span(span),
+                            );
                             self.add_children(&mut module, group_id, inline_nodes);
                             if let Some(doc) = module.body.get_mut(doc_id) {
                                 doc.add_child(group_id);
@@ -638,7 +661,8 @@ impl OrgParser {
                                 start: None,
                             },
                         )
-                        .with_parent(doc_id),
+                        .with_parent(doc_id)
+                        .with_source_span(self.source_span()),
                     );
 
                     while !self.at_end() {
@@ -649,6 +673,7 @@ impl OrgParser {
                         } else {
                             break;
                         }
+                        let item_pos = self.pos;
                         let Some(item_text) = self.advance() else {
                             break;
                         };
@@ -658,9 +683,11 @@ impl OrgParser {
                             .trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module.body.push(
+                            Node::new(item_id, NodeType::ListItem)
+                                .with_parent(list_id)
+                                .with_source_span(SourceSpan::new(item_pos as u32 + 1, 0, 0, 0)),
+                        );
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -685,7 +712,8 @@ impl OrgParser {
                                 start: None,
                             },
                         )
-                        .with_parent(doc_id),
+                        .with_parent(doc_id)
+                        .with_source_span(self.source_span()),
                     );
 
                     while !self.at_end() {
@@ -696,6 +724,7 @@ impl OrgParser {
                         } else {
                             break;
                         }
+                        let item_pos = self.pos;
                         let Some(item_text) = self.advance() else {
                             break;
                         };
@@ -704,9 +733,11 @@ impl OrgParser {
                         let content = trimmed[dot_pos + 1..].trim();
                         let inline_nodes = Self::parse_inline_content(content);
                         let item_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                        module.body.push(
+                            Node::new(item_id, NodeType::ListItem)
+                                .with_parent(list_id)
+                                .with_source_span(SourceSpan::new(item_pos as u32 + 1, 0, 0, 0)),
+                        );
                         self.add_children(&mut module, item_id, inline_nodes);
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(item_id);
@@ -721,6 +752,7 @@ impl OrgParser {
                 }
 
                 if Self::is_table_line(line) {
+                    let span = self.source_span();
                     let mut rows: Vec<Vec<String>> = Vec::new();
                     let mut num_cols = 0usize;
                     let mut has_separator = false;
@@ -770,7 +802,8 @@ impl OrgParser {
                                     header_row: false,
                                 },
                             )
-                            .with_parent(doc_id),
+                            .with_parent(doc_id)
+                            .with_source_span(span),
                         );
 
                         for (row_idx, row) in rows.iter().enumerate() {
@@ -778,7 +811,8 @@ impl OrgParser {
                             let row_id = self.gen_id();
                             module.body.push(
                                 Node::new(row_id, NodeType::TableRow { is_header })
-                                    .with_parent(table_id),
+                                    .with_parent(table_id)
+                                    .with_source_span(span),
                             );
                             if let Some(tbl) = module.body.get_mut(table_id) {
                                 tbl.add_child(row_id);
@@ -794,7 +828,8 @@ impl OrgParser {
                                             rowspan: 1,
                                         },
                                     )
-                                    .with_parent(row_id),
+                                    .with_parent(row_id)
+                                    .with_source_span(span),
                                 );
                                 if let Some(row_node) = module.body.get_mut(row_id) {
                                     row_node.add_child(tc_id);
@@ -807,7 +842,8 @@ impl OrgParser {
                                             content: cell_text.clone(),
                                         },
                                     )
-                                    .with_parent(tc_id),
+                                    .with_parent(tc_id)
+                                    .with_source_span(span),
                                 );
                                 if let Some(tc) = module.body.get_mut(tc_id) {
                                     tc.add_child(text_id);
@@ -823,6 +859,7 @@ impl OrgParser {
                     continue;
                 }
 
+                let para_span = self.source_span();
                 let mut para_text = String::new();
                 while let Some(pl) = self.peek() {
                     let pt = pl.trim();
@@ -852,9 +889,11 @@ impl OrgParser {
                 if !para_text.is_empty() {
                     let inline_nodes = Self::parse_inline_content(&para_text);
                     let para_id = self.gen_id();
-                    module
-                        .body
-                        .push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
+                    module.body.push(
+                        Node::new(para_id, NodeType::Paragraph)
+                            .with_parent(doc_id)
+                            .with_source_span(para_span),
+                    );
                     self.add_children(&mut module, para_id, inline_nodes);
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(para_id);

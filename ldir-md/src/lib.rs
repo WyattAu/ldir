@@ -45,10 +45,27 @@
 //! - [Repository](https://github.com/WyattAu/ldir)
 
 use ldir_ir::sir::{
-    BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode, StyleModifier,
+    BlockType, ROOT_SENTINEL, SIRDocument, SIRInstruction, SIROpcode, SourceSpan, StyleModifier,
 };
 
 use std::collections::HashMap;
+
+fn byte_offset_to_line_col(text: &str, offset: usize) -> (u32, u32) {
+    let mut line = 1u32;
+    let mut col = 1u32;
+    for (i, ch) in text.char_indices() {
+        if i >= offset {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
 
 fn is_block_tag(tag: &pulldown_cmark::Tag) -> bool {
     matches!(
@@ -86,7 +103,8 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
             | pulldown_cmark::Options::ENABLE_TASKLISTS
             | pulldown_cmark::Options::ENABLE_STRIKETHROUGH,
     );
-    let mut blocks: Vec<Block> = Vec::new();
+    let mut current_span: Option<SourceSpan> = None;
+    let mut blocks: Vec<(Block, Option<SourceSpan>)> = Vec::new();
     let mut current: Option<InlineBuffer> = None;
     let mut current_image_url: Option<String> = None;
     let mut in_table: bool = false;
@@ -102,13 +120,20 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
     let mut in_list_item: bool = false;
     let mut task_list_marker: Option<bool> = None;
 
-    for event in parser {
+    for (event, range) in parser.into_offset_iter() {
+        let (line, col) = byte_offset_to_line_col(markdown, range.start);
+        current_span = Some(SourceSpan::new(
+            line,
+            col,
+            range.start as u32,
+            (range.end - range.start) as u32,
+        ));
         match event {
             pulldown_cmark::Event::Start(tag) => {
                 if is_block_tag(&tag)
                     && let Some(buf) = current.take()
                 {
-                    blocks.push(buf.finish());
+                    blocks.push((buf.finish(), current_span));
                 }
                 match tag {
                     pulldown_cmark::Tag::FootnoteDefinition(label) => {
@@ -189,9 +214,9 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                 pulldown_cmark::TagEnd::Image => {
                     if let Some(url) = current_image_url.take() {
                         if let Some(buf) = current.take() {
-                            blocks.push(buf.finish());
+                            blocks.push((buf.finish(), current_span));
                         }
-                        blocks.push(Block::Image { path: url });
+                        blocks.push((Block::Image { path: url }, current_span));
                     }
                 }
                 pulldown_cmark::TagEnd::Table => {
@@ -212,11 +237,14 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                         });
                     }
                     if !rows.is_empty() {
-                        blocks.push(Block::StructuredTable {
-                            num_cols,
-                            rows,
-                            alignments: std::mem::take(&mut table_col_alignments),
-                        });
+                        blocks.push((
+                            Block::StructuredTable {
+                                num_cols,
+                                rows,
+                                alignments: std::mem::take(&mut table_col_alignments),
+                            },
+                            current_span,
+                        ));
                     }
                     table_rows.clear();
                     table_col_alignments.clear();
@@ -265,18 +293,21 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
                 | pulldown_cmark::TagEnd::CodeBlock
                 | pulldown_cmark::TagEnd::List(_) => {
                     if let Some(buf) = current.take() {
-                        blocks.push(buf.finish());
+                        blocks.push((buf.finish(), current_span));
                     }
                 }
                 pulldown_cmark::TagEnd::Item => {
                     in_list_item = false;
                     if let Some(buf) = current.take() {
-                        blocks.push(buf.finish_with_task_marker(task_list_marker.take()));
+                        blocks.push((
+                            buf.finish_with_task_marker(task_list_marker.take()),
+                            current_span,
+                        ));
                     }
                 }
                 pulldown_cmark::TagEnd::BlockQuote(_) => {
                     if let Some(buf) = current.take() {
-                        blocks.push(buf.finish());
+                        blocks.push((buf.finish(), current_span));
                     }
                 }
                 pulldown_cmark::TagEnd::Emphasis => {
@@ -339,9 +370,9 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
             }
             pulldown_cmark::Event::Rule => {
                 if let Some(buf) = current.take() {
-                    blocks.push(buf.finish());
+                    blocks.push((buf.finish(), current_span));
                 }
-                blocks.push(Block::ThematicBreak);
+                blocks.push((Block::ThematicBreak, current_span));
             }
             pulldown_cmark::Event::FootnoteReference(label) => {
                 let label_str = label.to_string();
@@ -362,15 +393,18 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
 
     // Flush remaining inline text
     if let Some(buf) = current.take() {
-        blocks.push(buf.finish());
+        blocks.push((buf.finish(), current_span));
     }
 
     // Emit footnote definitions as a FootnoteBlock at the end
     if !footnote_defs.is_empty() {
         footnote_defs.sort_by_key(|(num, _)| *num);
-        blocks.push(Block::FootnoteBlock {
-            entries: footnote_defs,
-        });
+        blocks.push((
+            Block::FootnoteBlock {
+                entries: footnote_defs,
+            },
+            current_span,
+        ));
     }
 
     // Emit blocks as S-IR instructions
@@ -384,11 +418,16 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
 struct ParseContext<'a> {
     doc: &'a mut SIRDocument,
     next_id: u32,
+    current_span: Option<SourceSpan>,
 }
 
 impl<'a> ParseContext<'a> {
     fn new(doc: &'a mut SIRDocument) -> Self {
-        Self { doc, next_id: 0 }
+        Self {
+            doc,
+            next_id: 0,
+            current_span: None,
+        }
     }
 
     fn next_entity_id(&mut self) -> u32 {
@@ -400,7 +439,7 @@ impl<'a> ParseContext<'a> {
     fn push_root(&mut self) -> u32 {
         let id = self.next_entity_id();
         let payload_offset = self.doc.payload_mut().append(&[BlockType::Document as u8]);
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::PushBlock,
             id,
             ROOT_SENTINEL,
@@ -409,8 +448,19 @@ impl<'a> ParseContext<'a> {
         id
     }
 
-    fn emit_blocks(&mut self, blocks: Vec<Block>, root_id: u32) {
-        for block in blocks {
+    fn push_instr(&mut self, instr: SIRInstruction) {
+        self.doc.push(instr);
+        self.doc.source_spans.push(self.current_span);
+    }
+
+    fn push_instr_with_payload(&mut self, instr: SIRInstruction, payload: &[u8]) {
+        self.doc.push_with_payload(instr, payload);
+        self.doc.source_spans.push(self.current_span);
+    }
+
+    fn emit_blocks(&mut self, blocks: Vec<(Block, Option<SourceSpan>)>, root_id: u32) {
+        for (block, span) in blocks {
+            self.current_span = span;
             match block {
                 Block::Heading {
                     level,
@@ -446,7 +496,7 @@ impl<'a> ParseContext<'a> {
                     } else {
                         self.doc.payload_mut().append(&[BlockType::Code as u8])
                     };
-                    self.doc.push(SIRInstruction::new(
+                    self.push_instr(SIRInstruction::new(
                         SIROpcode::PushBlock,
                         block_id,
                         root_id,
@@ -454,7 +504,7 @@ impl<'a> ParseContext<'a> {
                     ));
                     if !content.is_empty() {
                         let content_id = self.next_entity_id();
-                        self.doc.push_with_payload(
+                        self.push_instr_with_payload(
                             SIRInstruction::new(SIROpcode::SetContent, content_id, block_id, 0),
                             content.as_bytes(),
                         );
@@ -486,7 +536,7 @@ impl<'a> ParseContext<'a> {
                     };
                     if !display_content.is_empty() {
                         let id = self.next_entity_id();
-                        self.doc.push_with_payload(
+                        self.push_instr_with_payload(
                             SIRInstruction::new(SIROpcode::SetContent, id, root_id, 0),
                             display_content.as_bytes(),
                         );
@@ -526,7 +576,7 @@ impl<'a> ParseContext<'a> {
         }
         let payload_offset = self.doc.payload_mut().append(&payload);
 
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::PushBlock,
             block_id,
             parent_id,
@@ -535,7 +585,7 @@ impl<'a> ParseContext<'a> {
 
         if !content.is_empty() {
             let content_id = self.next_entity_id();
-            self.doc.push_with_payload(
+            self.push_instr_with_payload(
                 SIRInstruction::new(SIROpcode::SetContent, content_id, block_id, 0),
                 content.as_bytes(),
             );
@@ -552,7 +602,7 @@ impl<'a> ParseContext<'a> {
             } else {
                 StyleModifier::pop()
             };
-            self.doc.push(SIRInstruction::new(
+            self.push_instr(SIRInstruction::new(
                 SIROpcode::ApplyStyle,
                 id,
                 parent_id,
@@ -568,7 +618,7 @@ impl<'a> ParseContext<'a> {
             let link_id = self.next_entity_id();
             let mut url_bytes = url.into_bytes();
             url_bytes.push(0);
-            self.doc.push_with_payload(
+            self.push_instr_with_payload(
                 SIRInstruction::new(SIROpcode::LinkData, link_id, parent_id, 0),
                 &url_bytes,
             );
@@ -599,7 +649,7 @@ impl<'a> ParseContext<'a> {
             payload.push(align_byte);
         }
         let payload_offset = self.doc.payload_mut().append(&payload);
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::PushBlock,
             table_id,
             root_id,
@@ -610,7 +660,7 @@ impl<'a> ParseContext<'a> {
             let row_id = self.next_entity_id();
             let row_payload = vec![BlockType::TableRow as u8, if row.is_header { 1 } else { 0 }];
             let row_offset = self.doc.payload_mut().append(&row_payload);
-            self.doc.push(SIRInstruction::new(
+            self.push_instr(SIRInstruction::new(
                 SIROpcode::PushBlock,
                 row_id,
                 table_id,
@@ -620,7 +670,7 @@ impl<'a> ParseContext<'a> {
             for cell_content in &row.cells {
                 let cell_id = self.next_entity_id();
                 let cell_payload = self.doc.payload_mut().append(&[BlockType::TableCell as u8]);
-                self.doc.push(SIRInstruction::new(
+                self.push_instr(SIRInstruction::new(
                     SIROpcode::PushBlock,
                     cell_id,
                     row_id,
@@ -629,7 +679,7 @@ impl<'a> ParseContext<'a> {
 
                 if !cell_content.is_empty() {
                     let text_id = self.next_entity_id();
-                    self.doc.push_with_payload(
+                    self.push_instr_with_payload(
                         SIRInstruction::new(SIROpcode::SetContent, text_id, cell_id, 0),
                         cell_content.as_bytes(),
                     );
@@ -644,7 +694,7 @@ impl<'a> ParseContext<'a> {
             .doc
             .payload_mut()
             .append(&[BlockType::FootnoteBlock as u8]);
-        self.doc.push(SIRInstruction::new(
+        self.push_instr(SIRInstruction::new(
             SIROpcode::PushBlock,
             block_id,
             root_id,
@@ -654,7 +704,7 @@ impl<'a> ParseContext<'a> {
         for (_num, text) in entries {
             let fn_id = self.next_entity_id();
             let payload_offset = self.doc.payload_mut().append(&[BlockType::Footnote as u8]);
-            self.doc.push(SIRInstruction::new(
+            self.push_instr(SIRInstruction::new(
                 SIROpcode::PushBlock,
                 fn_id,
                 block_id,
@@ -663,7 +713,7 @@ impl<'a> ParseContext<'a> {
 
             if !text.is_empty() {
                 let content_id = self.next_entity_id();
-                self.doc.push_with_payload(
+                self.push_instr_with_payload(
                     SIRInstruction::new(SIROpcode::SetContent, content_id, fn_id, 0),
                     text.as_bytes(),
                 );

@@ -11,6 +11,7 @@ pub mod module;
 pub mod nodes;
 pub mod resources;
 pub mod serialize;
+pub mod source_span;
 pub mod styles;
 pub mod text;
 
@@ -20,5 +21,6 @@ pub use module::SIRModuleV2;
 pub use nodes::*;
 pub use resources::*;
 pub use serialize::{SIRBinaryWriter, deserialize_module, serialize_module};
+pub use source_span::SourceSpan;
 pub use styles::*;
 pub use text::{module_to_text, text_to_module};

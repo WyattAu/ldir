@@ -32,6 +32,8 @@ clap_mangen = { workspace = true }
 indicatif = { workspace = true }
 ttf-parser = { workspace = true }
 fontdb = { workspace = true }
+toml = { workspace = true }
+serde = { workspace = true }
 
 [[bin]]
 name = "ldc"

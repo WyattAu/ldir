@@ -1,8 +1,8 @@
 //! Recursive descent parser for Typst → S-IR v2.
 
-use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::annotations::LabelCategory;
 use ldir_ir::sir::v2::nodes::{ColSpec, ColumnAlign, ListType, Node, NodeType};
+use ldir_ir::sir::v2::{SIRModuleV2, SourceSpan};
 
 pub fn parse_typst(text: &str) -> SIRModuleV2 {
     let tokens = tokenize(text);
@@ -209,6 +209,7 @@ struct TypstParser {
     tokens: Vec<Token>,
     pos: usize,
     next_id: u32,
+    line: u32,
 }
 
 impl TypstParser {
@@ -217,6 +218,7 @@ impl TypstParser {
             tokens,
             pos: 0,
             next_id: 1,
+            line: 1,
         }
     }
 
@@ -226,6 +228,9 @@ impl TypstParser {
 
     fn advance(&mut self) -> Token {
         let tok = self.tokens.get(self.pos).cloned().unwrap_or(Token::Eof);
+        if matches!(tok, Token::Newline) {
+            self.line += 1;
+        }
         self.pos += 1;
         tok
     }
@@ -238,6 +243,10 @@ impl TypstParser {
         let id = self.next_id;
         self.next_id += 1;
         id
+    }
+
+    fn make_node(&self, id: u32, node_type: NodeType) -> Node {
+        Node::new(id, node_type).with_source_span(SourceSpan::new(self.line, 1, 0, 0))
     }
 
     fn skip_newlines(&mut self) {
@@ -478,7 +487,7 @@ impl TypstParser {
     fn parse_document(&mut self) -> SIRModuleV2 {
         let mut module = SIRModuleV2::from_source("typst", "<input>");
         let doc_id = self.gen_id();
-        let doc_node = Node::new(doc_id, NodeType::Document);
+        let doc_node = self.make_node(doc_id, NodeType::Document);
         module.body.push(doc_node);
 
         self.skip_newlines();
@@ -500,7 +509,8 @@ impl TypstParser {
                         _ => NodeType::Paragraph,
                     };
                     let heading_id = self.gen_id();
-                    let mut heading_node = Node::new(heading_id, heading_type).with_parent(doc_id);
+                    let mut heading_node =
+                        self.make_node(heading_id, heading_type).with_parent(doc_id);
                     if let Some(NodeType::Text { content }) = inline_nodes.first() {
                         heading_node.counter = Some(content.clone());
                     }
@@ -552,7 +562,8 @@ impl TypstParser {
 
                                 let bq_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(bq_id, NodeType::BlockQuote).with_parent(doc_id),
+                                    self.make_node(bq_id, NodeType::BlockQuote)
+                                        .with_parent(doc_id),
                                 );
                                 if let Some(doc) = module.body.get_mut(doc_id) {
                                     doc.add_child(bq_id);
@@ -561,7 +572,8 @@ impl TypstParser {
                                 for node_type in &inline_nodes {
                                     let child_id = self.gen_id();
                                     module.body.push(
-                                        Node::new(child_id, node_type.clone()).with_parent(bq_id),
+                                        self.make_node(child_id, node_type.clone())
+                                            .with_parent(bq_id),
                                     );
                                     if let Some(bq) = module.body.get_mut(bq_id) {
                                         bq.add_child(child_id);
@@ -579,7 +591,7 @@ impl TypstParser {
                                 self.skip_newlines();
                                 let fn_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(fn_id, NodeType::Footnote { content })
+                                    self.make_node(fn_id, NodeType::Footnote { content })
                                         .with_parent(doc_id),
                                 );
                                 if let Some(doc) = module.body.get_mut(doc_id) {
@@ -608,8 +620,11 @@ impl TypstParser {
                                 if !url.is_empty() {
                                     let link_id = self.gen_id();
                                     module.body.push(
-                                        Node::new(link_id, NodeType::Link { url, title: None })
-                                            .with_parent(doc_id),
+                                        self.make_node(
+                                            link_id,
+                                            NodeType::Link { url, title: None },
+                                        )
+                                        .with_parent(doc_id),
                                     );
                                     if let Some(doc) = module.body.get_mut(doc_id) {
                                         doc.add_child(link_id);
@@ -628,7 +643,7 @@ impl TypstParser {
                                 }
                                 let fig_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(
+                                    self.make_node(
                                         fig_id,
                                         NodeType::Figure {
                                             placement:
@@ -651,7 +666,7 @@ impl TypstParser {
                                     })
                                     .collect();
                                 module.body.push(
-                                    Node::new(
+                                    self.make_node(
                                         table_id,
                                         NodeType::Table {
                                             col_specs,
@@ -667,7 +682,7 @@ impl TypstParser {
                                 let mut cell_idx = 0;
                                 let mut row_id = self.gen_id();
                                 module.body.push(
-                                    Node::new(row_id, NodeType::TableRow { is_header: false })
+                                    self.make_node(row_id, NodeType::TableRow { is_header: false })
                                         .with_parent(table_id),
                                 );
                                 if let Some(tbl) = module.body.get_mut(table_id) {
@@ -677,7 +692,7 @@ impl TypstParser {
                                 for cell_text in &cells {
                                     let tc_id = self.gen_id();
                                     module.body.push(
-                                        Node::new(
+                                        self.make_node(
                                             tc_id,
                                             NodeType::TableCell {
                                                 colspan: 1,
@@ -691,7 +706,7 @@ impl TypstParser {
                                     }
                                     let text_id = self.gen_id();
                                     module.body.push(
-                                        Node::new(
+                                        self.make_node(
                                             text_id,
                                             NodeType::Text {
                                                 content: cell_text.clone(),
@@ -706,7 +721,7 @@ impl TypstParser {
                                     if cell_idx % num_cols == 0 && cell_idx < cells.len() {
                                         row_id = self.gen_id();
                                         module.body.push(
-                                            Node::new(
+                                            self.make_node(
                                                 row_id,
                                                 NodeType::TableRow { is_header: false },
                                             )
@@ -738,7 +753,7 @@ impl TypstParser {
 
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(
+                        self.make_node(
                             list_id,
                             NodeType::List {
                                 list_type: ListType::Unordered,
@@ -750,18 +765,20 @@ impl TypstParser {
                     );
 
                     let item_id = self.gen_id();
-                    module
-                        .body
-                        .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                    module.body.push(
+                        self.make_node(item_id, NodeType::ListItem)
+                            .with_parent(list_id),
+                    );
                     if let Some(list) = module.body.get_mut(list_id) {
                         list.add_child(item_id);
                     }
 
                     for node_type in &inline_nodes {
                         let child_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(child_id, node_type.clone()).with_parent(item_id));
+                        module.body.push(
+                            self.make_node(child_id, node_type.clone())
+                                .with_parent(item_id),
+                        );
                         if let Some(item) = module.body.get_mut(item_id) {
                             item.add_child(child_id);
                         }
@@ -773,16 +790,18 @@ impl TypstParser {
                             self.collect_inline_content(&[Token::Newline, Token::Eof]);
                         self.skip_newlines();
                         let sub_item_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(sub_item_id, NodeType::ListItem).with_parent(list_id));
+                        module.body.push(
+                            self.make_node(sub_item_id, NodeType::ListItem)
+                                .with_parent(list_id),
+                        );
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(sub_item_id);
                         }
                         for node_type in &item_inline {
                             let child_id = self.gen_id();
                             module.body.push(
-                                Node::new(child_id, node_type.clone()).with_parent(sub_item_id),
+                                self.make_node(child_id, node_type.clone())
+                                    .with_parent(sub_item_id),
                             );
                             if let Some(item) = module.body.get_mut(sub_item_id) {
                                 item.add_child(child_id);
@@ -801,7 +820,7 @@ impl TypstParser {
 
                     let list_id = self.gen_id();
                     module.body.push(
-                        Node::new(
+                        self.make_node(
                             list_id,
                             NodeType::List {
                                 list_type: ListType::Ordered,
@@ -813,18 +832,20 @@ impl TypstParser {
                     );
 
                     let item_id = self.gen_id();
-                    module
-                        .body
-                        .push(Node::new(item_id, NodeType::ListItem).with_parent(list_id));
+                    module.body.push(
+                        self.make_node(item_id, NodeType::ListItem)
+                            .with_parent(list_id),
+                    );
                     if let Some(list) = module.body.get_mut(list_id) {
                         list.add_child(item_id);
                     }
 
                     for node_type in &inline_nodes {
                         let child_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(child_id, node_type.clone()).with_parent(item_id));
+                        module.body.push(
+                            self.make_node(child_id, node_type.clone())
+                                .with_parent(item_id),
+                        );
                         if let Some(item) = module.body.get_mut(item_id) {
                             item.add_child(child_id);
                         }
@@ -836,16 +857,18 @@ impl TypstParser {
                             self.collect_inline_content(&[Token::Newline, Token::Eof]);
                         self.skip_newlines();
                         let sub_item_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(sub_item_id, NodeType::ListItem).with_parent(list_id));
+                        module.body.push(
+                            self.make_node(sub_item_id, NodeType::ListItem)
+                                .with_parent(list_id),
+                        );
                         if let Some(list) = module.body.get_mut(list_id) {
                             list.add_child(sub_item_id);
                         }
                         for node_type in &item_inline {
                             let child_id = self.gen_id();
                             module.body.push(
-                                Node::new(child_id, node_type.clone()).with_parent(sub_item_id),
+                                self.make_node(child_id, node_type.clone())
+                                    .with_parent(sub_item_id),
                             );
                             if let Some(item) = module.body.get_mut(sub_item_id) {
                                 item.add_child(child_id);
@@ -878,18 +901,20 @@ impl TypstParser {
                     }
 
                     let para_id = self.gen_id();
-                    module
-                        .body
-                        .push(Node::new(para_id, NodeType::Paragraph).with_parent(doc_id));
+                    module.body.push(
+                        self.make_node(para_id, NodeType::Paragraph)
+                            .with_parent(doc_id),
+                    );
                     if let Some(doc) = module.body.get_mut(doc_id) {
                         doc.add_child(para_id);
                     }
 
                     for node_type in &inline_nodes {
                         let child_id = self.gen_id();
-                        module
-                            .body
-                            .push(Node::new(child_id, node_type.clone()).with_parent(para_id));
+                        module.body.push(
+                            self.make_node(child_id, node_type.clone())
+                                .with_parent(para_id),
+                        );
                         if let Some(para) = module.body.get_mut(para_id) {
                             para.add_child(child_id);
                         }

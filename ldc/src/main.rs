@@ -15,6 +15,7 @@
 //! ```
 
 mod cli;
+mod config;
 mod status;
 
 use std::io::IsTerminal;
@@ -498,7 +499,10 @@ fn emit_pdf(
 }
 
 fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let mut cli = Cli::parse();
+
+    let cfg = config::load_config(cli.config.as_deref())?;
+    config::apply_config_to_cli(&cfg, &mut cli);
 
     // Initialize color support
     match cli.color.as_str() {

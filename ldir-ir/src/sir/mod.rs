@@ -34,3 +34,4 @@ pub use instruction::{EntityId, INSTRUCTION_WIRE_SIZE, ROOT_SENTINEL, SIRInstruc
 pub use opcode::{BlockType, SIROpcode};
 pub use payload::PayloadRegion;
 pub use style::StyleModifier;
+pub use v2::SourceSpan;
