@@ -50,21 +50,29 @@ use ldir_ir::sir::{
 
 use std::collections::HashMap;
 
-fn byte_offset_to_line_col(text: &str, offset: usize) -> (u32, u32) {
-    let mut line = 1u32;
-    let mut col = 1u32;
-    for (i, ch) in text.char_indices() {
-        if i >= offset {
-            break;
+struct LineIndex {
+    line_offsets: Vec<usize>,
+}
+
+impl LineIndex {
+    fn new(text: &str) -> Self {
+        let mut offsets = vec![0usize];
+        for (i, ch) in text.char_indices() {
+            if ch == '\n' {
+                offsets.push(i + 1);
+            }
         }
-        if ch == '\n' {
-            line += 1;
-            col = 1;
-        } else {
-            col += 1;
+        Self {
+            line_offsets: offsets,
         }
     }
-    (line, col)
+
+    fn lookup(&self, offset: usize) -> (u32, u32) {
+        let line_idx = self.line_offsets.partition_point(|&o| o <= offset) - 1;
+        let line = (line_idx + 1) as u32;
+        let col = (offset - self.line_offsets[line_idx] + 1) as u32;
+        (line, col)
+    }
 }
 
 fn is_block_tag(tag: &pulldown_cmark::Tag) -> bool {
@@ -119,9 +127,10 @@ pub fn parse_markdown(markdown: &str) -> SIRDocument {
     let mut footnote_defs: Vec<(u32, String)> = Vec::new();
     let mut in_list_item: bool = false;
     let mut task_list_marker: Option<bool> = None;
+    let line_index = LineIndex::new(markdown);
 
     for (event, range) in parser.into_offset_iter() {
-        let (line, col) = byte_offset_to_line_col(markdown, range.start);
+        let (line, col) = line_index.lookup(range.start);
         current_span = Some(SourceSpan::new(
             line,
             col,

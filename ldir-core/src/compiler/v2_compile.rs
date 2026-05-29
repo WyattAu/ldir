@@ -1911,11 +1911,6 @@ fn emit_v2_paragraph(
     labels: &IndexMap<String, String>,
     refs_map: &IndexMap<String, String>,
 ) -> Result<()> {
-    let runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, labels, refs_map);
-    if runs.iter().all(|(t, _)| t.trim().is_empty()) {
-        return Ok(());
-    }
-
     let style_name = module.body.get(node_id).and_then(|n| n.style.as_deref());
     let saved_font_size = ctx.font_size;
 
@@ -1930,6 +1925,11 @@ fn emit_v2_paragraph(
     let para_start_x = ctx.x.to_f64();
     let para_start_y = ctx.y.to_f64();
 
+    let runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, labels, refs_map);
+    if runs.iter().all(|(t, _)| t.trim().is_empty()) {
+        ctx.font_size = saved_font_size;
+        return Ok(());
+    }
     emit_v2_styled_paragraph(&runs, page, ctx, gir_doc)?;
 
     let line_h = ctx.line_height().to_f64();
@@ -1965,11 +1965,6 @@ fn emit_v2_paragraph_with_bib(
     cite_counter: &mut u32,
     cite_numbers: &mut IndexMap<String, u32>,
 ) -> Result<()> {
-    let runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, labels, refs_map);
-    if runs.iter().all(|(t, _)| t.trim().is_empty()) {
-        return Ok(());
-    }
-
     let style_name = module.body.get(node_id).and_then(|n| n.style.as_deref());
     let saved_font_size = ctx.font_size;
 
@@ -1984,6 +1979,12 @@ fn emit_v2_paragraph_with_bib(
     let para_start_y = ctx.y.to_f64();
 
     let link_urls = collect_link_urls(node_id, module);
+
+    let runs = collect_styled_runs(node_id, module, StyleModifier::EMPTY, labels, refs_map);
+    if runs.iter().all(|(t, _)| t.trim().is_empty()) {
+        ctx.font_size = saved_font_size;
+        return Ok(());
+    }
     emit_v2_styled_paragraph(&runs, page, ctx, gir_doc)?;
 
     let line_h = ctx.line_height().to_f64();

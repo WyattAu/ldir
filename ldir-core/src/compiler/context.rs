@@ -59,6 +59,20 @@ pub const FONT_ID_BOLD_ITALIC: u32 = 3;
 /// Font ID for monospace.
 pub const FONT_ID_MONO: u32 = 4;
 
+/// Pre-computed layout for a single paragraph (parallel phase output).
+#[derive(Clone)]
+pub struct PrecomputedParagraph {
+    pub lines: Vec<PrecomputedLine>,
+}
+
+/// One justified line within a pre-computed paragraph.
+#[derive(Clone)]
+pub struct PrecomputedLine {
+    pub glyph_ids: Vec<u32>,
+    pub x_advances: Vec<i32>,
+    pub font_ids: Vec<u32>,
+}
+
 /// Mutable compilation state.
 pub struct CompileContext {
     /// Current cursor X position (26.6 fixed-point).
@@ -132,6 +146,10 @@ pub struct CompileContext {
     pub section_title: String,
     /// Whether we are still on the first page (for header suppression).
     pub first_page: bool,
+    /// Pre-computed paragraph layouts from the parallel phase.
+    /// Keyed by node ID; populated before the sequential emit phase.
+    #[allow(dead_code)]
+    pub precomputed_paragraphs: std::collections::HashMap<u32, PrecomputedParagraph>,
 }
 
 impl Default for CompileContext {
@@ -194,6 +212,7 @@ impl CompileContext {
             chapter_title: String::new(),
             section_title: String::new(),
             first_page: true,
+            precomputed_paragraphs: std::collections::HashMap::new(),
         }
     }
 
@@ -270,6 +289,7 @@ impl CompileContext {
             chapter_title: String::new(),
             section_title: String::new(),
             first_page: true,
+            precomputed_paragraphs: std::collections::HashMap::new(),
         }
     }
 
