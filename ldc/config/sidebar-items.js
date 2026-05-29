@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["apply_config_to_cli","load_config"],"struct":["LdirConfig"]};

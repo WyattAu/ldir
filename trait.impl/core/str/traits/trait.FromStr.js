@@ -1,5 +1,5 @@
 (function() {
-    const implementors = Object.fromEntries([["ldir_pdf",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.95.0/core/str/traits/trait.FromStr.html\" title=\"trait core::str::traits::FromStr\">FromStr</a> for <a class=\"enum\" href=\"ldir_pdf/conformance/enum.PdfConformance.html\" title=\"enum ldir_pdf::conformance::PdfConformance\">PdfConformance</a>",0]]]]);
+    const implementors = Object.fromEntries([["ldir_pdf",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.96.0/core/str/traits/trait.FromStr.html\" title=\"trait core::str::traits::FromStr\">FromStr</a> for <a class=\"enum\" href=\"ldir_pdf/conformance/enum.PdfConformance.html\" title=\"enum ldir_pdf::conformance::PdfConformance\">PdfConformance</a>",0]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {

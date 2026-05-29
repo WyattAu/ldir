@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["annotations","metadata","module","nodes","resources","serialize","styles","text"]};
+window.SIDEBAR_ITEMS = {"mod":["annotations","metadata","module","nodes","resources","serialize","source_span","styles","text"]};
