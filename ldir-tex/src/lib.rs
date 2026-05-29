@@ -43,6 +43,7 @@
 //! - [Repository](https://github.com/WyattAu/ldir)
 
 mod lexer;
+mod macro_expander;
 mod parser;
 
 use ldir_ir::sir::SIRDocument;
@@ -54,7 +55,8 @@ use ldir_ir::sir::SIRDocument;
 /// (`\documentclass`, `\usepackage`, etc.) is silently skipped.
 pub fn parse_tex(tex: &str) -> SIRDocument {
     let spanned = lexer::TeXLexer::new(tex).tokenize_with_spans();
-    let mut p = parser::TeXParser::new(&spanned);
+    let expanded = macro_expander::expand_macros(spanned);
+    let mut p = parser::TeXParser::new(&expanded);
     p.parse()
 }
 
