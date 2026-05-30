@@ -62,12 +62,14 @@ impl EpubBuilder {
         let chapter_xhtml = format_xhtml(title, &body_content);
         let css = self.options.css.clone().unwrap_or_else(default_css);
         let opf = format_opf(title, author, lang, &uid);
-        let toc_xhtml = format_toc_xhtml(title, module);
+        let toc_xhtml = format_nav_xhtml(title, module);
         let container_xml = format_container_xml();
         let toc_ncx = format_toc_ncx(title, &uid);
 
         let mut zip = SimpleZip::new();
-        zip.add_file("mimetype", "application/epub+zip".as_bytes(), true);
+        let mut mimetype_bytes = b"application/epub+zip".to_vec();
+        mimetype_bytes.push(0);
+        zip.add_file("mimetype", &mimetype_bytes, true);
         zip.add_file("META-INF/container.xml", container_xml.as_bytes(), false);
         zip.add_file("OEBPS/content.opf", opf.as_bytes(), false);
         zip.add_file("OEBPS/toc.ncx", toc_ncx.as_bytes(), false);
@@ -133,15 +135,18 @@ fn format_opf(title: &str, author: &str, lang: &str, uid: &str) -> String {
   <dc:title>{title}</dc:title>
   <dc:language>{lang}</dc:language>
   <dc:creator>{author}</dc:creator>
+  <dc:date>{date_only}</dc:date>
   <meta property="dcterms:modified">{date_now}</meta>
+  <meta property="a11y:validate">true</meta>
+  <meta property="rendition:layout">reflowable</meta>
 </metadata>
 <manifest>
-  <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+  <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml" properties="scripted"/>
   <item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/>
   <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
   <item id="style" href="style.css" media-type="text/css"/>
 </manifest>
-<spine>
+<spine toc="ncx">
   <itemref idref="chapter1"/>
 </spine>
 </package>"#,
@@ -149,39 +154,90 @@ fn format_opf(title: &str, author: &str, lang: &str, uid: &str) -> String {
         author = escape_xml(author),
         lang = lang,
         uid = uid,
+        date_only = date_now_str().split('T').next().unwrap_or(""),
         date_now = date_now_str()
     )
 }
 
-fn format_toc_xhtml(title: &str, module: &SIRModuleV2) -> String {
-    let mut items = String::new();
-    for node in module.headings() {
-        if let Some(_level) = node.heading_level() {
-            let text = module.body.collect_text(node.id);
-            let fallback_id = format!("heading-{}", node.id);
-            let id = node.label.as_deref().unwrap_or(&fallback_id);
-            items.push_str(&format!(
-                "      <li><a href=\"chapter1.xhtml#{}\">{}</a></li>\n",
-                id,
-                escape_xml(&text)
-            ));
-        }
-    }
+fn format_nav_xhtml(title: &str, module: &SIRModuleV2) -> String {
+    let toc_items = build_nested_toc(module);
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
-<head><meta charset="UTF-8"/><title>{title}</title></head>
+<head>
+<meta charset="UTF-8"/>
+<title>{title} - Table of Contents</title>
+</head>
 <body>
 <nav epub:type="toc" id="toc">
   <h1>Table of Contents</h1>
   <ol>
-{items}  </ol>
+{toc_items}  </ol>
+</nav>
+<nav epub:type="landmarks" id="landmarks">
+  <h2>Guide</h2>
+  <ol>
+    <li><a epub:type="cover" href="chapter1.xhtml">Cover</a></li>
+    <li><a epub:type="toc" href="toc.xhtml">Table of Contents</a></li>
+  </ol>
 </nav>
 </body>
 </html>"#,
         title = escape_xml(title)
     )
+}
+
+struct TocEntry {
+    id: String,
+    text: String,
+    level: u8,
+}
+
+fn build_nested_toc(module: &SIRModuleV2) -> String {
+    let mut entries: Vec<TocEntry> = Vec::new();
+    for node in module.headings() {
+        if let Some(level) = node.heading_level() {
+            let text = module.body.collect_text(node.id);
+            let fallback_id = format!("heading-{}", node.id);
+            let id = node.label.as_deref().unwrap_or(&fallback_id);
+            entries.push(TocEntry {
+                id: id.to_string(),
+                text,
+                level,
+            });
+        }
+    }
+    format_nested_entries(&entries, 1)
+}
+
+fn format_nested_entries(entries: &[TocEntry], min_level: u8) -> String {
+    let mut result = String::new();
+    let mut current_level = min_level;
+    for entry in entries {
+        while entry.level > current_level {
+            result.push_str("    ".repeat(current_level as usize).as_str());
+            result.push_str("<ol>\n");
+            current_level += 1;
+        }
+        while entry.level < current_level && current_level > min_level {
+            current_level -= 1;
+            result.push_str("    ".repeat(current_level as usize).as_str());
+            result.push_str("</ol>\n");
+        }
+        result.push_str("    ".repeat(current_level as usize).as_str());
+        result.push_str(&format!(
+            "<li><a href=\"chapter1.xhtml#{}\">{}</a></li>\n",
+            entry.id,
+            escape_xml(&entry.text)
+        ));
+    }
+    while current_level > min_level {
+        current_level -= 1;
+        result.push_str("    ".repeat(current_level as usize).as_str());
+        result.push_str("</ol>\n");
+    }
+    result
 }
 
 fn format_toc_ncx(title: &str, uid: &str) -> String {
@@ -496,6 +552,57 @@ mod tests {
         .build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(!text.contains("class=\"toc\""));
+        Ok(())
+    }
+
+    #[test]
+    fn test_epub_has_accessibility_meta() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let epub = EpubBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("a11y:validate"));
+        assert!(text.contains("rendition:layout"));
+        assert!(text.contains("reflowable"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_epub_has_landmarks_nav() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let epub = EpubBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("epub:type=\"landmarks\""));
+        assert!(text.contains("epub:type=\"cover\""));
+        Ok(())
+    }
+
+    #[test]
+    fn test_epub_has_dc_date() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let epub = EpubBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("<dc:date>"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_epub_mimetype_null_terminated() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let epub = EpubBuilder::new().build(&m)?;
+        let needle = b"application/epub+zip\x00";
+        assert!(
+            epub.windows(needle.len()).any(|w| w == needle),
+            "mimetype file must be null-terminated per EPUB spec"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_spine_has_toc_attribute() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let epub = EpubBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("spine toc=\"ncx\""));
         Ok(())
     }
 

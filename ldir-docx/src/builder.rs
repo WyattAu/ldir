@@ -24,52 +24,32 @@ impl DocxBuilder {
     #[must_use = "building DOCX can fail; check the result"]
     pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, DocxError> {
         let document_xml = self.render_document(module);
+
         let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
 </Types>"#;
 
         let rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
 </Relationships>"#;
 
         let document_rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
 </Relationships>"#;
 
-        let styles_xml = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:style w:type="paragraph" w:styleId="Heading1">
-    <w:name w:val="heading 1"/>
-    <w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="48"/></w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Heading2">
-    <w:name w:val="heading 2"/>
-    <w:pPr><w:spacing w:before="200" w:after="100"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="36"/></w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Heading3">
-    <w:name w:val="heading 3"/>
-    <w:pPr><w:spacing w:before="160" w:after="80"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="28"/></w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Heading4">
-    <w:name w:val="heading 4"/>
-    <w:pPr><w:spacing w:before="120" w:after="60"/></w:pPr>
-    <w:rPr><w:b/><w:sz w:val="24"/></w:rPr>
-  </w:style>
-  <w:style w:type="paragraph" w:styleId="Quote">
-    <w:name w:val="Quote"/>
-    <w:pPr><w:ind w:left="720"/></w:pPr>
-    <w:rPr><w:i/><w:color w:val="404040"/></w:rPr>
-  </w:style>
-</w:styles>"#;
+        let styles_xml = self.render_styles();
+        let numbering_xml = self.render_numbering();
+        let core_xml = self.render_core_properties(module);
 
         let mut zip = SimpleZip::new();
         zip.add_file("[Content_Types].xml", content_types.as_bytes(), false);
@@ -81,6 +61,8 @@ impl DocxBuilder {
             false,
         );
         zip.add_file("word/styles.xml", styles_xml.as_bytes(), false);
+        zip.add_file("word/numbering.xml", numbering_xml.as_bytes(), false);
+        zip.add_file("docProps/core.xml", core_xml.as_bytes(), false);
 
         zip.finish().map_err(DocxError::BuildError)
     }
@@ -113,13 +95,21 @@ impl DocxBuilder {
                 }
             }
 
-            NodeType::Part
-            | NodeType::Chapter
+            NodeType::Part => {
+                out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Title\"/></w:pPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline(out, module, child);
+                    }
+                }
+                out.push_str("</w:p>");
+            }
+
+            NodeType::Chapter
             | NodeType::Section
             | NodeType::Subsection
             | NodeType::Subsubsection => {
                 let style = match &node.node_type {
-                    NodeType::Part => "Heading1",
                     NodeType::Chapter => "Heading1",
                     NodeType::Section => "Heading2",
                     NodeType::Subsection => "Heading3",
@@ -172,7 +162,7 @@ impl DocxBuilder {
             NodeType::CodeBlock { language, .. } => {
                 out.push_str("<w:p><w:pPr><w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"F5F5F5\"/></w:pPr>");
                 if let Some(lang) = language {
-                    out.push_str("<w:r><w:rPr><w:rStyle w:val=\"Code\"/><w:color w:val=\"606060\"/></w:rPr><w:t xml:space=\"preserve\">");
+                    out.push_str("<w:r><w:rPr><w:rFonts w:ascii=\"Courier New\" w:hAnsi=\"Courier New\"/><w:color w:val=\"606060\"/></w:rPr><w:t xml:space=\"preserve\">");
                     out.push_str(&format!("[{}]\n", lang));
                     out.push_str("</w:t></w:r>");
                 }
@@ -230,6 +220,54 @@ impl DocxBuilder {
                         out.push_str("</w:t></w:r></w:p>");
                     }
                 }
+            }
+
+            NodeType::Figure { .. } => {
+                out.push_str("<w:p>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        match &child.node_type {
+                            NodeType::Image { alt, .. } => {
+                                out.push_str("<w:r><w:t>");
+                                out.push_str(&escape_xml(alt));
+                                out.push_str(" [image not embedded]</w:t></w:r>");
+                            }
+                            _ => self.render_node(out, module, child),
+                        }
+                    }
+                }
+                out.push_str("</w:p>");
+            }
+
+            NodeType::Caption => {
+                out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Caption\"/></w:pPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline(out, module, child);
+                    }
+                }
+                out.push_str("</w:p>");
+            }
+
+            NodeType::PageBreak => {
+                out.push_str("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>");
+            }
+
+            NodeType::TableOfContents { .. } => {
+                out.push_str("<w:p><w:pPr><w:pStyle w:val=\"TOCHeading\"/></w:pPr><w:r><w:t>Table of Contents</w:t></w:r></w:p>");
+                out.push_str("<w:p><w:r><w:fldChar w:fldCharType=\"begin\"/></w:r><w:r><w:instrText xml:space=\"preserve\"> TOC \\o \"1-3\" \\h \\z \\u </w:instrText><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r><w:r><w:t>[Update this field in Word to generate TOC]</w:t></w:r><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p>");
+            }
+
+            NodeType::Citation { keys, .. } => {
+                out.push_str("<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/><w:sz w:val=\"16\"/></w:rPr><w:t>");
+                out.push_str(&escape_xml(&keys.join(", ")));
+                out.push_str("</w:t></w:r>");
+            }
+
+            NodeType::Reference { label } => {
+                out.push_str("<w:r><w:rPr><w:color w:val=\"0066CC\"/></w:rPr><w:t>");
+                out.push_str(&escape_xml(&format!("[ref: {}]", label)));
+                out.push_str("</w:t></w:r>");
             }
 
             _ => {
@@ -310,12 +348,21 @@ impl DocxBuilder {
                 out.push_str("</w:r>");
             }
 
-            NodeType::Link { url, .. } => {
-                out.push_str("<w:hyperlink w:anchor=\"\"><w:r><w:rPr><w:color w:val=\"0066CC\"/><w:u w:val=\"single\"/></w:rPr><w:t>");
+            NodeType::Link { url, title } => {
                 let text = module.body.collect_text(node.id);
+                out.push_str(
+                    "<w:r><w:rPr><w:color w:val=\"0066CC\"/><w:u w:val=\"single\"/></w:rPr><w:t>",
+                );
                 out.push_str(&escape_xml(&text));
-                out.push_str("</w:t></w:r></w:hyperlink>");
-                let _ = url;
+                out.push_str("</w:t></w:r>");
+                if let Some(t) = title {
+                    out.push_str("<w:r><w:rPr><w:color w:val=\"0066CC\"/></w:rPr><w:t xml:space=\"preserve\"> (");
+                    out.push_str(&escape_xml(t));
+                    out.push_str(")</w:t></w:r>");
+                }
+                out.push_str("<w:r><w:rPr><w:sz w:val=\"16\"/><w:color w:val=\"0066CC\"/></w:rPr><w:t xml:space=\"preserve\"> [");
+                out.push_str(&escape_xml(url));
+                out.push_str("]</w:t></w:r>");
             }
 
             NodeType::Image { alt, .. } => {
@@ -373,21 +420,138 @@ impl DocxBuilder {
     }
 
     fn render_table_row(&self, out: &mut String, module: &SIRModuleV2, node: &Node) {
+        let is_header = matches!(&node.node_type, NodeType::TableRow { is_header: true });
         out.push_str("<w:tr>");
+        if is_header {
+            out.push_str("<w:trPr><w:tblHeader/></w:trPr>");
+        }
         for &child_id in &node.child_ids {
             if let Some(child) = module.body.get(child_id)
                 && matches!(&child.node_type, NodeType::TableCell { .. })
             {
                 out.push_str("<w:tc><w:p>");
+                if is_header {
+                    out.push_str("<w:pPr><w:jc w:val=\"center\"/></w:pPr>");
+                }
                 for &cell_child_id in &child.child_ids {
                     if let Some(cell_child) = module.body.get(cell_child_id) {
-                        self.render_inline(out, module, cell_child);
+                        if is_header {
+                            out.push_str("<w:r><w:rPr><w:b/></w:rPr>");
+                            self.render_inline(out, module, cell_child);
+                            out.push_str("</w:r>");
+                        } else {
+                            self.render_inline(out, module, cell_child);
+                        }
                     }
                 }
                 out.push_str("</w:p></w:tc>");
             }
         }
         out.push_str("</w:tr>");
+    }
+
+    fn render_styles(&self) -> String {
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:rPr><w:sz w:val="22"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Title">
+    <w:name w:val="Title"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:spacing w:before="480" w:after="240"/><w:jc w:val="center"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="56"/><w:color w:val="2E74B5"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="48"/><w:color w:val="2E74B5"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2">
+    <w:name w:val="heading 2"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:pPr><w:keepNext/><w:spacing w:before="200" w:after="100"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="2E74B5"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading3">
+    <w:name w:val="heading 3"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:pPr><w:keepNext/><w:spacing w:before="160" w:after="80"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="28"/><w:color w:val="2E74B5"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading4">
+    <w:name w:val="heading 4"/>
+    <w:basedOn w:val="Normal"/>
+    <w:next w:val="Normal"/>
+    <w:pPr><w:keepNext/><w:spacing w:before="120" w:after="60"/></w:pPr>
+    <w:rPr><w:b/><w:sz w:val="24"/><w:color w:val="2E74B5"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="ListParagraph">
+    <w:name w:val="List Paragraph"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Quote">
+    <w:name w:val="Quote"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:ind w:left="720"/></w:pPr>
+    <w:rPr><w:i/><w:color w:val="404040"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Caption">
+    <w:name w:val="Caption"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:spacing w:before="120" w:after="120"/></w:pPr>
+    <w:rPr><w:i/><w:sz w:val="18"/><w:color w:val="404040"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="TOCHeading">
+    <w:name w:val="TOC Heading"/>
+    <w:basedOn w:val="Heading1"/>
+  </w:style>
+</w:styles>"#
+            .to_string()
+    }
+
+    fn render_numbering(&self) -> String {
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:abstractNum w:abstractNumId="0">
+    <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="&#x2022;"/><w:lvlJc w:val="left"/></w:lvl>
+    <w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="-"/><w:lvlJc w:val="left"/></w:lvl>
+  </w:abstractNum>
+  <w:abstractNum w:abstractNumId="1">
+    <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:lvlJc w:val="left"/></w:lvl>
+    <w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%2)"/><w:lvlJc w:val="left"/></w:lvl>
+  </w:abstractNum>
+  <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
+  <w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num>
+</w:numbering>"#.to_string()
+    }
+
+    fn render_core_properties(&self, module: &SIRModuleV2) -> String {
+        let title = module.metadata.title.as_deref().unwrap_or("");
+        let author = module.metadata.author.as_deref().unwrap_or("");
+        let subject = module.metadata.subject.as_deref().unwrap_or("");
+        let _date = module.metadata.date.as_deref().unwrap_or("");
+        let created = if module.header.created > 0 {
+            format_iso8601(module.header.created)
+        } else {
+            String::new()
+        };
+
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>{title}</dc:title>
+  <dc:creator>{author}</dc:creator>
+  <dc:subject>{subject}</dc:subject>
+  <dcterms:created xsi:type="dcterms:W3CDTF">{created}</dcterms:created>
+</cp:coreProperties>"#
+        )
     }
 }
 
@@ -404,6 +568,16 @@ fn escape_xml(s: &str) -> String {
         }
     }
     out
+}
+
+fn format_iso8601(secs: u64) -> String {
+    let secs = secs as i64;
+    let year = 1970 + secs / 31_536_000;
+    let rem = secs % 31_536_000;
+    let month = 1 + rem / 2_592_000;
+    let rem = rem % 2_592_000;
+    let day = 1 + rem / 86_400;
+    format!("{year:04}-{month:02}-{day:02}T00:00:00Z")
 }
 
 struct SimpleZip {
