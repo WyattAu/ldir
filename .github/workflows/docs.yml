@@ -39,7 +39,7 @@ jobs:
           tool: mdbook
 
       - name: Build Rust documentation
-        run: cargo doc --workspace --exclude ldir-wasm --no-deps
+        run: cargo doc --workspace --exclude ldir-wasm --no-deps --locked
 
       - name: Build mdBook documentation
         run: mdbook build docs/book

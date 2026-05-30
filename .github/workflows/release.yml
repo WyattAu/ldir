@@ -63,7 +63,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build ldc release binary
-        run: cargo build --release -p ldc --target ${{ matrix.target }}
+        run: cargo build --release -p ldc --target ${{ matrix.target }} --locked
 
       - name: Upload ldc binary
         uses: actions/upload-artifact@v4

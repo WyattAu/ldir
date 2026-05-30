@@ -50,19 +50,19 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Clippy
-        run: cargo clippy --workspace --exclude ldir-wasm -- -D warnings
+        run: cargo clippy --workspace --exclude ldir-wasm --locked -- -D warnings
 
       - name: Check formatting
         run: cargo fmt --check
 
       - name: Build documentation
-        run: cargo doc --workspace --exclude ldir-wasm --no-deps
+        run: cargo doc --workspace --exclude ldir-wasm --no-deps --locked
 
       - name: Build binaries (required for integration tests)
-        run: cargo build --workspace --exclude ldir-wasm --bins
+        run: cargo build --workspace --exclude ldir-wasm --bins --locked
 
       - name: Test
-        run: cargo test --workspace --exclude ldir-wasm
+        run: cargo test --workspace --exclude ldir-wasm --locked
 
   msrv-check:
     name: MSRV (1.88)
@@ -88,7 +88,7 @@ jobs:
           restore-keys: msrv-cargo-
 
       - name: Check build
-        run: cargo check --workspace --exclude ldir-wasm
+        run: cargo check --workspace --exclude ldir-wasm --locked
 
   bench-check:
     name: Benchmark Regression
@@ -224,7 +224,7 @@ jobs:
       - name: Build WASM
         run: cargo build -p ldir-wasm --target wasm32-unknown-unknown
 
-  feature-features:
+  feature-gates:
     name: Feature Gates
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -251,13 +251,13 @@ jobs:
 
       - name: Test wasm-plugins feature
         run: |
-          cargo test -p ldir-core --features wasm-plugins
-          cargo clippy -p ldir-core --features wasm-plugins -- -D warnings
+          cargo test -p ldir-core --features wasm-plugins --locked
+          cargo clippy -p ldir-core --features wasm-plugins --locked -- -D warnings
 
       - name: Test all-features (non-WASM crates)
         run: |
-          cargo test -p ldir-core -p ldir-pdf -p ldir-ir --all-features
-          cargo clippy -p ldir-core -p ldir-pdf -p ldir-ir --all-features -- -D warnings
+          cargo test -p ldir-core -p ldir-pdf -p ldir-ir --all-features --locked
+          cargo clippy -p ldir-core -p ldir-pdf -p ldir-ir --all-features --locked -- -D warnings
 
   pdfa-check:
     name: PDF/A Conformance
@@ -310,7 +310,7 @@ jobs:
           restore-keys: pdfa-cargo-
 
       - name: Build ldc binary
-        run: cargo build -p ldc --release
+        run: cargo build -p ldc --release --locked
 
       - name: Generate test PDFs
         run: |
@@ -366,7 +366,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Generate completions and man pages
-        run: cargo run -p ldc --example generate-completions
+        run: cargo run -p ldc --example generate-completions --locked
 
       - name: Check completions match checked-in files
         run: |
