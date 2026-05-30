@@ -105,7 +105,7 @@ parley = "0.3"
 wgpu = "22.1"
 
 # WASM
-wasmtime = "28"
+wasmtime = "38"
 
 # ECS reference
 shipyard = "0.11"
