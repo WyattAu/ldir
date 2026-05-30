@@ -234,6 +234,16 @@ impl Iterator for CmapIterator<'_> {
                 self.codepoint_ranges.push(0x300..0x400);
                 self.codepoint_ranges.push(0x400..0x500);
                 self.codepoint_ranges.push(0x2000..0x2100);
+                // CJK codepoint ranges required for ToUnicode CMap generation.
+                // Without these, CJK glyphs in PDFs will not map back to Unicode
+                // codepoints, breaking text selection, copy, and search.
+                self.codepoint_ranges.push(0x2E80..0x3000);
+                self.codepoint_ranges.push(0x3000..0x3100);
+                self.codepoint_ranges.push(0x3400..0x4DC0);
+                self.codepoint_ranges.push(0x4E00..0xA000);
+                self.codepoint_ranges.push(0xAC00..0xD7B0);
+                self.codepoint_ranges.push(0xF900..0xFB00);
+                self.codepoint_ranges.push(0xFF00..0xFFF0);
             }
 
             while self.current_range < self.codepoint_ranges.len() {

@@ -211,6 +211,27 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let docs = self.documents.read().await;
+        let uri = &params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+        let Some(state) = docs.get(&uri.to_string()) else {
+            return Ok(None);
+        };
+        let ext = crate::detect_extension(uri.path());
+        let Some(line_text) = state.text.lines().nth(pos.line as usize) else {
+            return Ok(None);
+        };
+        let prefix = &line_text[..pos.character as usize];
+        let items = match ext {
+            "tex" => completion_latex(prefix, &state.text),
+            "md" => completion_markdown(prefix),
+            "typ" => completion_typst(prefix),
+            _ => return Ok(None),
+        };
+        Ok(Some(CompletionResponse::Array(items)))
+    }
+
     async fn document_symbol(
         &self,
         params: DocumentSymbolParams,
@@ -251,4 +272,290 @@ fn extract_md_link_target(line: &str) -> Option<String> {
         }
     }
     None
+}
+
+const LATEX_COMMANDS: &[(&str, &str)] = &[
+    ("section", "\\section{title}"),
+    ("subsection", "\\subsection{title}"),
+    ("subsubsection", "\\subsubsection{title}"),
+    ("textbf", "\\textbf{text}"),
+    ("textit", "\\textit{text}"),
+    ("underline", "\\underline{text}"),
+    ("emph", "\\emph{text}"),
+    ("cite", "\\cite{key}"),
+    ("ref", "\\ref{label}"),
+    ("label", "\\label{name}"),
+    ("eqref", "\\eqref{label}"),
+    ("cref", "\\cref{label}"),
+    ("autoref", "\\autoref{label}"),
+    ("equation", "\\begin{equation}\n\n\\end{equation}"),
+    (
+        "figure",
+        "\\begin{figure}\n\\centering\n\\includegraphics{}\n\\caption{}\n\\end{figure}",
+    ),
+    (
+        "table",
+        "\\begin{table}\n\\centering\n\\begin{tabular}{}\n\\end{tabular}\n\\caption{}\n\\end{table}",
+    ),
+    ("itemize", "\\begin{itemize}\n\\item \n\\end{itemize}"),
+    ("enumerate", "\\begin{enumerate}\n\\item \n\\end{enumerate}"),
+    ("align", "\\begin{align}\n\n\\end{align}"),
+    ("item", "\\item "),
+    ("caption", "\\caption{text}"),
+    ("centering", "\\centering"),
+    ("includegraphics", "\\includegraphics{file}"),
+    ("footnote", "\\footnote{text}"),
+    ("url", "\\url{link}"),
+    ("href", "\\href{url}{text}"),
+    ("usepackage", "\\usepackage{name}"),
+    ("documentclass", "\\documentclass{cls}"),
+    ("bibliography", "\\bibliography{file}"),
+    ("bibliographystyle", "\\bibliographystyle{style}"),
+    ("input", "\\input{file}"),
+    ("include", "\\include{file}"),
+    ("title", "\\title{text}"),
+    ("author", "\\author{name}"),
+    ("date", "\\date{text}"),
+    ("maketitle", "\\maketitle"),
+    ("tableofcontents", "\\tableofcontents"),
+    ("abstract", "\\begin{abstract}\n\n\\end{abstract}"),
+    ("proof", "\\begin{proof}\n\n\\end{proof}"),
+    ("theorem", "\\begin{theorem}\n\n\\end{theorem}"),
+    ("lemma", "\\begin{lemma}\n\n\\end{lemma}"),
+    ("definition", "\\begin{definition}\n\n\\end{definition}"),
+    ("paragraph", "\\paragraph{title}"),
+    ("newline", "\\newline"),
+    ("pagebreak", "\\pagebreak"),
+    ("noindent", "\\noindent"),
+    ("hline", "\\hline"),
+    ("cline", "\\cline{}"),
+    ("toprule", "\\toprule"),
+    ("midrule", "\\midrule"),
+    ("bottomrule", "\\bottomrule"),
+    ("text", "\\text{}"),
+    ("mathrm", "\\mathrm{}"),
+    ("mathbf", "\\mathbf{}"),
+    ("frac", "\\frac{num}{den}"),
+    ("sqrt", "\\sqrt{}"),
+    ("int", "\\int"),
+    ("sum", "\\sum"),
+    ("prod", "\\prod"),
+    ("lim", "\\lim"),
+    ("sin", "\\sin"),
+    ("cos", "\\cos"),
+    ("alpha", "\\alpha"),
+    ("beta", "\\beta"),
+    ("gamma", "\\gamma"),
+    ("delta", "\\delta"),
+    ("epsilon", "\\epsilon"),
+    ("lambda", "\\lambda"),
+    ("mu", "\\mu"),
+    ("sigma", "\\sigma"),
+    ("omega", "\\omega"),
+    ("infinity", "\\infty"),
+    ("partial", "\\partial"),
+    ("nabla", "\\nabla"),
+    ("left", "\\left"),
+    ("right", "\\right"),
+    ("big", "\\big"),
+    ("Big", "\\Big"),
+];
+
+const LATEX_ENVIRONMENTS: &[(&str, &str)] = &[
+    ("document", "\\begin{document}\n\n\\end{document}"),
+    ("equation", "\\begin{equation}\n\n\\end{equation}"),
+    ("equation*", "\\begin{equation*}\n\n\\end{equation*}"),
+    (
+        "figure",
+        "\\begin{figure}\n\\centering\n\\includegraphics{}\n\\caption{}\n\\end{figure}",
+    ),
+    (
+        "table",
+        "\\begin{table}\n\\centering\n\\begin{tabular}{}\n\\end{tabular}\n\\caption{}\n\\end{table}",
+    ),
+    ("itemize", "\\begin{itemize}\n\\item \n\\end{itemize}"),
+    ("enumerate", "\\begin{enumerate}\n\\item \n\\end{enumerate}"),
+    ("align", "\\begin{align}\n\n\\end{align}"),
+    ("align*", "\\begin{align*}\n\n\\end{align*}"),
+    ("cases", "\\begin{cases}\n\n\\end{cases}"),
+    ("split", "\\begin{split}\n\n\\end{split}"),
+    ("gathered", "\\begin{gathered}\n\n\\end{gathered}"),
+    ("array", "\\begin{array}{cc}\n\n\\end{array}"),
+    ("tabular", "\\begin{tabular}{cc}\n\n\\end{tabular}"),
+    (
+        "minipage",
+        "\\begin{minipage}{\\textwidth}\n\n\\end{minipage}",
+    ),
+    ("verbatim", "\\begin{verbatim}\n\n\\end{verbatim}"),
+    ("lstlisting", "\\begin{lstlisting}\n\n\\end{lstlisting}"),
+    ("quote", "\\begin{quote}\n\n\\end{quote}"),
+    ("abstract", "\\begin{abstract}\n\n\\end{abstract}"),
+    ("proof", "\\begin{proof}\n\n\\end{proof}"),
+    ("theorem", "\\begin{theorem}\n\n\\end{theorem}"),
+    ("lemma", "\\begin{lemma}\n\n\\end{lemma}"),
+    ("definition", "\\begin{definition}\n\n\\end{definition}"),
+    ("corollary", "\\begin{corollary}\n\n\\end{corollary}"),
+    ("example", "\\begin{example}\n\n\\end{example}"),
+    ("remark", "\\begin{remark}\n\n\\end{remark}"),
+    ("multline", "\\begin{multline}\n\n\\end{multline}"),
+    ("flalign", "\\begin{flalign}\n\n\\end{flalign}"),
+];
+
+fn completion_latex(prefix: &str, full_text: &str) -> Vec<CompletionItem> {
+    if let Some(stripped) = prefix.strip_suffix("\\begin{") {
+        let typed = stripped.to_lowercase();
+        let mut items = Vec::new();
+        for &(name, insert) in LATEX_ENVIRONMENTS {
+            if name.starts_with(&typed) {
+                items.push(CompletionItem {
+                    label: name.to_string(),
+                    detail: Some(format!("environment {name}")),
+                    kind: Some(CompletionItemKind::SNIPPET),
+                    insert_text: Some(insert.to_string()),
+                    insert_text_format: Some(InsertTextFormat::SNIPPET),
+                    filter_text: Some(name.to_string()),
+                    ..Default::default()
+                });
+            }
+        }
+        return items;
+    }
+
+    if let Some(rest) = find_in_braces(prefix, "\\ref{")
+        .or_else(|| find_in_braces(prefix, "\\cite{"))
+        .or_else(|| find_in_braces(prefix, "\\eqref{"))
+        .or_else(|| find_in_braces(prefix, "\\cref{"))
+        .or_else(|| find_in_braces(prefix, "\\Cref{"))
+        .or_else(|| find_in_braces(prefix, "\\autoref{"))
+    {
+        let typed = rest.to_lowercase();
+        return extract_labels(full_text)
+            .into_iter()
+            .filter(|l| l.to_lowercase().contains(&typed))
+            .map(|label| CompletionItem {
+                label: label.clone(),
+                detail: Some(format!("label: {label}")),
+                kind: Some(CompletionItemKind::REFERENCE),
+                insert_text: Some(label),
+                ..Default::default()
+            })
+            .collect();
+    }
+
+    if let Some(stripped) = prefix.strip_suffix('\\') {
+        let typed = stripped.to_lowercase();
+        let mut items = Vec::new();
+        for &(name, insert) in LATEX_COMMANDS {
+            if name.starts_with(&typed) {
+                items.push(CompletionItem {
+                    label: name.to_string(),
+                    detail: Some(insert.to_string()),
+                    kind: Some(CompletionItemKind::KEYWORD),
+                    insert_text: Some(insert.to_string()),
+                    filter_text: Some(name.to_string()),
+                    ..Default::default()
+                });
+            }
+        }
+        return items;
+    }
+
+    Vec::new()
+}
+
+fn completion_markdown(prefix: &str) -> Vec<CompletionItem> {
+    let trimmed = prefix.trim_start();
+    if prefix.len() != trimmed.len() && trimmed.is_empty() {
+        return vec![
+            CompletionItem {
+                label: "#".to_string(),
+                detail: Some("Heading 1".to_string()),
+                kind: Some(CompletionItemKind::KEYWORD),
+                insert_text: Some("# ".to_string()),
+                ..Default::default()
+            },
+            CompletionItem {
+                label: "##".to_string(),
+                detail: Some("Heading 2".to_string()),
+                kind: Some(CompletionItemKind::KEYWORD),
+                insert_text: Some("## ".to_string()),
+                ..Default::default()
+            },
+            CompletionItem {
+                label: "###".to_string(),
+                detail: Some("Heading 3".to_string()),
+                kind: Some(CompletionItemKind::KEYWORD),
+                insert_text: Some("### ".to_string()),
+                ..Default::default()
+            },
+            CompletionItem {
+                label: "####".to_string(),
+                detail: Some("Heading 4".to_string()),
+                kind: Some(CompletionItemKind::KEYWORD),
+                insert_text: Some("#### ".to_string()),
+                ..Default::default()
+            },
+        ];
+    }
+    Vec::new()
+}
+
+fn completion_typst(prefix: &str) -> Vec<CompletionItem> {
+    let trimmed = prefix.trim_start();
+    if prefix.len() != trimmed.len() && trimmed.is_empty() {
+        return vec![
+            CompletionItem {
+                label: "=".to_string(),
+                detail: Some("Heading 1".to_string()),
+                kind: Some(CompletionItemKind::KEYWORD),
+                insert_text: Some("= ".to_string()),
+                ..Default::default()
+            },
+            CompletionItem {
+                label: "==".to_string(),
+                detail: Some("Heading 2".to_string()),
+                kind: Some(CompletionItemKind::KEYWORD),
+                insert_text: Some("== ".to_string()),
+                ..Default::default()
+            },
+            CompletionItem {
+                label: "===".to_string(),
+                detail: Some("Heading 3".to_string()),
+                kind: Some(CompletionItemKind::KEYWORD),
+                insert_text: Some("=== ".to_string()),
+                ..Default::default()
+            },
+        ];
+    }
+    Vec::new()
+}
+
+fn find_in_braces<'a>(line: &'a str, prefix: &str) -> Option<&'a str> {
+    if let Some(start) = line.rfind(prefix) {
+        let after = &line[start + prefix.len()..];
+        if !after.contains('}') {
+            return Some(after);
+        }
+    }
+    None
+}
+
+fn extract_labels(text: &str) -> Vec<String> {
+    let prefix = "\\label{";
+    let mut labels = Vec::new();
+    for line in text.lines() {
+        let mut search = line;
+        while let Some(pos) = search.find(prefix) {
+            let rest = &search[pos + prefix.len()..];
+            if let Some(end) = rest.find('}') {
+                labels.push(rest[..end].to_string());
+                search = &rest[end + 1..];
+            } else {
+                break;
+            }
+        }
+    }
+    labels.sort();
+    labels.dedup();
+    labels
 }
