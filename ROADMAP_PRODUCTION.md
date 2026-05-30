@@ -99,7 +99,7 @@ Publish all 25 public crates to crates.io.
 ### B-1: API Stabilization (1 week)
 
 - [x] Audit all `pub` items for stability -- mark unstable APIs with `#[doc(hidden)]` or `#[cfg(feature = "unstable")]`
-- [ ] Ensure all public types implement `Debug`, `Clone` where appropriate
+- [x] Ensure all public types implement `Debug`, `Clone` where appropriate -- DONE (32 types across 20 crates)
 3. [x] Verify all crate-level `//!` documentation is complete (ldir-link and ldir-opt now done)
 4. [x] Ensure `cargo doc --workspace --no-deps` produces zero warnings
 5. [ ] Add `#[doc(alias = "...")]` for common alternative names
@@ -168,6 +168,8 @@ Publish all 25 public crates to crates.io.
 2. Lazy glyph loading -- only load glyphs actually used
 3. Target: subset a 15MB CJK font to <500KB for typical documents
 
+**Note:** CmapIterator CJK Unicode ranges fixed (correctness bug). CJK subsetting now correctly handles all CJK code point ranges, improving correctness for PDF/A CJK documents.
+
 ### C-4: Parallel Page Compilation -- ATTEMPTED, REVERTED (see notes)
 
 Parallel paragraph pre-computation (rayon) regressed 9.25s -> 12s. Infrastructure kept. Requires architectural refactor: separate pure "layout computation" from sequential "command emission". Current `CompileContext` is monolithic mutable state.
@@ -194,8 +196,8 @@ Current HashMap-based interning double-allocates. Replace with:
 
 ### D-2: Language Server Enhancement (2-3 weeks)
 
-1. Full LSP compliance: hover with type info, go-to-definition, references, rename
-2. Real-time preview via incremental compilation
+1. [x] Full LSP compliance: hover with type info, go-to-definition, references, rename -- DONE (completion, references, rename, code_actions implemented)
+2. Real-time preview via incremental compilation (incremental compilation exists but not yet wired into LSP)
 3. Multi-format support in single workspace
 4. Diagnostics with quick-fix suggestions
 

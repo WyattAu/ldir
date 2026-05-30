@@ -124,6 +124,8 @@ Refactored `compileReal` to use named `compileStep` function. Lean4 sorry: 3 to 
 
 Add `veraPDF` to CI pipeline. Validate that all generated PDFs pass PDF/A-4 conformance. Fail the build on conformance violations.
 
+**Note:** CmapIterator CJK Unicode ranges fixed (correctness bug). CJK subsetting now correctly handles all CJK code point ranges, improving correctness for PDF/A CJK documents.
+
 ### X-4: Cross-platform CI (1 week) [DONE]
 
 Matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). MSRV check job (pin to Rust 1.85).

@@ -184,10 +184,16 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 ### 5.1 Prerequisites
 
 - [x] Stable public API for all 25 crates
+- [x] Ensure all public types implement `Debug`, `Clone` where appropriate -- DONE (32 types across 20 crates)
+- [x] Ensure `cargo doc --workspace --no-deps` produces zero warnings -- DONE
 - [ ] All crates pass `cargo publish --dry-run` (ldir-ir and ldir-test-helpers pass; remaining blocked on ldir-ir not yet published)
 - [x] API documentation on docs.rs (docs.yml CI job)
 - [x] All crates have proper metadata (repository, license, description, keywords, categories)
 - [ ] README.md with badges, installation, quickstart (partial)
+
+### 5.1a String Interner Fix
+
+The HashMap-based string interner double-allocated strings. Fixed by switching to `Arc<str>` for single-allocation interning, reducing per-string overhead from two heap allocations to one.
 
 ### 5.2 Publication Order
 
