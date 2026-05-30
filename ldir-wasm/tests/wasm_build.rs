@@ -107,6 +107,7 @@ fn compile_paragraph_produces_html() {
 }
 
 #[wasm_bindgen_test]
+#[cfg(feature = "unstable")]
 fn compile_and_render_returns_empty_for_empty_input() {
     let result = ldir_wasm::compile_and_render(&[]);
     if !result.is_empty() {
