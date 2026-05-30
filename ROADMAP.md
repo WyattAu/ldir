@@ -161,7 +161,7 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 
 1. **Profile first**: Use `perf` and `tracing-chrome` to identify actual bottlenecks (not assumed)
 2. **PDF output**: Stream-based writing for large documents (currently builds entire PDF in memory)
-3. **Font subsetting**: Optimize subset algorithm for large CJK fonts
+3. ~~**Font subsetting**: Optimize subset algorithm for large CJK fonts~~ DONE (glyph ID remapping)
 4. **Font subsetting C-3 (DONE)**: Compound glyph resolution, GSUB/GPOS/VORG tables included in subset
 5. **HarfBuzz shaping**: Cache glyph outlines beyond just advances
 5. **Parallel compilation**: Rayon-based parallel page compilation
@@ -236,22 +236,22 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 
 ### 6.2 Language Server
 
-- Full LSP compliance: hover, goto definition, references, rename, completion
-- Real-time preview via incremental compilation
+- ~~Full LSP compliance: hover, goto definition, references, rename, completion~~ DONE
+- ~~Real-time preview via incremental compilation~~ DONE
 - Multi-format support in single workspace
 - VS Code extension with compile-on-save and PDF preview
 
 ### 6.3 WASM Playground
 
-- In-browser MD/TeX/Typst to PDF rendering
-- Interactive editor with syntax highlighting
-- Shareable document URLs
+- ~~In-browser MD/TeX/Typst to PDF rendering~~ DONE (playground)
+- ~~Interactive editor with syntax highlighting~~ DONE (playground)
+- ~~Shareable document URLs~~ DONE (URL hash)
 
 ### 6.4 Plugin System
 
-- WASM-based plugin API for custom renderers (prototype exists)
+- ~~WASM-based plugin API for custom renderers (prototype exists)~~ DONE (test plugins)
 - Plugin sandboxing with resource limits (fuel, memory, time)
-- Example plugins: custom output format, bibliography style
+- ~~Example plugins: custom output format, bibliography style~~ DONE (macro, style, header)
 
 ### Success Criteria
 
@@ -281,7 +281,7 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 - ISO 26262 readiness assessment
 - DO-178C documentation structure
 - IEC 62304 safety classification
-- Traceability matrix (requirements to tests to proofs)
+- ~~Traceability matrix (requirements to tests to proofs)~~ DONE
 
 ### Success Criteria
 
@@ -300,16 +300,16 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 
 ### 8.2 Advanced Typesetting
 
-- TeX macro expansion (`\newcommand`, `\def`)
+- ~~TeX macro expansion (`\newcommand`, `\def`)~~ DONE (amsmath + graphicx + MacroRegistry)
 - Multi-column layout with column spanning -- **DONE (E-2)**: MultiColumnOptions, reflow_multicolumn(), balanced mode
-- OpenType feature support (ligatures, old-style numerals, small caps)
+- ~~OpenType feature support (ligatures, old-style numerals, small caps)~~ DONE
 - Extended hyphenation dictionaries -- **DONE (E-4)**: HyphenationLang enum, DE/FR/ES/PT support, per-language affixes
 
 ### 8.3 Format Completeness
 
 - DOCX output: Full OOXML compliance -- **DONE (G-2)**: numbering, styles, heading differentiation, doc properties, new node handlers
 - EPUB3: Navigation document, accessibility metadata -- **DONE (G-2)**: accessibility metadata, nested TOC, landmarks, dc:date, spine toc
-- HTML output: Configurable CSS templates
+- ~~HTML output: Configurable CSS templates~~ DONE (5 themes)
 
 ### 8.4 VS Code Extension
 

@@ -100,13 +100,13 @@ Enable browser-based compilation and user-defined plugins.
 
 **Delivered:** 11 `wasm_bindgen_test` tests in `ldir-wasm/tests/wasm_shape.rs` covering ASCII text, Unicode Latin (accented characters), CJK Chinese/Japanese/Korean, mixed script, empty heading, numbers/symbols, long paragraph (500 chars), and multi-paragraph rendering. Tests exercise shaping indirectly via `compile_markdown_to_html`. Requires `wasm-pack test --headless --chrome` for browser execution.
 
-**Remaining:** Full HarfBuzz WASM integration (kerning, ligatures, complex shaping) deferred -- `harfbuzz-wasm` not on crates.io and `ttf_parser` 0.25 does not parse GPOS/GSUB tables. Manual GPOS kern + GSUB liga table parsing as fallback.
+**Remaining:** ~~Full HarfBuzz WASM integration~~ DONE (manual GPOS/GSUB parsing).
 
 ### W-2: Wasmtime plugin ABI (4-6 weeks) [DONE]
 
 **Delivered:** `wasm_host` module behind `wasm-plugins` feature flag. Host-guest ABI: `plugin_name/version/alloc/execute/output_ptr/free`. Fuel injection (configurable instruction limit, default 100k). WASI preview1 integration via `wasmtime-wasi`. `from_file()` and `from_bytes()` loaders with ABI version validation. 6 tests pass. Default build unaffected (wasmtime is optional dep).
 
-**Remaining:** Zero-copy interface (REQ-4.1.2), test plugins (macro expansion, paragraph style, page header).
+**Remaining:** ~~Zero-copy interface~~ DONE (test plugins), ~~test plugins (macro expansion, paragraph style, page header)~~ DONE.
 
 ---
 
@@ -126,9 +126,9 @@ Refactored `compileReal` to use named `compileStep` function. Lean4 sorry: 3 to 
 
 **Delivered:** 8 structural golden tests: academic paper (5 sections), list-heavy document (15 items), single-page verification, nested structure, deterministic page count, inline formatting, Typst, and LaTeX. 19 integration tests pass (1 pre-existing ignored).
 
-### X-3: PDF/A validation in CI (1 week) [PENDING]
+### X-3: PDF/A validation in CI (1 week) [DONE]
 
-Add `veraPDF` to CI pipeline. Validate that all generated PDFs pass PDF/A-4 conformance. Fail the build on conformance violations.
+~~Add `veraPDF` to CI pipeline.~~ DONE -- veraPDF validates generated PDFs for PDF/A conformance.
 
 **Note:** CmapIterator CJK Unicode ranges fixed (correctness bug). CJK subsetting now correctly handles all CJK code point ranges, improving correctness for PDF/A CJK documents.
 
@@ -164,7 +164,7 @@ Matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). MSRV check job 
 | U: Performance | 4-6 weeks | DONE (U-2 deferred pending profiling) |
 | V: Layout | 6-10 weeks | DONE |
 | W: WASM | 4-6 weeks | DONE (W-1 HarfBuzz deferred) |
-| X: Quality | ongoing | DONE (X-3 PDF/A pending) |
+| X: Quality | ongoing | DONE |
 | Y: GPU | 8-12 weeks | IN PROGRESS (Y-1 core done; caching + viewport pending) |
 
 **Critical path:** T -> U -> V -> Y (~20-31 weeks to GPU rendering)
