@@ -199,7 +199,11 @@ fn render_node(node: &LIRNode, page: &mut GIRPage) {
             let thickness = fp266_to_i32(break_node.thickness);
             page.push(GIRCommand::new_draw_rule(x, y, w, thickness));
         }
-        LIRNode::TableOfContents(_toc) => {}
+        LIRNode::TableOfContents(_toc) => {
+            // Table of contents rendering requires a two-pass layout:
+            // first pass collects headings and page numbers, second pass
+            // renders the TOC with correct page references. Tracked in ROADMAP Phase 8.
+        }
         LIRNode::Bibliography(bib) => {
             page.push_stack();
             for child in &bib.children {
@@ -207,8 +211,16 @@ fn render_node(node: &LIRNode, page: &mut GIRPage) {
             }
             page.pop_stack();
         }
-        LIRNode::Citation(_) => {}
-        LIRNode::PageBreak(_) => {}
+        LIRNode::Citation(_cite) => {
+            // Citation rendering requires bibliography resolution and
+            // formatted reference insertion. Partially handled by
+            // LIRNode::Bibliography children; inline citations tracked in ROADMAP Phase 8.
+        }
+        LIRNode::PageBreak(pb) => {
+            // Page breaks are handled by the pagination layer before
+            // LIR rendering; nodes reaching here are spurious and ignored.
+            let _ = pb;
+        }
     }
 }
 
