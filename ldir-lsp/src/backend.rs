@@ -46,6 +46,7 @@ impl LanguageServer for Backend {
                 )),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 definition_provider: Some(OneOf::Left(true)),
+                references_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions::default()),
                 ..Default::default()
@@ -211,6 +212,94 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        let docs = self.documents.read().await;
+        let uri = &params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+        let Some(state) = docs.get(&uri.to_string()) else {
+            return Ok(None);
+        };
+        let ext = crate::detect_extension(uri.path());
+        let Some(line_text) = state.text.lines().nth(pos.line as usize) else {
+            return Ok(None);
+        };
+        match ext {
+            "tex" => {
+                if let Some(label) = extract_label_name(line_text) {
+                    let ref_cmds = [
+                        "\\ref{",
+                        "\\eqref{",
+                        "\\cref{",
+                        "\\Cref{",
+                        "\\autoref{",
+                        "\\cite{",
+                    ];
+                    let mut locations = Vec::new();
+                    for (doc_uri, doc_state) in docs.iter() {
+                        if let Ok(doc_url) = Url::parse(doc_uri) {
+                            for (li, line) in doc_state.text.lines().enumerate() {
+                                for cmd in &ref_cmds {
+                                    let pattern = format!("{cmd}{label}}}");
+                                    if let Some(col) = line.find(&pattern) {
+                                        let start = col as u32;
+                                        let end = start + pattern.len() as u32;
+                                        locations.push(Location {
+                                            uri: doc_url.clone(),
+                                            range: Range {
+                                                start: Position {
+                                                    line: li as u32,
+                                                    character: start,
+                                                },
+                                                end: Position {
+                                                    line: li as u32,
+                                                    character: end,
+                                                },
+                                            },
+                                        });
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return Ok(Some(locations));
+                }
+            }
+            "md" => {
+                if let Some(heading) = extract_md_heading_text(line_text) {
+                    let mut locations = Vec::new();
+                    let wiki_link = format!("[[{heading}]]");
+                    for (doc_uri, doc_state) in docs.iter() {
+                        if let Ok(doc_url) = Url::parse(doc_uri) {
+                            for (li, line) in doc_state.text.lines().enumerate() {
+                                if let Some(col) = line.find(&wiki_link) {
+                                    let start = col as u32;
+                                    let end = start + wiki_link.len() as u32;
+                                    locations.push(Location {
+                                        uri: doc_url.clone(),
+                                        range: Range {
+                                            start: Position {
+                                                line: li as u32,
+                                                character: start,
+                                            },
+                                            end: Position {
+                                                line: li as u32,
+                                                character: end,
+                                            },
+                                        },
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    return Ok(Some(locations));
+                }
+            }
+            _ => {}
+        }
+        Ok(None)
+    }
+
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let docs = self.documents.read().await;
         let uri = &params.text_document_position.text_document.uri;
@@ -272,6 +361,42 @@ fn extract_md_link_target(line: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn extract_label_name(line: &str) -> Option<String> {
+    let prefix = "\\label{";
+    if let Some(start) = line.find(prefix) {
+        let rest = &line[start + prefix.len()..];
+        if let Some(end) = rest.find('}') {
+            let label = rest[..end].trim().to_string();
+            if !label.is_empty() {
+                return Some(label);
+            }
+        }
+    }
+    None
+}
+
+fn extract_md_heading_text(line: &str) -> Option<String> {
+    let trimmed = line.trim_start();
+    let hashes: &str;
+    if let Some(h) = trimmed.strip_prefix("#### ") {
+        hashes = h;
+    } else if let Some(h) = trimmed.strip_prefix("### ") {
+        hashes = h;
+    } else if let Some(h) = trimmed.strip_prefix("## ") {
+        hashes = h;
+    } else if let Some(h) = trimmed.strip_prefix("# ") {
+        hashes = h;
+    } else {
+        return None;
+    }
+    let heading = hashes.trim().to_string();
+    if !heading.is_empty() {
+        Some(heading)
+    } else {
+        None
+    }
 }
 
 const LATEX_COMMANDS: &[(&str, &str)] = &[
