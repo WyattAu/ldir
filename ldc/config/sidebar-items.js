@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["apply_config_to_cli","load_config"],"struct":["LdirConfig"]};
+window.SIDEBAR_ITEMS = {"enum":["ConfigError","OutputField"],"fn":["apply_config_to_cli","dump_effective_config","load_config"],"struct":["CitationsConfig","FontsConfig","LatexConfig","LayoutConfig","LdirConfig","OutputConfig","TypographyConfig"]};
