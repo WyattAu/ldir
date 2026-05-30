@@ -6,7 +6,7 @@
 //! Glyph IDs are NOT remapped — they retain their original values so
 //! that `CIDToGIDMap: Identity` works correctly in the PDF.
 
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use ttf_parser::Tag;
 
@@ -74,6 +74,90 @@ impl Default for FontSubset {
     }
 }
 
+fn resolve_compound_glyphs(face: &ttf_parser::Face, used: &mut HashSet<u32>) {
+    const ARG_1_AND_2_ARE_WORDS: u16 = 0x0001;
+    const MORE_COMPONENTS: u16 = 0x0020;
+    const WE_HAVE_A_SCALE: u16 = 0x0008;
+    const WE_HAVE_AN_X_AND_Y_SCALE: u16 = 0x0040;
+    const WE_HAVE_A_TWO_BY_TWO: u16 = 0x0080;
+
+    let raw = face.raw_face();
+
+    let Some(head_data) = raw.table(Tag::from_bytes(b"head")) else {
+        return;
+    };
+    let loca_format = u16::from_be_bytes([head_data[50], head_data[51]]);
+    let Some(loca_table) = raw.table(Tag::from_bytes(b"loca")) else {
+        return;
+    };
+    let Some(glyf_table) = raw.table(Tag::from_bytes(b"glyf")) else {
+        return;
+    };
+
+    let mut queue: VecDeque<u16> = used
+        .iter()
+        .filter_map(|&gid| u16::try_from(gid).ok())
+        .collect();
+    let mut visited: HashSet<u16> = HashSet::with_capacity(used.len());
+    let safety_limit = used.len() * 128 + 1024;
+
+    while let Some(gid) = queue.pop_front() {
+        if visited.len() > safety_limit {
+            break;
+        }
+        if !visited.insert(gid) {
+            continue;
+        }
+
+        let Some((start, len)) = get_glyph_range(loca_table, glyf_table, gid, loca_format) else {
+            continue;
+        };
+        if len < 10 {
+            continue;
+        }
+
+        let glyph_data = &glyf_table[start..start + len];
+        let num_contours = i16::from_be_bytes([glyph_data[0], glyph_data[1]]);
+        if num_contours >= 0 {
+            continue;
+        }
+
+        let mut offset = 10usize;
+        loop {
+            if offset + 4 > glyph_data.len() {
+                break;
+            }
+            let flags = u16::from_be_bytes([glyph_data[offset], glyph_data[offset + 1]]);
+            let component_gid =
+                u16::from_be_bytes([glyph_data[offset + 2], glyph_data[offset + 3]]);
+            offset += 4;
+
+            if flags & ARG_1_AND_2_ARE_WORDS != 0 {
+                offset += 4;
+            } else {
+                offset += 2;
+            }
+            if flags & WE_HAVE_A_TWO_BY_TWO != 0 {
+                offset += 8;
+            } else if flags & WE_HAVE_AN_X_AND_Y_SCALE != 0 {
+                offset += 4;
+            } else if flags & WE_HAVE_A_SCALE != 0 {
+                offset += 2;
+            }
+
+            let component_u32 = component_gid as u32;
+            if !used.contains(&component_u32) {
+                used.insert(component_u32);
+                queue.push_back(component_gid);
+            }
+
+            if flags & MORE_COMPONENTS == 0 {
+                break;
+            }
+        }
+    }
+}
+
 /// Subset a TrueType font to only the specified glyph IDs.
 ///
 /// Glyph IDs are NOT remapped — they retain their original values.
@@ -84,10 +168,13 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
         Err(_) => return full_data.to_vec(),
     };
 
+    let mut used = used_glyphs.clone();
+    resolve_compound_glyphs(&face, &mut used);
+
     let raw = face.raw_face();
 
     // Determine max glyph ID we need to cover
-    let max_gid = used_glyphs.iter().copied().max().unwrap_or(0) as u16;
+    let max_gid = used.iter().copied().max().unwrap_or(0) as u16;
     let num_glyphs = (max_gid as u32 + 1) as u16;
 
     // Get loca format from head table
@@ -177,8 +264,15 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
         tables.push((*b"maxp", m));
     }
 
-    // name, post, OS/2: copy as-is
-    for &tag in [b"name", b"post", b"OS/2"] {
+    // name, post, OS/2, GSUB, GPOS: copy as-is
+    for &tag in [b"name", b"post", b"OS/2", b"GSUB", b"GPOS"] {
+        if let Some(data) = raw.table(Tag::from_bytes(&tag)) {
+            tables.push((tag, data.to_vec()));
+        }
+    }
+
+    // Also include vertical metrics tables if present (CJK vertical writing)
+    for &tag in [b"VORG", b"vmtx", b"vhea"] {
         if let Some(data) = raw.table(Tag::from_bytes(&tag)) {
             tables.push((tag, data.to_vec()));
         }
@@ -458,5 +552,96 @@ mod tests {
         assert_eq!(highest_power_of_2_u32(5), 4);
         assert_eq!(highest_power_of_2_u32(16), 16);
         assert_eq!(highest_power_of_2_u32(0), 0);
+    }
+
+    #[test]
+    fn test_subset_compound_glyphs_included() {
+        let Some(data) = get_font_data() else { return };
+
+        let face = ttf_parser::Face::parse(&data, 0).unwrap();
+        let raw = face.raw_face();
+
+        // Find a compound glyph: numberOfContours < 0 in glyf table
+        let head_data = raw.table(Tag::from_bytes(b"head")).unwrap();
+        let loca_format = u16::from_be_bytes([head_data[50], head_data[51]]);
+        let loca_table = raw.table(Tag::from_bytes(b"loca")).unwrap();
+        let glyf_table = raw.table(Tag::from_bytes(b"glyf")).unwrap();
+
+        let num_glyphs = face.number_of_glyphs();
+        let mut compound_gid: Option<u16> = None;
+        let mut component_gids: Vec<u16> = Vec::new();
+
+        for gid in 1..num_glyphs {
+            if let Some((start, len)) = get_glyph_range(loca_table, glyf_table, gid, loca_format) {
+                if len >= 10 {
+                    let gd = &glyf_table[start..start + len];
+                    let nc = i16::from_be_bytes([gd[0], gd[1]]);
+                    if nc < 0 {
+                        compound_gid = Some(gid);
+                        // Collect first-level component glyph IDs
+                        let mut off = 10usize;
+                        loop {
+                            if off + 4 > gd.len() {
+                                break;
+                            }
+                            let flags = u16::from_be_bytes([gd[off], gd[off + 1]]);
+                            let cg = u16::from_be_bytes([gd[off + 2], gd[off + 3]]);
+                            off += 4;
+                            if flags & 0x0001 != 0 {
+                                off += 4;
+                            } else {
+                                off += 2;
+                            }
+                            if flags & 0x0080 != 0 {
+                                off += 8;
+                            } else if flags & 0x0040 != 0 {
+                                off += 4;
+                            } else if flags & 0x0008 != 0 {
+                                off += 2;
+                            }
+                            component_gids.push(cg);
+                            if flags & 0x0020 == 0 {
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        let Some(compound) = compound_gid else {
+            return; // No compound glyphs in this font, skip test
+        };
+
+        // Subset with only the compound glyph and .notdef
+        let mut glyphs = HashSet::new();
+        glyphs.insert(0);
+        glyphs.insert(compound as u32);
+
+        let subsetted = subset_font(&data, &glyphs);
+        let sub_face = ttf_parser::Face::parse(&subsetted, 0).unwrap();
+
+        let sub_raw = sub_face.raw_face();
+        let sub_head = sub_raw.table(Tag::from_bytes(b"head")).unwrap();
+        let sub_loca_fmt = u16::from_be_bytes([sub_head[50], sub_head[51]]);
+        let sub_loca = sub_raw.table(Tag::from_bytes(b"loca")).unwrap();
+        let sub_glyf = sub_raw.table(Tag::from_bytes(b"glyf")).unwrap();
+
+        // Every direct component glyph must have non-empty data in the subset
+        for comp_gid in &component_gids {
+            let Some(range) = get_glyph_range(sub_loca, sub_glyf, *comp_gid, sub_loca_fmt) else {
+                panic!(
+                    "component glyph {} of compound {} should be in subset",
+                    comp_gid, compound
+                );
+            };
+            assert!(
+                range.1 > 0,
+                "component glyph {} of compound {} must have glyf data in subset",
+                comp_gid,
+                compound
+            );
+        }
     }
 }

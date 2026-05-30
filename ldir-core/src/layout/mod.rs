@@ -14,4 +14,5 @@ pub mod hyphenate;
 pub mod incremental;
 pub mod linebreak;
 pub mod lir_compile;
+pub mod multicolumn;
 pub mod pagination;
