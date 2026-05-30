@@ -1,3 +1,5 @@
+use sha2::{Digest, Sha256};
+
 use ldir_core::compiler::compile_sir;
 use ldir_core::compiler::context::CompileContext;
 use ldir_core::compiler::cross_ref;
@@ -526,32 +528,30 @@ fn make_complex_v2_module() -> SIRModuleV2 {
 
 #[test]
 fn test_v2_compile_sha256_deterministic() {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
     let module = make_complex_v2_module();
 
-    fn hash_bytes(bytes: &[u8]) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        bytes.hash(&mut hasher);
-        hasher.finish()
+    fn hash_bytes_sha256(bytes: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        let hash = hasher.finalize();
+        hex::encode(hash)
     }
 
     let first_hash = {
         let mut ctx = CompileContext::default();
         let gir = compile_v2_document(&module, &mut ctx).unwrap();
         let bytes = emit_gir(&gir);
-        hash_bytes(&bytes)
+        hash_bytes_sha256(&bytes)
     };
 
     for i in 1..10 {
         let mut ctx = CompileContext::default();
         let gir = compile_v2_document(&module, &mut ctx).unwrap();
         let bytes = emit_gir(&gir);
-        let h = hash_bytes(&bytes);
+        let h = hash_bytes_sha256(&bytes);
         assert_eq!(
             first_hash, h,
-            "v2 compile output hash differs at iteration {}",
+            "v2 compile output SHA256 hash differs at iteration {}",
             i
         );
     }
