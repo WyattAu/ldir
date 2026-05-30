@@ -2062,6 +2062,7 @@ name = "ldir-docx"
 version = "0.1.0"
 dependencies = [
  "ldir-ir",
+ "tempfile",
  "thiserror 2.0.18",
 ]
 

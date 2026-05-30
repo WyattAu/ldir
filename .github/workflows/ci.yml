@@ -385,6 +385,104 @@ jobs:
             exit 1
           }
 
+  cross-platform-determinism:
+    name: Cross-Platform Determinism
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install harfbuzz
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-det-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Create test document
+        shell: bash
+        run: |
+          cat > /tmp/det-test.md << 'MDEOF'
+          # Determinism Test
+
+          ## Section One
+
+          This is a deterministic test document for cross-platform
+          verification. It contains ASCII text, a table, and a list.
+
+          | Column A | Column B |
+          |---------|---------|
+          | 1 | 2 |
+          | 3 | 4 |
+
+          - Item one
+          - Item two
+          MDEOF
+
+      - name: Build ldc
+        run: cargo build --release -p ldc --locked
+
+      - name: Compile test document and compute hash
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            LDC="./target/release/ldc.exe"
+          else
+            LDC="./target/release/ldc"
+          fi
+          "$LDC" /tmp/det-test.md --pdfa-level off -o /tmp/det-test.pdf
+          sha256sum /tmp/det-test.pdf > /tmp/hash.txt
+          echo "Hash: $(awk '{print $1}' /tmp/hash.txt)"
+
+      - name: Download baseline (PR only)
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: determinism-baseline-Linux
+          path: /tmp/baseline-hash.txt
+
+      - name: Compare with baseline
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          if [ -f /tmp/baseline-hash.txt ] && [ -f /tmp/hash.txt ]; then
+            BASELINE=$(awk '{print $1}' /tmp/baseline-hash.txt)
+            CURRENT=$(awk '{print $1}' /tmp/hash.txt)
+            if [ "$BASELINE" = "$CURRENT" ]; then
+              echo "Cross-platform determinism: PASS (hashes match)"
+            else
+              echo "::warning::Cross-platform determinism: hashes differ. Linux baseline=$BASELINE current=${{ runner.os }}=$CURRENT"
+              echo "This may indicate a platform-specific rendering difference. Review before merging."
+            fi
+          fi
+
+      - name: Upload hash artifact (main only)
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: determinism-baseline-${{ runner.os }}
+          path: /tmp/hash.txt
+          retention-days: 90
+
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest

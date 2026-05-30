@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+use std::path::Path;
+use std::sync::Arc;
+
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
 
@@ -5,6 +9,25 @@ use ldir_ir::sir::v2::nodes::*;
 pub enum DocxError {
     #[error("DOCX build error: {0}")]
     BuildError(String),
+    #[error("image not found: {0}")]
+    ImageNotFound(String),
+}
+
+#[derive(Debug, Clone)]
+struct ImageRef {
+    r_id: String,
+    source: String,
+    content_type: String,
+    alt_text: String,
+    zip_path: String,
+    node_id: u32,
+}
+
+impl ImageRef {
+    fn is_available(&self, base_dir: &str) -> bool {
+        let full_path = Path::new(base_dir).join(&self.source);
+        full_path.exists()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -23,17 +46,44 @@ impl DocxBuilder {
 
     #[must_use = "building DOCX can fail; check the result"]
     pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, DocxError> {
-        let document_xml = self.render_document(module);
+        self.build_with_base_dir(module, ".")
+    }
 
-        let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    #[must_use = "building DOCX can fail; check the result"]
+    pub fn build_with_base_dir(
+        &self,
+        module: &SIRModuleV2,
+        base_dir: &str,
+    ) -> Result<Vec<u8>, DocxError> {
+        let image_refs = self.collect_image_refs(module);
+
+        let image_rid_map: HashMap<u32, &ImageRef> = image_refs
+            .iter()
+            .filter(|img| img.is_available(base_dir))
+            .map(|img| (img.node_id, img))
+            .collect();
+
+        let shared_image_map: Arc<HashMap<u32, &ImageRef>> = Arc::new(image_rid_map);
+
+        let document_xml = self.render_document_with_images(module, &shared_image_map);
+
+        let mut content_types_overrides = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
   <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
-  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-</Types>"#;
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>"#,
+        );
+
+        let mut document_rels = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>"#,
+        );
 
         let rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -41,18 +91,38 @@ impl DocxBuilder {
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
 </Relationships>"#;
 
-        let document_rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
-</Relationships>"#;
-
         let styles_xml = self.render_styles();
         let numbering_xml = self.render_numbering();
         let core_xml = self.render_core_properties(module);
 
         let mut zip = SimpleZip::new();
-        zip.add_file("[Content_Types].xml", content_types.as_bytes(), false);
+
+        for &img in shared_image_map.values() {
+            let full_path = Path::new(base_dir).join(&img.source);
+            let data = std::fs::read(&full_path).map_err(|e| {
+                DocxError::BuildError(format!("failed to read image {}: {e}", img.source))
+            })?;
+            zip.add_file(&img.zip_path, &data, false);
+
+            content_types_overrides.push_str(&format!(
+                "\n  <Override PartName=\"/{}\" ContentType=\"{}\"/>",
+                img.zip_path, img.content_type
+            ));
+
+            document_rels.push_str(&format!(
+                "\n  <Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"{}\"/>",
+                img.r_id, &img.zip_path[5..]
+            ));
+        }
+
+        content_types_overrides.push_str("\n</Types>");
+        document_rels.push_str("\n</Relationships>");
+
+        zip.add_file(
+            "[Content_Types].xml",
+            content_types_overrides.as_bytes(),
+            false,
+        );
         zip.add_file("_rels/.rels", rels.as_bytes(), false);
         zip.add_file("word/document.xml", document_xml.as_bytes(), false);
         zip.add_file(
@@ -67,17 +137,67 @@ impl DocxBuilder {
         zip.finish().map_err(DocxError::BuildError)
     }
 
-    fn render_document(&self, module: &SIRModuleV2) -> String {
+    fn collect_image_refs(&self, module: &SIRModuleV2) -> Vec<ImageRef> {
+        let mut refs = Vec::new();
+        let mut counter = 0u32;
+        for &root_id in module.body.roots() {
+            if let Some(root) = module.body.get(root_id) {
+                self.collect_images_walk(module, root, &mut refs, &mut counter);
+            }
+        }
+        refs
+    }
+
+    fn collect_images_walk(
+        &self,
+        module: &SIRModuleV2,
+        node: &Node,
+        out: &mut Vec<ImageRef>,
+        counter: &mut u32,
+    ) {
+        if let NodeType::Image { source, alt, .. } = &node.node_type {
+            *counter += 1;
+            let ext = guess_image_extension(source);
+            let content_type = extension_to_mime(&ext);
+            let r_id = format!("rId{}", *counter + 2);
+            let zip_path = format!("word/media/image{}.{}", *counter, ext);
+
+            out.push(ImageRef {
+                r_id,
+                source: source.clone(),
+                content_type,
+                alt_text: alt.clone(),
+                zip_path,
+                node_id: node.id,
+            });
+        }
+
+        for &child_id in &node.child_ids {
+            if let Some(child) = module.body.get(child_id) {
+                self.collect_images_walk(module, child, out, counter);
+            }
+        }
+    }
+
+    fn render_document_with_images(
+        &self,
+        module: &SIRModuleV2,
+        image_map: &HashMap<u32, &ImageRef>,
+    ) -> String {
         let mut body = String::new();
         for &root_id in module.body.roots() {
             if let Some(root) = module.body.get(root_id) {
-                self.render_node(&mut body, module, root);
+                self.render_node_with_images(&mut body, module, root, image_map);
             }
         }
 
         format!(
             r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
 <w:body>
 {body}
 </w:body>
@@ -85,12 +205,18 @@ impl DocxBuilder {
         )
     }
 
-    fn render_node(&self, out: &mut String, module: &SIRModuleV2, node: &Node) {
+    fn render_node_with_images(
+        &self,
+        out: &mut String,
+        module: &SIRModuleV2,
+        node: &Node,
+        image_map: &HashMap<u32, &ImageRef>,
+    ) {
         match &node.node_type {
             NodeType::Document => {
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_node(out, module, child);
+                        self.render_node_with_images(out, module, child, image_map);
                     }
                 }
             }
@@ -99,7 +225,7 @@ impl DocxBuilder {
                 out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Title\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline(out, module, child);
+                        self.render_inline_with_images(out, module, child, image_map);
                     }
                 }
                 out.push_str("</w:p>");
@@ -121,7 +247,7 @@ impl DocxBuilder {
                 out.push_str("\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline(out, module, child);
+                        self.render_inline_with_images(out, module, child, image_map);
                     }
                 }
                 out.push_str("</w:p>");
@@ -131,7 +257,7 @@ impl DocxBuilder {
                 out.push_str("<w:p>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline(out, module, child);
+                        self.render_inline_with_images(out, module, child, image_map);
                     }
                 }
                 out.push_str("</w:p>");
@@ -153,7 +279,7 @@ impl DocxBuilder {
                 out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Quote\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline(out, module, child);
+                        self.render_inline_with_images(out, module, child, image_map);
                     }
                 }
                 out.push_str("</w:p>");
@@ -226,13 +352,16 @@ impl DocxBuilder {
                 out.push_str("<w:p>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        match &child.node_type {
-                            NodeType::Image { alt, .. } => {
+                        if let NodeType::Image { .. } = &child.node_type {
+                            if let Some(img_ref) = image_map.get(&child.id) {
+                                emit_inline_image(out, img_ref);
+                            } else if let NodeType::Image { alt, .. } = &child.node_type {
                                 out.push_str("<w:r><w:t>");
                                 out.push_str(&escape_xml(alt));
                                 out.push_str(" [image not embedded]</w:t></w:r>");
                             }
-                            _ => self.render_node(out, module, child),
+                        } else {
+                            self.render_node_with_images(out, module, child, image_map);
                         }
                     }
                 }
@@ -243,7 +372,7 @@ impl DocxBuilder {
                 out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Caption\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline(out, module, child);
+                        self.render_inline_with_images(out, module, child, image_map);
                     }
                 }
                 out.push_str("</w:p>");
@@ -273,8 +402,144 @@ impl DocxBuilder {
             _ => {
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_node(out, module, child);
+                        self.render_node_with_images(out, module, child, image_map);
                     }
+                }
+            }
+        }
+    }
+
+    fn render_inline_with_images(
+        &self,
+        out: &mut String,
+        module: &SIRModuleV2,
+        node: &Node,
+        image_map: &HashMap<u32, &ImageRef>,
+    ) {
+        match &node.node_type {
+            NodeType::Text { content } => {
+                out.push_str("<w:r><w:t>");
+                out.push_str(&escape_xml(content));
+                out.push_str("</w:t></w:r>");
+            }
+
+            NodeType::Bold => {
+                out.push_str("<w:r><w:rPr><w:b/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_images(out, module, child, image_map);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Italic => {
+                out.push_str("<w:r><w:rPr><w:i/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_images(out, module, child, image_map);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Mono => {
+                out.push_str("<w:r><w:rPr><w:rFonts w:ascii=\"Courier New\" w:hAnsi=\"Courier New\"/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_images(out, module, child, image_map);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Underline => {
+                out.push_str("<w:r><w:rPr><w:u w:val=\"single\"/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_images(out, module, child, image_map);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Strikethrough => {
+                out.push_str("<w:r><w:rPr><w:strike/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_images(out, module, child, image_map);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::SmallCaps => {
+                out.push_str("<w:r><w:rPr><w:smallCaps/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_images(out, module, child, image_map);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Link { url, title } => {
+                let text = module.body.collect_text(node.id);
+                out.push_str(
+                    "<w:r><w:rPr><w:color w:val=\"0066CC\"/><w:u w:val=\"single\"/></w:rPr><w:t>",
+                );
+                out.push_str(&escape_xml(&text));
+                out.push_str("</w:t></w:r>");
+                if let Some(t) = title {
+                    out.push_str("<w:r><w:rPr><w:color w:val=\"0066CC\"/></w:rPr><w:t xml:space=\"preserve\"> (");
+                    out.push_str(&escape_xml(t));
+                    out.push_str(")</w:t></w:r>");
+                }
+                out.push_str("<w:r><w:rPr><w:sz w:val=\"16\"/><w:color w:val=\"0066CC\"/></w:rPr><w:t xml:space=\"preserve\"> [");
+                out.push_str(&escape_xml(url));
+                out.push_str("]</w:t></w:r>");
+            }
+
+            NodeType::Image { alt, .. } => {
+                if let Some(img_ref) = image_map.get(&node.id) {
+                    emit_inline_image(out, img_ref);
+                } else {
+                    out.push_str("<w:r><w:t>[");
+                    out.push_str(&escape_xml(alt));
+                    out.push_str("]</w:t></w:r>");
+                }
+            }
+
+            NodeType::MathInline { content } => {
+                out.push_str("<w:r><w:rPr><w:i/></w:rPr><w:t>");
+                out.push_str(&escape_xml(content));
+                out.push_str("</w:t></w:r>");
+            }
+
+            NodeType::LineBreak => {
+                out.push_str("<w:r><w:br/></w:r>");
+            }
+
+            NodeType::Footnote { content } => {
+                out.push_str("<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/><w:sz w:val=\"16\"/></w:rPr><w:t>");
+                out.push_str(&escape_xml(content));
+                out.push_str("</w:t></w:r>");
+            }
+
+            NodeType::Styled { .. } | NodeType::Group => {
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_images(out, module, child, image_map);
+                    }
+                }
+            }
+
+            _ => {
+                let text = module.body.collect_text(node.id);
+                if !text.is_empty() {
+                    out.push_str("<w:r><w:t>");
+                    out.push_str(&escape_xml(&text));
+                    out.push_str("</w:t></w:r>");
                 }
             }
         }
@@ -553,6 +818,96 @@ impl DocxBuilder {
 </cp:coreProperties>"#
         )
     }
+}
+
+fn guess_image_extension(source: &str) -> String {
+    let path = Path::new(source);
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+    {
+        Some(ext)
+            if matches!(
+                ext.as_str(),
+                "png"
+                    | "jpg"
+                    | "jpeg"
+                    | "gif"
+                    | "bmp"
+                    | "svg"
+                    | "tiff"
+                    | "tif"
+                    | "webp"
+                    | "emf"
+                    | "wmf"
+            ) =>
+        {
+            if ext == "jpg" {
+                "jpg".to_string()
+            } else {
+                ext
+            }
+        }
+        _ => "png".to_string(),
+    }
+}
+
+fn extension_to_mime(ext: &str) -> String {
+    match ext {
+        "png" => "image/png".to_string(),
+        "jpg" | "jpeg" => "image/jpeg".to_string(),
+        "gif" => "image/gif".to_string(),
+        "bmp" => "image/bmp".to_string(),
+        "svg" => "image/svg+xml".to_string(),
+        "tiff" | "tif" => "image/tiff".to_string(),
+        "webp" => "image/webp".to_string(),
+        "emf" => "image/x-emf".to_string(),
+        "wmf" => "image/x-wmf".to_string(),
+        _ => "application/octet-stream".to_string(),
+    }
+}
+
+fn emit_inline_image(out: &mut String, img: &ImageRef) {
+    out.push_str("<w:r>");
+    out.push_str("<w:drawing>");
+    out.push_str("<wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">");
+    out.push_str("<wp:extent cx=\"457200\" cy=\"457200\"/>");
+    out.push_str("<wp:effectExtent l=\"0\" t=\"0\" r=\"0\" b=\"0\"/>");
+    out.push_str("<wp:docPr id=\"0\" name=\"Picture\"/>");
+    out.push_str("<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" noChangeAspect=\"1\"/></wp:cNvGraphicFramePr>");
+    out.push_str("<a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">");
+    out.push_str(
+        "<a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">",
+    );
+    out.push_str(
+        "<pic:pic xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">",
+    );
+    out.push_str("<pic:nvPicPr>");
+    out.push_str(&format!(
+        "<pic:cNvPr id=\"0\" name=\"{}\"/>",
+        escape_xml(&img.alt_text)
+    ));
+    out.push_str("<pic:cNvPicPr/>");
+    out.push_str("</pic:nvPicPr>");
+    out.push_str("<pic:blipFill>");
+    out.push_str("<a:blip r:embed=\"");
+    out.push_str(&img.r_id);
+    out.push_str(
+        "\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"/>",
+    );
+    out.push_str("<a:stretch><a:fillRect/></a:stretch>");
+    out.push_str("</pic:blipFill>");
+    out.push_str("<pic:spPr>");
+    out.push_str("<a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"457200\" cy=\"457200\"/></a:xfrm>");
+    out.push_str("<a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom>");
+    out.push_str("</pic:spPr>");
+    out.push_str("</pic:pic>");
+    out.push_str("</a:graphicData>");
+    out.push_str("</a:graphic>");
+    out.push_str("</wp:inline>");
+    out.push_str("</w:drawing>");
+    out.push_str("</w:r>");
 }
 
 fn escape_xml(s: &str) -> String {
@@ -1017,6 +1372,192 @@ mod tests {
         let docx = DocxBuilder::new().build(&m)?;
         assert!(docx.len() > 100);
         assert_eq!(&docx[0..4], b"PK\x03\x04");
+        Ok(())
+    }
+
+    #[test]
+    fn test_collect_image_refs() {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Image {
+                    source: "photo.png".into(),
+                    alt: "A photo".into(),
+                    width: None,
+                    height: None,
+                    placement: FloatPlacement::Top,
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Image {
+                    source: "diagram.jpg".into(),
+                    alt: "A diagram".into(),
+                    width: None,
+                    height: None,
+                    placement: FloatPlacement::Top,
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(3);
+        }
+
+        let builder = DocxBuilder::new();
+        let refs = builder.collect_image_refs(&m);
+        assert_eq!(refs.len(), 2);
+        assert_eq!(refs[0].r_id, "rId3");
+        assert_eq!(refs[0].source, "photo.png");
+        assert_eq!(refs[0].content_type, "image/png");
+        assert_eq!(refs[0].alt_text, "A photo");
+        assert_eq!(refs[0].zip_path, "word/media/image1.png");
+        assert_eq!(refs[1].r_id, "rId4");
+        assert_eq!(refs[1].source, "diagram.jpg");
+        assert_eq!(refs[1].content_type, "image/jpeg");
+        assert_eq!(refs[1].zip_path, "word/media/image2.jpg");
+    }
+
+    #[test]
+    fn test_docx_with_images() -> Result<(), Box<dyn std::error::Error>> {
+        let tmp_dir = tempfile::tempdir()?;
+        let img_path = tmp_dir.path().join("test_image.png");
+
+        let tiny_png: &[u8] = &[
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+            0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00,
+            0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78,
+            0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
+            0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+        ];
+        std::fs::write(&img_path, tiny_png)?;
+
+        let mut m = SIRModuleV2::new();
+        m.metadata.title = Some("Doc with Image".into());
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Before image".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Figure {
+                    placement: FloatPlacement::Top,
+                },
+            )
+            .with_parent(0),
+        );
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Image {
+                    source: "test_image.png".into(),
+                    alt: "Test PNG".into(),
+                    width: None,
+                    height: None,
+                    placement: FloatPlacement::Top,
+                },
+            )
+            .with_parent(3),
+        );
+        m.body
+            .push(Node::new(5, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                6,
+                NodeType::Text {
+                    content: "After image".into(),
+                },
+            )
+            .with_parent(5),
+        );
+
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(3);
+        }
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(5);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(3) {
+            n.add_child(4);
+        }
+        if let Some(n) = m.body.get_mut(5) {
+            n.add_child(6);
+        }
+
+        let docx = DocxBuilder::new().build_with_base_dir(&m, tmp_dir.path().to_str().unwrap())?;
+        assert!(docx.len() > 200);
+        assert_eq!(&docx[0..4], b"PK\x03\x04");
+
+        let text = String::from_utf8_lossy(&docx);
+        assert!(text.contains("word/media/image1.png"));
+        assert!(text.contains("r:embed=\"rId3\""));
+        assert!(text.contains("image/png"));
+        assert!(text.contains("Before image"));
+        assert!(text.contains("After image"));
+        assert!(text.contains("<w:drawing>"));
+        assert!(text.contains("<a:blip"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_docx_with_missing_image_fallback() -> Result<(), Box<dyn std::error::Error>> {
+        let mut m = SIRModuleV2::new();
+        m.metadata.title = Some("Missing Image".into());
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Image {
+                    source: "nonexistent.png".into(),
+                    alt: "Missing".into(),
+                    width: None,
+                    height: None,
+                    placement: FloatPlacement::Top,
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+
+        let docx = DocxBuilder::new().build_with_base_dir(&m, "/nonexistent")?;
+        let text = String::from_utf8_lossy(&docx);
+        assert!(text.contains("[Missing]"));
+        assert!(!text.contains("<w:drawing>"));
         Ok(())
     }
 }
