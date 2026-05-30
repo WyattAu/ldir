@@ -34,6 +34,7 @@ pub enum VersionCheck {
 ///
 /// Provides methods to check compatibility between the host's
 /// expected version and the guest module's reported version.
+#[derive(Debug, Clone)]
 pub struct WasmInterfaceVersion {
     /// The host's expected interface version.
     host_version: u32,

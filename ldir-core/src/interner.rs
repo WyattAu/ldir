@@ -3,19 +3,22 @@
 #![deny(unsafe_code)]
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// A string interner that deduplicates strings.
 ///
 /// Returns a unique `u32` ID for each distinct string. Repeated calls with
 /// the same text return the same ID, avoiding duplicate allocations.
 ///
-/// Lookup by ID is O(1) via a parallel `Vec<String>` index.
-#[derive(Debug)]
+/// Uses `Arc<str>` so that both the `Vec` and `HashMap` share a single
+/// heap allocation per unique string. Cloning an `Arc` only bumps the
+/// reference count.
+#[derive(Debug, Clone)]
 pub struct StringInterner {
     /// Maps string content to its assigned ID.
-    strings: HashMap<String, u32>,
+    strings: HashMap<Arc<str>, u32>,
     /// Reverse mapping: ID -> string content, enabling O(1) `get()`.
-    by_id: Vec<String>,
+    by_id: Vec<Arc<str>>,
     total_unique_bytes: usize,
     duplicate_bytes_saved: usize,
 }
@@ -41,8 +44,9 @@ impl StringInterner {
         }
         let id = self.by_id.len() as u32;
         self.total_unique_bytes += s.len();
-        self.by_id.push(s.to_string());
-        self.strings.insert(s.to_string(), id);
+        let shared: Arc<str> = s.into();
+        self.by_id.push(shared.clone());
+        self.strings.insert(shared, id);
         id
     }
 
@@ -50,7 +54,7 @@ impl StringInterner {
     ///
     /// Returns `None` if the ID is out of range. O(1) lookup.
     pub fn get(&self, id: u32) -> Option<&str> {
-        self.by_id.get(id as usize).map(|s| s.as_str())
+        self.by_id.get(id as usize).map(|s| &**s)
     }
 
     /// Number of interned strings.

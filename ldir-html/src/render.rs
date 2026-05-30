@@ -31,7 +31,7 @@ impl Default for HtmlOptions {
 }
 
 /// Renders S-IR v2 modules to HTML5.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HtmlRenderer {
     options: HtmlOptions,
     heading_counter: [u32; 6],

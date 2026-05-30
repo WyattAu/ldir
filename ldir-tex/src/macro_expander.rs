@@ -4,7 +4,7 @@ use ldir_ir::sir::v2::SourceSpan;
 
 use crate::lexer::{SpannedToken, Token};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MacroDef {
     pub name: String,
     pub num_params: u8,

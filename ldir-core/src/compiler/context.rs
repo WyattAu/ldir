@@ -62,13 +62,13 @@ pub const FONT_ID_BOLD_ITALIC: u32 = 3;
 pub const FONT_ID_MONO: u32 = 4;
 
 /// Pre-computed layout for a single paragraph (parallel phase output).
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PrecomputedParagraph {
     pub lines: Vec<PrecomputedLine>,
 }
 
 /// One justified line within a pre-computed paragraph.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PrecomputedLine {
     pub glyph_ids: Vec<u32>,
     pub x_advances: Vec<i32>,

@@ -72,6 +72,7 @@ pub enum BridgeState {
 ///
 /// Manages loading WASM modules and invoking exported compile/render
 /// functions. Operates in mock mode without the `wasmtime` feature.
+#[derive(Debug, Clone)]
 pub struct WasmBridge {
     state: BridgeState,
     #[allow(dead_code)]

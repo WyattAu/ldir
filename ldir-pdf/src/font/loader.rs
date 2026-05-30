@@ -8,7 +8,7 @@ use ttf_parser::Face as TtfFace;
 use ttf_parser::GlyphId;
 use ttf_parser::Rect as TtfRect;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum FontLoadError {
     #[error("font data is empty")]
     EmptyData,

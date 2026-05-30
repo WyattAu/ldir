@@ -77,6 +77,7 @@ impl fmt::Debug for Entity {
 /// - ALG-ECS-DESTROY: Entity destruction algorithm (lines 36-38)
 /// - PRE-ECS-002: Entity generation validity check
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub struct EntityAllocator {
     /// Next slot index for fresh allocation.
     next_slot: u32,

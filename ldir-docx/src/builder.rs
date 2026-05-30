@@ -1,12 +1,13 @@
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum DocxError {
     #[error("DOCX build error: {0}")]
     BuildError(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct DocxBuilder;
 
 impl Default for DocxBuilder {

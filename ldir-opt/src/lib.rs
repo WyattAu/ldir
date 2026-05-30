@@ -14,7 +14,7 @@ pub use passes::*;
 
 use ldir_ir::sir::v2::SIRModuleV2;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PassResult {
     pub changed: bool,
     pub nodes_removed: usize,

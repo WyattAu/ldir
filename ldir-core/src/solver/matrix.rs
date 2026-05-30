@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(Clone)]
 pub struct DenseMatrix {
     data: Vec<f64>,
     rows: usize,

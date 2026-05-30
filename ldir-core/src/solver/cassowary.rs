@@ -115,7 +115,7 @@ pub struct Constraint {
 
 #[allow(dead_code)]
 /// Solver error variants.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SolverError {
     /// Required constraints cannot all be satisfied.
     Infeasible(String),
@@ -142,6 +142,7 @@ impl std::error::Error for SolverError {}
 ///
 /// Uses Gaussian elimination for required equalities and iterative
 /// relaxation for soft constraints and inequality projection.
+#[derive(Debug, Clone)]
 pub struct Solver {
     next_var_id: u32,
     next_constraint_id: u64,

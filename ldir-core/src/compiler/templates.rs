@@ -43,6 +43,7 @@ impl Default for PageTemplate {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct TemplateContext {
     pub page: usize,
     pub pages: usize,
@@ -580,7 +581,7 @@ impl DocumentTemplate {
 // TOML serialization
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum TemplateError {
     #[error("TOML parse error: {0}")]
     TomlParse(#[from] toml::de::Error),

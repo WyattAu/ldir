@@ -92,6 +92,7 @@ impl MathBox {
 }
 
 /// A glyph with absolute position and advance width.
+#[derive(Debug, Clone)]
 pub struct PositionedGlyph {
     /// Glyph identifier.
     pub glyph_id: i32,
@@ -1204,6 +1205,7 @@ impl MathTokenParser {
 }
 
 /// Result of laying out a math expression.
+#[derive(Debug, Clone)]
 pub struct MathLayoutResult {
     /// Positioned glyphs (glyph_id == -1 means a horizontal rule).
     pub glyphs: Vec<PositionedGlyph>,

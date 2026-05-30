@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum IccProfileError {
     #[error("ICC profile data too small: {0} bytes")]
     TooSmall(usize),

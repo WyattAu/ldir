@@ -16,7 +16,7 @@ use crate::streaming_writer::build_streaming;
 use crate::writer::{PdfDocumentBuilder, PdfImage, PdfImageFormat};
 
 /// Options for PDF generation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PdfOptions {
     /// Document title.
     pub title: Option<String>,

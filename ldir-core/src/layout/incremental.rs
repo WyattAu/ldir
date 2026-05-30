@@ -79,6 +79,7 @@ impl DirtySet {
 /// shared across recompilation passes. When no nodes are marked dirty,
 /// [`recompile_lir`](Self::recompile_lir) returns a clone of the old L-IR
 /// wrapped in `Arc`, preserving bit-identical output per INV-COMP-001.
+#[derive(Debug, Clone)]
 pub struct IncrementalLayout {
     sir: Arc<SIRModuleV2>,
     dirty: DirtySet,

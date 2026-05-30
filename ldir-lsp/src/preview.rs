@@ -30,7 +30,7 @@ pub struct PreviewStatusParams {
 }
 
 /// LSP notification for preview status updates.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PreviewStatus;
 
 impl lsp_types::notification::Notification for PreviewStatus {
@@ -47,7 +47,7 @@ struct PendingCompile {
 }
 
 /// Manages debounced preview compilation for the LSP server.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PreviewManager {
     output_path: Arc<PathBuf>,
     debounce: Duration,

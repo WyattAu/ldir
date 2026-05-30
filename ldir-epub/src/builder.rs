@@ -1,13 +1,13 @@
 use ldir_html::{HtmlOptions, HtmlRenderer, MathFormat};
 use ldir_ir::sir::v2::module::SIRModuleV2;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum EpubError {
     #[error("EPUB build error: {0}")]
     BuildError(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EpubOptions {
     pub include_toc: bool,
     pub css: Option<String>,
@@ -22,7 +22,7 @@ impl Default for EpubOptions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EpubBuilder {
     options: EpubOptions,
 }

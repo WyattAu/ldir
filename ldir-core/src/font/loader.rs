@@ -10,7 +10,7 @@ use ttf_parser::GlyphId;
 use crate::fp266::Fp266;
 
 /// A handle to raw font data shared via `Arc`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FontHandle {
     data: Arc<Vec<u8>>,
 }
@@ -41,6 +41,7 @@ impl FontHandle {
 }
 
 /// A loaded font with a handle and cached metrics.
+#[derive(Debug, Clone)]
 pub struct LoadedFont {
     handle: FontHandle,
     upem: u16,
