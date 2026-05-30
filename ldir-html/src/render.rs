@@ -2,7 +2,43 @@ use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
 use std::collections::HashMap;
 
-/// HTML rendering options.
+use crate::themes::{self, HtmlTheme};
+
+/// Extended HTML rendering options with theme and CSS support.
+#[derive(Debug, Clone)]
+pub struct HtmlRenderOptions {
+    pub theme: Option<String>,
+    pub custom_css: Option<String>,
+    pub inline_css: Option<String>,
+    pub embed_css: bool,
+    pub syntax_highlighting: bool,
+    pub include_toc: bool,
+    pub toc_max_depth: u32,
+    pub title: Option<String>,
+    pub lang: String,
+    pub math_format: MathFormat,
+    pub indent: usize,
+}
+
+impl Default for HtmlRenderOptions {
+    fn default() -> Self {
+        Self {
+            theme: None,
+            custom_css: None,
+            inline_css: None,
+            embed_css: true,
+            syntax_highlighting: false,
+            include_toc: true,
+            toc_max_depth: 3,
+            title: None,
+            lang: "en".to_string(),
+            math_format: MathFormat::MathML,
+            indent: 2,
+        }
+    }
+}
+
+/// Legacy HTML rendering options (preserved for backward compatibility).
 #[derive(Debug, Clone)]
 pub struct HtmlOptions {
     pub include_toc: bool,
@@ -33,6 +69,7 @@ impl Default for HtmlOptions {
 /// Renders S-IR v2 modules to HTML5.
 #[derive(Debug, Clone)]
 pub struct HtmlRenderer {
+    render_options: Option<HtmlRenderOptions>,
     options: HtmlOptions,
     heading_counter: [u32; 6],
     equation_counter: u32,
@@ -48,7 +85,26 @@ impl HtmlRenderer {
 
     pub fn with_options(options: HtmlOptions) -> Self {
         Self {
+            render_options: None,
             options,
+            heading_counter: [0; 6],
+            equation_counter: 0,
+            figure_counter: 0,
+            footnote_counter: 0,
+            label_map: HashMap::new(),
+        }
+    }
+
+    pub fn with_render_options(render_options: HtmlRenderOptions) -> Self {
+        let legacy = HtmlOptions {
+            include_toc: render_options.include_toc,
+            include_styles: true,
+            math_format: render_options.math_format,
+            indent: render_options.indent,
+        };
+        Self {
+            render_options: Some(render_options),
+            options: legacy,
             heading_counter: [0; 6],
             equation_counter: 0,
             figure_counter: 0,
@@ -65,11 +121,13 @@ impl HtmlRenderer {
 
         // DOCTYPE and html
         html.push_str("<!DOCTYPE html>\n<html");
-        if module.metadata.language != "en" {
-            html.push_str(&format!(
-                " lang=\"{}\"",
-                escape_html(&module.metadata.language)
-            ));
+        let lang = self
+            .render_options
+            .as_ref()
+            .map(|o| o.lang.as_str())
+            .unwrap_or(&module.metadata.language);
+        if lang != "en" {
+            html.push_str(&format!(" lang=\"{}\"", escape_html(lang)));
         }
         html.push_str(">\n");
 
@@ -82,7 +140,12 @@ impl HtmlRenderer {
         html.push_str(
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n",
         );
-        if let Some(ref title) = module.metadata.title {
+        let title = self
+            .render_options
+            .as_ref()
+            .and_then(|o| o.title.as_deref())
+            .or(module.metadata.title.as_deref());
+        if let Some(title) = title {
             html.push_str(&" ".repeat(ind * 2));
             html.push_str(&format!("<title>{}</title>\n", escape_html(title)));
         }
@@ -116,6 +179,84 @@ impl HtmlRenderer {
     }
 
     fn emit_styles(&self, html: &mut String, ind: usize) {
+        let pad = " ".repeat(ind);
+
+        if let Some(ref ro) = self.render_options {
+            if let Some(ref inline) = ro.inline_css {
+                if ro.embed_css {
+                    html.push_str(&pad);
+                    html.push_str("<style>\n");
+                    for line in inline.lines() {
+                        html.push_str(&pad);
+                        html.push_str("  ");
+                        html.push_str(line);
+                        html.push('\n');
+                    }
+                    html.push_str(&pad);
+                    html.push_str("</style>\n");
+                } else {
+                    html.push_str(&pad);
+                    html.push_str("<style>/* inline-css-as-link-fallback */\n");
+                    for line in inline.lines() {
+                        html.push_str(line);
+                        html.push('\n');
+                    }
+                    html.push_str("</style>\n");
+                }
+                return;
+            }
+
+            if let Some(ref path) = ro.custom_css {
+                match themes::load_custom_css(path) {
+                    Ok(css) => {
+                        if ro.embed_css {
+                            html.push_str(&pad);
+                            html.push_str("<style>\n");
+                            for line in css.lines() {
+                                html.push_str(&pad);
+                                html.push_str("  ");
+                                html.push_str(line);
+                                html.push('\n');
+                            }
+                            html.push_str(&pad);
+                            html.push_str("</style>\n");
+                        } else {
+                            html.push_str(&pad);
+                            html.push_str(&format!(
+                                "<link rel=\"stylesheet\" href=\"{}\">\n",
+                                escape_html(path)
+                            ));
+                        }
+                    }
+                    Err(_) => {
+                        self.emit_default_styles(html, ind);
+                    }
+                }
+                return;
+            }
+
+            let css = ro
+                .theme
+                .as_deref()
+                .and_then(HtmlTheme::resolve)
+                .unwrap_or(themes::DEFAULT_CSS);
+
+            html.push_str(&pad);
+            html.push_str("<style>\n");
+            for line in css.lines() {
+                html.push_str(&pad);
+                html.push_str("  ");
+                html.push_str(line);
+                html.push('\n');
+            }
+            html.push_str(&pad);
+            html.push_str("</style>\n");
+        } else {
+            self.emit_default_styles(html, ind);
+        }
+    }
+
+    fn emit_default_styles(&self, html: &mut String, ind: usize) {
         let pad = " ".repeat(ind);
         html.push_str(&pad);
         html.push_str("<style>\n");
@@ -292,10 +433,16 @@ impl HtmlRenderer {
                 let id = node.label.as_deref().unwrap_or(&fallback_id);
                 let text = module.body.collect_text(node.id);
                 html.push_str(&pad);
+                html.push_str(&format!("<{} id=\"{}\">", tag, id));
+                let has_render_opts = self.render_options.is_some();
+                if has_render_opts {
+                    html.push_str(&format!(
+                        "<a href=\"#{}\" class=\"anchor-link\" aria-hidden=\"true\">#</a>",
+                        id
+                    ));
+                }
                 html.push_str(&format!(
-                    "<{} id=\"{}\">{} {}</{}>\n",
-                    tag,
-                    id,
+                    "{} {}</{}>\n",
                     format_heading_number(&self.heading_counter),
                     escape_html(&text),
                     tag
@@ -2248,5 +2395,197 @@ mod tests {
         assert!(html.contains("<span class=\"math\""));
         assert!(html.contains("<sup>iπ</sup>"));
         assert!(html.contains("+1=0"));
+    }
+
+    #[test]
+    fn test_default_css_output() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<style>"));
+        assert!(html.contains("--color-text"));
+        assert!(html.contains("--font-body"));
+        assert!(html.contains("max-width"));
+        assert!(html.contains("@media print"));
+    }
+
+    #[test]
+    fn test_github_theme() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            theme: Some("github".into()),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<style>"));
+        assert!(html.contains("--color-text: #24292f"));
+        assert!(html.contains("--color-heading: #1f2328"));
+    }
+
+    #[test]
+    fn test_latex_theme() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            theme: Some("latex".into()),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<style>"));
+        assert!(html.contains("Latin Modern Roman"));
+        assert!(html.contains("text-align: justify"));
+    }
+
+    #[test]
+    fn test_toc_generation() {
+        use crate::themes::generate_toc;
+        let headings = vec![
+            (1, "Introduction".to_string()),
+            (2, "Background".to_string()),
+            (2, "Methods".to_string()),
+            (1, "Results".to_string()),
+        ];
+        let toc = generate_toc(&headings, 3);
+        assert!(toc.contains("<nav class=\"toc\">"));
+        assert!(toc.contains("Table of Contents"));
+        assert!(toc.contains("href=\"#introduction\""));
+        assert!(toc.contains("href=\"#results\""));
+    }
+
+    #[test]
+    fn test_custom_css_loading() {
+        let tmp = std::env::temp_dir().join("test-custom-theme.css");
+        std::fs::write(&tmp, "body { color: red; }").unwrap();
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            custom_css: Some(tmp.to_string_lossy().into_owned()),
+            embed_css: true,
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<style>"));
+        assert!(html.contains("body { color: red; }"));
+        std::fs::remove_file(&tmp).unwrap();
+    }
+
+    #[test]
+    fn test_custom_css_as_link() {
+        let tmp = std::env::temp_dir().join("test-link-theme.css");
+        std::fs::write(&tmp, "body { color: blue; }").unwrap();
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            custom_css: Some(tmp.to_string_lossy().into_owned()),
+            embed_css: false,
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<link rel=\"stylesheet\""));
+        assert!(!html.contains("body { color: blue; }"));
+        std::fs::remove_file(&tmp).unwrap();
+    }
+
+    #[test]
+    fn test_inline_css() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            inline_css: Some("h1 { color: green; }".into()),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<style>"));
+        assert!(html.contains("h1 { color: green; }"));
+    }
+
+    #[test]
+    fn test_heading_anchors() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("id=\"sec:intro\""));
+        assert!(html.contains("class=\"anchor-link\""));
+        assert!(html.contains("aria-hidden=\"true\""));
+        assert!(html.contains(">#</a>"));
+    }
+
+    #[test]
+    fn test_heading_anchors_legacy_renderer() {
+        let m = make_section_module();
+        let html = HtmlRenderer::new().render(&m);
+        assert!(html.contains("id=\"sec:intro\""));
+        assert!(!html.contains("anchor-link"));
+    }
+
+    #[test]
+    fn test_dark_theme() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            theme: Some("dark".into()),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("background: #0d1117"));
+        assert!(html.contains("--color-text: #c9d1d9"));
+    }
+
+    #[test]
+    fn test_minimal_theme() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            theme: Some("minimal".into()),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("max-width: 720px"));
+        assert!(!html.contains("--color-text"));
+    }
+
+    #[test]
+    fn test_unknown_theme_falls_back_to_default() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            theme: Some("nonexistent".into()),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<style>"));
+        assert!(html.contains("--color-text: #1a1a1a"));
+    }
+
+    #[test]
+    fn test_render_options_title_override() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            title: Some("Override Title".into()),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("<title>Override Title</title>"));
+        assert!(!html.contains("<title>Test Document</title>"));
+    }
+
+    #[test]
+    fn test_render_options_lang_override() {
+        let m = make_section_module();
+        let mut renderer = HtmlRenderer::with_render_options(HtmlRenderOptions {
+            lang: "de".into(),
+            include_toc: false,
+            ..Default::default()
+        });
+        let html = renderer.render(&m);
+        assert!(html.contains("lang=\"de\""));
     }
 }

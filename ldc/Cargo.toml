@@ -25,6 +25,7 @@ ldir-html-reader = { workspace = true }
 ldir-adoc = { workspace = true }
 ldir-org = { workspace = true }
 ldir-docx-reader = { workspace = true }
+ldir-odt = { workspace = true }
 anyhow = { workspace = true }
 clap = { version = "4", features = ["derive"] }
 clap_complete = { workspace = true }

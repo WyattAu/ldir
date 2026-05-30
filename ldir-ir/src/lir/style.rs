@@ -49,6 +49,30 @@ pub enum Placement {
     Float,
 }
 
+/// Column spanning behavior for multi-column layouts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum SpanBehavior {
+    /// Auto-detect full-width elements based on content width.
+    #[default]
+    Auto,
+    /// Never span; clip to column width.
+    Never,
+    /// Only span elements explicitly designated via `column_span: true`.
+    Designated,
+}
+
+/// Column break control for block-level elements.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum ColumnBreak {
+    /// Break before the next element starts in a new column.
+    Before,
+    /// Break after the current element ends.
+    After,
+    /// Avoid breaking inside this element if possible.
+    #[default]
+    Avoid,
+}
+
 /// Math block display type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MathType {

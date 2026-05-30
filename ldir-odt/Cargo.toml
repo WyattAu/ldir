@@ -1,0 +1,15 @@
+[package]
+name = "ldir-odt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "LDIR ODT backend -- converts S-IR v2 to ODT (OpenDocument Text)"
+repository.workspace = true
+readme = "README.md"
+keywords = ["odt", "opendocument", "document", "output", "iso26300"]
+categories = ["text-processing"]
+
+[dependencies]
+ldir-ir = { workspace = true }
+thiserror = { workspace = true }

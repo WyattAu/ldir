@@ -23,6 +23,7 @@ members = [
     "ldir-org",
     "ldir-docx-reader",
     "ldir-opt",
+    "ldir-odt",
     "ldir-link",
     "ldir-lsp",
     "ldir-test-helpers",
@@ -57,6 +58,7 @@ ldir-adoc = { path = "ldir-adoc", version = "0.1.0" }
 ldir-org = { path = "ldir-org", version = "0.1.0" }
 ldir-html-reader = { path = "ldir-html-reader", version = "0.1.0" }
 ldir-docx-reader = { path = "ldir-docx-reader", version = "0.1.0" }
+ldir-odt = { path = "ldir-odt", version = "0.1.0" }
 
 # Serialization (REQ-2.3)
 rkyv = { version = "0.8", features = ["bytecheck"] }

@@ -1977,6 +1977,7 @@ dependencies = [
  "ldir-html-reader",
  "ldir-ir",
  "ldir-md",
+ "ldir-odt",
  "ldir-org",
  "ldir-pdf",
  "ldir-tex",
@@ -2149,6 +2150,14 @@ version = "0.1.0"
 dependencies = [
  "ldir-ir",
  "pulldown-cmark",
+]
+
+[[package]]
+name = "ldir-odt"
+version = "0.1.0"
+dependencies = [
+ "ldir-ir",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

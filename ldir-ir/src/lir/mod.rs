@@ -21,7 +21,8 @@ pub mod types;
 
 pub use position::{Point, Rect, Size};
 pub use style::{
-    FlowDirection, LIRStyleTable, LIRTextStyle, ListType, MathType, Padding, Placement, TextAlign,
+    ColumnBreak, FlowDirection, LIRStyleTable, LIRTextStyle, ListType, MathType, Padding,
+    Placement, SpanBehavior, TextAlign,
 };
 pub use types::{
     LIRBibEntry, LIRBibliography, LIRBlockQuote, LIRCaption, LIRCitation, LIRCodeBlock,

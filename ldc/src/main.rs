@@ -1,6 +1,6 @@
 //! ldc — LDIR Compiler CLI.
 //!
-//! Compiles documents in multiple formats to PDF, HTML, EPUB, TXT, DOCX, SIR2, or LDIR.
+//! Compiles documents in multiple formats to PDF, HTML, EPUB, TXT, DOCX, ODT, SIR2, or LDIR.
 //!
 //! # Usage
 //!
@@ -32,7 +32,7 @@ use ldir_ir::sir::v2::SIRModuleV2;
 
 use status::{Color, PipelineTimer, styled};
 
-const V2_FORMATS: &[&str] = &["html", "epub", "txt", "docx", "sir2", "ldir"];
+const V2_FORMATS: &[&str] = &["html", "epub", "txt", "docx", "odt", "sir2", "ldir"];
 
 fn detect_input_format(path: &Path) -> &'static str {
     match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
@@ -53,6 +53,7 @@ fn detect_format_from_extension(ext: &str) -> &str {
         "epub" => "epub",
         "txt" => "txt",
         "docx" => "docx",
+        "odt" => "odt",
         "sir2" => "sir2",
         "ldir" => "ldir",
         _ => "pdf",
@@ -160,6 +161,15 @@ fn write_output(module: &SIRModuleV2, output_path: &Path, format: &str) -> Resul
             let tag = styled("docx", Color::Green);
             eprintln!("  {tag} {} bytes", docx_bytes.len());
             std::fs::write(output_path, &docx_bytes)
+                .with_context(|| format!("failed to write {}", output_path.display()))?;
+        }
+        "odt" => {
+            let odt_bytes = ldir_odt::OdtBuilder::new()
+                .build(module)
+                .map_err(|e| anyhow::anyhow!(e))?;
+            let tag = styled("odt", Color::Green);
+            eprintln!("  {tag} {} bytes", odt_bytes.len());
+            std::fs::write(output_path, &odt_bytes)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         "sir2" => {
@@ -588,6 +598,7 @@ fn main() -> Result<()> {
                 "epub" => "epub",
                 "txt" => "txt",
                 "docx" => "docx",
+                "odt" => "odt",
                 "sir2" => "sir2",
                 "ldir" => "ldir",
                 "gir" => "gir",

@@ -7,7 +7,7 @@ use clap::Parser;
 /// LDIR Compiler — compile documents to PDF and other formats.
 ///
 /// Input formats: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx (auto-detected)
-/// Output formats: .pdf, .html, .epub, .txt, .docx, .sir2, .ldir (--format or auto-detected)
+/// Output formats: .pdf, .html, .epub, .txt, .docx, .odt, .sir2, .ldir (--format or auto-detected)
 #[derive(Parser, Debug)]
 #[command(name = "ldc", version, about)]
 pub struct Cli {
@@ -22,7 +22,7 @@ pub struct Cli {
 
     /// Output format.
     #[arg(short = 'f', long, value_name = "FORMAT", default_value = "pdf",
-        value_parser = ["pdf", "gir", "sir", "html", "epub", "txt", "docx", "sir2", "ldir"])]
+        value_parser = ["pdf", "gir", "sir", "html", "epub", "txt", "docx", "odt", "sir2", "ldir"])]
     pub format: String,
 
     /// Primary font family name (e.g., "DejaVu Sans", "Noto Serif").
