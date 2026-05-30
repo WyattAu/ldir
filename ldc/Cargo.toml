@@ -35,6 +35,9 @@ fontdb = { workspace = true }
 toml = { workspace = true }
 serde = { workspace = true }
 
+[dev-dependencies]
+tempfile = { workspace = true }
+
 [[bin]]
 name = "ldc"
 path = "src/main.rs"

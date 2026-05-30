@@ -1983,6 +1983,7 @@ dependencies = [
  "ldir-txt",
  "ldir-typst",
  "serde",
+ "tempfile",
  "toml",
  "ttf-parser 0.25.1",
 ]

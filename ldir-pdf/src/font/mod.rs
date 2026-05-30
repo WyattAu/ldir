@@ -13,6 +13,6 @@ pub use loader::{FontFace, FontLoadError};
 #[allow(unused_imports)]
 pub(crate) use loader::{FontMetrics, PdfFontInfo};
 #[allow(unused_imports)]
-pub(crate) use subset::{FontSubset, subset_font};
+pub(crate) use subset::{FontSubset, SubsetResult, subset_font};
 #[allow(unused_imports)]
 pub(crate) use tables::{CmapTable, HeadTable, HheaTable, HmtxTable};

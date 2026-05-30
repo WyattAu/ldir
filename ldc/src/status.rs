@@ -4,7 +4,8 @@ use std::io::Write;
 use std::time::Instant;
 
 /// Color support flag (set by --color).
-static COLOR_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+pub(crate) static COLOR_ENABLED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(true);
 
 pub fn set_color(enabled: bool) {
     COLOR_ENABLED.store(enabled, std::sync::atomic::Ordering::Relaxed);

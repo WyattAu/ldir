@@ -172,6 +172,7 @@ struct StreamingFontIds {
     cid_id: i32,
     descriptor_id: i32,
     fontfile_id: i32,
+    cidtogidmap_id: i32,
     tounicode_id: i32,
     resource_name: Vec<u8>,
 }
@@ -237,7 +238,7 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
     // Image XObjects
     let image_xobject_ids: Vec<i32> = (0..builder.images.len()).map(|_| w.alloc_id()).collect();
 
-    // Font IDs (5 per font)
+    // Font IDs (6 per font)
     let font_ids: Vec<StreamingFontIds> = builder
         .fonts
         .iter()
@@ -246,6 +247,7 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
             cid_id: w.alloc_id(),
             descriptor_id: w.alloc_id(),
             fontfile_id: w.alloc_id(),
+            cidtogidmap_id: w.alloc_id(),
             tounicode_id: w.alloc_id(),
             resource_name: font.resource_name.clone(),
         })
@@ -625,6 +627,8 @@ fn write_streaming_font<W: Write>(
 
     let ps_name = &info.postscript_name;
 
+    let subset_result = crate::font::subset_font(font.face.raw_bytes(), used_gids);
+
     // Type0 font
     {
         let dict = format!(
@@ -690,7 +694,12 @@ fn write_streaming_font<W: Write>(
             dict.push_str(&w_array);
         }
 
-        dict.push_str(" /CIDToGIDMap /Identity >>");
+        if let Some(ref _cid_map) = subset_result.cid_to_gid_map {
+            let ref_str = w.write_ref(ids.cidtogidmap_id);
+            dict.push_str(&format!(" /CIDToGIDMap {ref_str} >>"));
+        } else {
+            dict.push_str(" /CIDToGIDMap /Identity >>");
+        }
         w.write_indirect_dict(ids.cid_id, &dict)?;
     }
 
@@ -721,9 +730,18 @@ fn write_streaming_font<W: Write>(
 
     // FontFile2 (TrueType font stream, FlateDecode compressed)
     {
-        let subsetted = crate::font::subset_font(font.face.raw_bytes(), used_gids);
-        let dict = format!("/Length1 {}", subsetted.len());
-        w.write_stream(ids.fontfile_id, &dict, &subsetted, Some("FlateDecode"))?;
+        let dict = format!("/Length1 {}", subset_result.font_data.len());
+        w.write_stream(
+            ids.fontfile_id,
+            &dict,
+            &subset_result.font_data,
+            Some("FlateDecode"),
+        )?;
+    }
+
+    // CIDToGIDMap stream (if needed)
+    if let Some(ref cid_map) = subset_result.cid_to_gid_map {
+        w.write_stream(ids.cidtogidmap_id, "", cid_map, Some("FlateDecode"))?;
     }
 
     // ToUnicode CMap

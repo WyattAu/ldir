@@ -132,4 +132,12 @@ pub struct Cli {
     /// Path to configuration file. Default: ./ldir.toml
     #[arg(long, value_name = "PATH")]
     pub config: Option<PathBuf>,
+
+    /// Skip loading any configuration file.
+    #[arg(long)]
+    pub no_config: bool,
+
+    /// Print the effective (merged) configuration as TOML and exit.
+    #[arg(long)]
+    pub dump_config: bool,
 }

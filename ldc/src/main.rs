@@ -14,8 +14,6 @@
 //! ldc input.md input.typ -o output.html
 //! ```
 
-mod cli;
-mod config;
 mod status;
 
 use std::fs::File;
@@ -25,12 +23,13 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use ldc::cli::Cli;
+use ldc::config;
 use ldir_core::error::LdirError;
 use ldir_core::font::db::FontDatabase;
 use ldir_ir::gir::GIRDocument;
 use ldir_ir::sir::v2::SIRModuleV2;
 
-use cli::Cli;
 use status::{Color, PipelineTimer, styled};
 
 const V2_FORMATS: &[&str] = &["html", "epub", "txt", "docx", "sir2", "ldir"];
@@ -530,8 +529,17 @@ fn source_location_from_error(module: &SIRModuleV2, err: &LdirError) -> String {
 fn main() -> Result<()> {
     let mut cli = Cli::parse();
 
-    let cfg = config::load_config(cli.config.as_deref())?;
+    let cfg = config::LdirConfig::load(cli.config.as_deref(), cli.no_config)?;
     config::apply_config_to_cli(&cfg, &mut cli);
+
+    if cli.dump_config {
+        print!("{}", config::dump_effective_config(&cli));
+        return Ok(());
+    }
+
+    if let Err(e) = cfg.validate() {
+        anyhow::bail!("config validation error: {e}");
+    }
 
     // Initialize color support
     match cli.color.as_str() {

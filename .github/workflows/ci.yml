@@ -508,3 +508,88 @@ jobs:
 
       - name: Run cargo audit
         run: cargo audit --deny warnings
+
+  pdfa-conformance:
+    name: PDF/A Conformance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core wget unzip
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-cargo-pdfa-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: linux-cargo-pdfa-
+
+      - name: Build ldc
+        run: cargo build --release -p ldc --locked
+
+      - name: Create test document
+        shell: bash
+        run: |
+          cat > /tmp/pdfa-test.md << 'MDEOF'
+          # PDF/A Conformance Test
+
+          ## Section
+
+          This document tests PDF/A-2b conformance with embedded fonts
+          and proper metadata.
+
+          | Header 1 | Header 2 |
+          |----------|----------|
+          | Cell A   | Cell B   |
+          | Cell C   | Cell D   |
+
+          - List item one
+          - List item two
+          MDEOF
+
+      - name: Compile with PDF/A
+        shell: bash
+        run: |
+          ./target/release/ldc /tmp/pdfa-test.md --pdfa-level 2b -o /tmp/pdfa-test.pdf
+
+      - name: Install veraPDF
+        continue-on-error: true
+        run: |
+          VERAPDF_VERSION="1.26.4"
+          wget -q "https://github.com/veraPDF/veraPDF-apps/releases/download/v${VERAPDF_VERSION}/verapdf-${VERAPDF_VERSION}.zip" -O verapdf.zip
+          unzip -q verapdf.zip
+          chmod +x verapdf-${VERAPDF_VERSION}/verapdf
+
+      - name: Validate PDF/A conformance
+        id: validate
+        continue-on-error: true
+        shell: bash
+        run: |
+          RESULT=$(verapdf-*/verapdf --flavour 2b /tmp/pdfa-test.pdf 2>&1)
+          echo "$RESULT"
+          if echo "$RESULT" | grep -qi "VALID"; then
+            echo "status=valid" >> $GITHUB_OUTPUT
+          elif echo "$RESULT" | grep -qi "INVALID"; then
+            echo "status=invalid" >> $GITHUB_OUTPUT
+            echo "::warning::PDF/A-2b conformance check failed"
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+            echo "::warning::veraPDF output could not be parsed"
+          fi
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "PDF/A conformance status: ${{ steps.validate.outputs.status }}"
+          if [ "${{ steps.validate.outputs.status }}" = "invalid" ]; then
+            echo "::notice::PDF/A-2b validation found issues. Review veraPDF output above."
+          fi

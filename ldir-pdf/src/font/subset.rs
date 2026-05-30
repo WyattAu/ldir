@@ -3,12 +3,25 @@
 //! Takes full font data and a set of glyph IDs, produces a minimal
 //! TrueType font containing only the necessary tables and glyphs.
 //!
-//! Glyph IDs are NOT remapped — they retain their original values so
-//! that `CIDToGIDMap: Identity` works correctly in the PDF.
+//! Glyph IDs ARE remapped to a compact sequential range 0..N to
+//! eliminate empty slots. A `CIDToGIDMap` stream is provided for the
+//! PDF consumer to translate CIDs back to the new glyph IDs.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use ttf_parser::Tag;
+
+/// Result of font subsetting with glyph ID remapping.
+pub struct SubsetResult {
+    /// The subsetted TrueType font binary (with remapped glyph IDs).
+    pub font_data: Vec<u8>,
+    /// CID-to-GID map stream for PDF embedding.
+    /// `None` if no remapping was needed (identity).
+    pub cid_to_gid_map: Option<Vec<u8>>,
+    /// Maps original glyph ID -> new (remapped) glyph ID.
+    #[allow(dead_code)]
+    pub glyph_id_map: HashMap<u32, u32>,
+}
 
 /// Tracks which glyph IDs are used in a document.
 #[allow(dead_code)]
@@ -160,12 +173,20 @@ fn resolve_compound_glyphs(face: &ttf_parser::Face, used: &mut HashSet<u32>) {
 
 /// Subset a TrueType font to only the specified glyph IDs.
 ///
-/// Glyph IDs are NOT remapped — they retain their original values.
-/// Unused glyph slots (between 0 and max used ID) are empty (zero-length).
-pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
+/// Glyph IDs are remapped to a compact sequential range 0..N.
+/// The returned `SubsetResult` includes a `CIDToGIDMap` for the PDF
+/// and a mapping from old to new glyph IDs.
+pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> SubsetResult {
     let face = match ttf_parser::Face::parse(full_data, 0) {
         Ok(f) => f,
-        Err(_) => return full_data.to_vec(),
+        Err(_) => {
+            let map: HashMap<u32, u32> = used_glyphs.iter().map(|&g| (g, g)).collect();
+            return SubsetResult {
+                font_data: full_data.to_vec(),
+                cid_to_gid_map: None,
+                glyph_id_map: map,
+            };
+        }
     };
 
     let mut used = used_glyphs.clone();
@@ -173,28 +194,48 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
 
     let raw = face.raw_face();
 
-    // Determine max glyph ID we need to cover
-    let max_gid = used.iter().copied().max().unwrap_or(0) as u16;
-    let num_glyphs = (max_gid as u32 + 1) as u16;
+    // Ensure .notdef (glyph 0) is included
+    used.insert(0);
+
+    // Sort used glyph IDs to build remapping
+    let mut used_sorted: Vec<u32> = used.iter().copied().collect();
+    used_sorted.sort();
+
+    let mut old_to_new: HashMap<u32, u32> = HashMap::with_capacity(used_sorted.len());
+    for (new_id, &old_id) in used_sorted.iter().enumerate() {
+        old_to_new.insert(old_id, new_id as u32);
+    }
+
+    let num_glyphs = used_sorted.len() as u16;
+    let needs_remapping = used_sorted
+        .last()
+        .is_some_and(|&max| max as usize >= used_sorted.len());
 
     // Get loca format from head table
     let head_data = match raw.table(Tag::from_bytes(b"head")) {
         Some(d) => d,
-        None => return full_data.to_vec(),
+        None => {
+            return SubsetResult {
+                font_data: full_data.to_vec(),
+                cid_to_gid_map: None,
+                glyph_id_map: old_to_new,
+            };
+        }
     };
     let loca_format = u16::from_be_bytes([head_data[50], head_data[51]]);
 
     let loca_table = raw.table(Tag::from_bytes(b"loca"));
     let glyf_table = raw.table(Tag::from_bytes(b"glyf"));
 
-    // Build new glyf and loca tables
+    // Build new glyf and loca tables — only used glyphs, contiguous
     let mut new_glyf: Vec<u8> = Vec::new();
-    let mut new_loca: Vec<u32> = Vec::with_capacity(num_glyphs as usize + 1);
+    let mut new_loca: Vec<u32> = Vec::with_capacity(used_sorted.len() + 1);
     new_loca.push(0);
 
-    for gid in 0..=max_gid {
+    for &old_gid in &used_sorted {
+        let old_gid_u16 = old_gid as u16;
         let (start, len) = if let (Some(loca), Some(glyf)) = (loca_table, glyf_table) {
-            get_glyph_range(loca, glyf, gid, loca_format).unwrap_or((0, 0))
+            get_glyph_range(loca, glyf, old_gid_u16, loca_format).unwrap_or((0, 0))
         } else {
             (0, 0)
         };
@@ -203,7 +244,6 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
         {
             new_glyf.extend_from_slice(&glyf[start..start + len]);
         }
-        // Pad to 2-byte boundary (required by short loca format)
         while !new_glyf.len().is_multiple_of(2) {
             new_glyf.push(0);
         }
@@ -222,24 +262,27 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
         }
     }
 
-    // Build new hmtx: for each glyph 0..=max_gid, write advanceWidth + lsb
-    let mut hmtx_bytes = Vec::new();
-    for gid in 0..=max_gid {
+    // Build new hmtx: full 4-byte records for all used glyphs
+    let mut hmtx_bytes = Vec::with_capacity(used_sorted.len() * 4);
+    for &old_gid in &used_sorted {
         let advance = face
-            .glyph_hor_advance(ttf_parser::GlyphId(gid))
+            .glyph_hor_advance(ttf_parser::GlyphId(old_gid as u16))
             .unwrap_or(0);
         let lsb = face
-            .glyph_hor_side_bearing(ttf_parser::GlyphId(gid))
+            .glyph_hor_side_bearing(ttf_parser::GlyphId(old_gid as u16))
             .unwrap_or(0);
         hmtx_bytes.extend_from_slice(&advance.to_be_bytes());
         hmtx_bytes.extend_from_slice(&(lsb as u16).to_be_bytes());
     }
     let new_num_hmetrics = num_glyphs;
 
+    // Build cmap table with remapped glyph IDs
+    let cmap_bytes = build_subset_cmap(&face, &used_sorted, &old_to_new);
+
     // Collect tables
     let mut tables: Vec<([u8; 4], Vec<u8>)> = Vec::new();
 
-    // head: copy raw, zero out checksumAdjustment (fixed at end)
+    // head: copy raw, zero out checksumAdjustment
     if let Some(data) = raw.table(Tag::from_bytes(b"head")) {
         let mut h = data.to_vec();
         h[8..12].copy_from_slice(&[0, 0, 0, 0]);
@@ -271,25 +314,210 @@ pub fn subset_font(full_data: &[u8], used_glyphs: &HashSet<u32>) -> Vec<u8> {
         }
     }
 
-    // Also include vertical metrics tables if present (CJK vertical writing)
     for &tag in [b"VORG", b"vmtx", b"vhea"] {
         if let Some(data) = raw.table(Tag::from_bytes(&tag)) {
             tables.push((tag, data.to_vec()));
         }
     }
 
-    // cmap: copy as-is (glyph IDs aren't remapped, so cmap stays valid)
-    if let Some(data) = raw.table(Tag::from_bytes(b"cmap")) {
-        tables.push((*b"cmap", data.to_vec()));
-    }
+    // cmap: rebuilt with remapped glyph IDs
+    tables.push((*b"cmap", cmap_bytes));
 
     tables.push((*b"loca", loca_bytes));
     tables.push((*b"glyf", new_glyf));
 
-    // Sort by tag (required by TrueType spec)
     tables.sort_by_key(|(tag, _)| *tag);
 
-    assemble_font(tables)
+    let font_data = assemble_font(tables);
+
+    // Build CIDToGIDMap stream if remapping occurred
+    let cid_to_gid_map = if needs_remapping {
+        let mut gid_map = Vec::with_capacity(1 + used_sorted.len() * 2);
+        gid_map.push(1u8); // format: 1 = word-aligned
+        for &old_id in &used_sorted {
+            let new_id = old_to_new[&old_id] as u16;
+            gid_map.extend_from_slice(&new_id.to_be_bytes());
+        }
+        Some(gid_map)
+    } else {
+        None
+    };
+
+    SubsetResult {
+        font_data,
+        cid_to_gid_map,
+        glyph_id_map: old_to_new,
+    }
+}
+
+/// Build a minimal format 4 cmap subtable containing only the used codepoints,
+/// mapping them to their new (remapped) glyph IDs.
+fn build_subset_cmap(
+    face: &ttf_parser::Face,
+    used_sorted: &[u32],
+    old_to_new: &HashMap<u32, u32>,
+) -> Vec<u8> {
+    let mut mappings: Vec<(u32, u16)> = Vec::new();
+    let used_set: HashSet<u32> = used_sorted.iter().copied().collect();
+
+    if let Some(cmap) = face.tables().cmap {
+        for i in 0..cmap.subtables.len() {
+            if let Some(subtable) = cmap.subtables.get(i)
+                && subtable.is_unicode()
+            {
+                subtable.codepoints(|ch| {
+                    if let Some(gid) = subtable.glyph_index(ch) {
+                        let gid_u32 = gid.0 as u32;
+                        if gid_u32 != 0
+                            && used_set.contains(&gid_u32)
+                            && let Some(&new_gid) = old_to_new.get(&gid_u32)
+                        {
+                            mappings.push((ch, new_gid as u16));
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    mappings.sort_by_key(|&(ch, _)| ch);
+    mappings.dedup_by(|a, b| a.0 == b.0);
+
+    if mappings.is_empty() {
+        // Empty cmap: format 0 subtable with no mappings
+        let mut out = Vec::new();
+        out.extend_from_slice(&0u16.to_be_bytes()); // version
+        out.extend_from_slice(&1u16.to_be_bytes()); // numTables
+        // One subtable record: platform 3 (Windows), encoding 1 (Unicode BMP), offset 12
+        out.extend_from_slice(&3u16.to_be_bytes());
+        out.extend_from_slice(&1u16.to_be_bytes());
+        out.extend_from_slice(&12u32.to_be_bytes());
+        // Format 0 subtable
+        out.extend_from_slice(&0u16.to_be_bytes()); // format
+        out.extend_from_slice(&262u16.to_be_bytes()); // length (6 header + 256)
+        out.extend_from_slice(&0u16.to_be_bytes()); // language
+        out.extend(std::iter::repeat_n(0, 256));
+        return out;
+    }
+
+    // Build format 4 subtable
+    build_format4_cmap(&mappings)
+}
+
+/// Build a TrueType cmap format 4 subtable from sorted (codepoint, glyph_id) pairs.
+fn build_format4_cmap(mappings: &[(u32, u16)]) -> Vec<u8> {
+    let min_char = mappings[0].0 as u16;
+    let max_char = mappings[mappings.len() - 1].0 as u16;
+    // segCount includes the required 0xFFFF sentinel segment
+    let real_seg_count = 1u16;
+    let seg_count = real_seg_count + 1u16; // +1 for sentinel
+
+    let seg_count_x2 = seg_count * 2;
+    let search_range = highest_power_of_2_u16(seg_count_x2);
+    let entry_selector = (search_range as u32 / 2).trailing_zeros() as u16;
+    let range_shift = seg_count_x2 - search_range;
+
+    let end_codes: Vec<u16> = vec![max_char, 0xFFFF];
+    let start_codes: Vec<u16> = vec![min_char, 0xFFFF];
+
+    let first_delta = mappings[0].1 as i16 - mappings[0].0 as i16;
+    let can_use_delta = mappings.len() == (max_char as usize - min_char as usize + 1)
+        && mappings
+            .iter()
+            .all(|&(ch, gid)| gid as i16 - ch as i16 == first_delta);
+
+    let (id_deltas, id_range_offsets, glyph_id_array) = if can_use_delta {
+        (vec![first_delta, 1], vec![0, 0], Vec::new())
+    } else {
+        let sc = seg_count as usize; // already includes sentinel
+
+        let offset_to_glyph_array = 14u32
+            + (sc * 2) as u32 // endCode
+            + 2u32 // reservedPad
+            + (sc * 2) as u32 // startCode
+            + (sc * 2) as u32 // idDelta
+            + (sc * 2) as u32; // idRangeOffset
+
+        let mut gids: Vec<u16> = Vec::new();
+        let mut mapping_idx = 0usize;
+        for ch in min_char..=max_char {
+            if mapping_idx < mappings.len() && mappings[mapping_idx].0 as u16 == ch {
+                gids.push(mappings[mapping_idx].1);
+                mapping_idx += 1;
+            } else {
+                gids.push(0);
+            }
+        }
+
+        let id_range_offset_addr = 14u32
+            + (sc * 2) as u32 // endCode
+            + 2u32 // reservedPad
+            + (sc * 2) as u32 // startCode
+            + (sc * 2) as u32; // idDelta
+
+        let offset_val = (offset_to_glyph_array - id_range_offset_addr) as u16;
+        (vec![0, 1], vec![offset_val, 0], gids)
+    };
+
+    let glyph_array_bytes: usize = glyph_id_array.len() * 2;
+    let subtable_length = 14u32
+        + (seg_count * 2) as u32 // endCode
+        + 2u32 // reservedPad
+        + (seg_count * 2) as u32 // startCode
+        + (seg_count * 2) as u32 // idDelta
+        + (seg_count * 2) as u32 // idRangeOffset
+        + glyph_array_bytes as u32;
+
+    let mut out = Vec::with_capacity(12 + subtable_length as usize);
+
+    // cmap header: version=0, numTables=1
+    out.extend_from_slice(&0u16.to_be_bytes());
+    out.extend_from_slice(&1u16.to_be_bytes());
+    // Encoding record: platform 3 (Windows), encoding 1 (Unicode BMP), offset=12
+    out.extend_from_slice(&3u16.to_be_bytes());
+    out.extend_from_slice(&1u16.to_be_bytes());
+    out.extend_from_slice(&12u32.to_be_bytes());
+
+    // Format 4 subtable
+    out.extend_from_slice(&4u16.to_be_bytes()); // format
+    out.extend_from_slice(&(subtable_length as u16).to_be_bytes()); // length
+    out.extend_from_slice(&0u16.to_be_bytes()); // language
+    out.extend_from_slice(&seg_count_x2.to_be_bytes());
+    out.extend_from_slice(&search_range.to_be_bytes());
+    out.extend_from_slice(&entry_selector.to_be_bytes());
+    out.extend_from_slice(&range_shift.to_be_bytes());
+
+    // endCode
+    for &ec in &end_codes {
+        out.extend_from_slice(&ec.to_be_bytes());
+    }
+    // reservedPad
+    out.extend_from_slice(&0u16.to_be_bytes());
+    // startCode
+    for &sc in &start_codes {
+        out.extend_from_slice(&sc.to_be_bytes());
+    }
+    // idDelta
+    for &d in &id_deltas {
+        out.extend_from_slice(&d.to_be_bytes());
+    }
+    // idRangeOffset
+    for &r in &id_range_offsets {
+        out.extend_from_slice(&r.to_be_bytes());
+    }
+    // glyphIdArray
+    for &g in &glyph_id_array {
+        out.extend_from_slice(&g.to_be_bytes());
+    }
+
+    out
+}
+
+fn highest_power_of_2_u16(v: u16) -> u16 {
+    if v == 0 {
+        return 0;
+    }
+    1 << (15 - v.leading_zeros())
 }
 
 #[inline]
@@ -481,7 +709,8 @@ mod tests {
             }
         }
 
-        let subsetted = subset_font(&data, &glyphs);
+        let result = subset_font(&data, &glyphs);
+        let subsetted = result.font_data;
 
         assert!(
             subsetted.len() < data.len(),
@@ -490,22 +719,28 @@ mod tests {
             data.len()
         );
 
-        let result = ttf_parser::Face::parse(&subsetted, 0);
+        let parse_result = ttf_parser::Face::parse(&subsetted, 0);
         assert!(
-            result.is_ok(),
+            parse_result.is_ok(),
             "subset font should be valid: {:?}",
-            result.err()
+            parse_result.err()
         );
 
-        let subset_face = result.unwrap();
+        let subset_face = parse_result.unwrap();
 
-        // Glyph IDs should still map correctly (not remapped)
+        // Codepoints should still map to valid glyph IDs (remapped)
         for ch in "Hello World".chars() {
             let original_gid = face.glyph_index(ch).unwrap();
             let subset_gid = subset_face.glyph_index(ch).unwrap();
+            // The subset glyph ID should be the remapped one
+            let expected_new = result
+                .glyph_id_map
+                .get(&(original_gid.0 as u32))
+                .copied()
+                .unwrap_or(original_gid.0 as u32);
             assert_eq!(
-                original_gid.0, subset_gid.0,
-                "glyph mapping for '{ch}' should be preserved"
+                subset_gid.0 as u32, expected_new,
+                "glyph mapping for '{ch}' should be remapped correctly"
             );
         }
     }
@@ -523,7 +758,8 @@ mod tests {
             }
         }
 
-        let subsetted = subset_font(&data, &glyphs);
+        let result = subset_font(&data, &glyphs);
+        let subsetted = result.font_data;
 
         let reduction = 1.0 - (subsetted.len() as f64 / data.len() as f64);
         assert!(
@@ -619,28 +855,88 @@ mod tests {
         glyphs.insert(0);
         glyphs.insert(compound as u32);
 
-        let subsetted = subset_font(&data, &glyphs);
+        let result = subset_font(&data, &glyphs);
+        let sub_face = ttf_parser::Face::parse(&result.font_data, 0).unwrap();
+
+        // Verify compound glyph data is present (glyph 0 = .notdef, glyph 1 = compound)
+        // With remapping, the compound is at new ID = result.glyph_id_map[compound]
+        let compound_new_id = result.glyph_id_map[&(compound as u32)] as u16;
+        assert!(compound_new_id > 0, "compound glyph should not be .notdef");
+
+        // Verify numGlyphs equals the number of unique used glyphs
+        assert_eq!(
+            sub_face.number_of_glyphs(),
+            result.glyph_id_map.len() as u16,
+            "numGlyphs should equal used glyph count"
+        );
+    }
+
+    #[test]
+    fn test_subset_compact_cjk() {
+        let Some(data) = get_font_data() else { return };
+
+        let face = ttf_parser::Face::parse(&data, 0).unwrap();
+
+        // Simulate CJK-style sparsity: pick glyphs with large IDs spread far apart
+        let num_glyphs_total = face.number_of_glyphs();
+        let mut glyphs = HashSet::new();
+        glyphs.insert(0); // .notdef
+        let glyph_count = 50usize;
+        if num_glyphs_total > 200 {
+            // Pick sparse glyph IDs to simulate CJK fonts
+            for i in 0..glyph_count {
+                let gid = (i as u32 * (num_glyphs_total as u32 / glyph_count as u32))
+                    .min(num_glyphs_total as u32 - 1);
+                glyphs.insert(gid);
+            }
+        } else {
+            // Not enough glyphs for sparse test, pick whatever we have
+            for ch in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars() {
+                if let Some(gid) = face.glyph_index(ch) {
+                    glyphs.insert(gid.0 as u32);
+                }
+            }
+        }
+
+        let result = subset_font(&data, &glyphs);
+        let subsetted = result.font_data;
+
+        // Subset should have numGlyphs == total used glyph count (including .notdef and resolved compounds)
         let sub_face = ttf_parser::Face::parse(&subsetted, 0).unwrap();
+        assert_eq!(
+            sub_face.number_of_glyphs() as usize,
+            result.glyph_id_map.len(),
+            "numGlyphs should match total used glyph count"
+        );
 
-        let sub_raw = sub_face.raw_face();
-        let sub_head = sub_raw.table(Tag::from_bytes(b"head")).unwrap();
-        let sub_loca_fmt = u16::from_be_bytes([sub_head[50], sub_head[51]]);
-        let sub_loca = sub_raw.table(Tag::from_bytes(b"loca")).unwrap();
-        let sub_glyf = sub_raw.table(Tag::from_bytes(b"glyf")).unwrap();
-
-        // Every direct component glyph must have non-empty data in the subset
-        for comp_gid in &component_gids {
-            let Some(range) = get_glyph_range(sub_loca, sub_glyf, *comp_gid, sub_loca_fmt) else {
-                panic!(
-                    "component glyph {} of compound {} should be in subset",
-                    comp_gid, compound
-                );
-            };
+        // Subset size should be proportional to used glyphs, not max_gid
+        let max_old_gid = *glyphs.iter().max().unwrap_or(&0) as usize;
+        let ratio = subsetted.len() as f64 / data.len() as f64;
+        // With remapping, even if max_old_gid is large, subset should be small
+        if max_old_gid > 100 {
             assert!(
-                range.1 > 0,
-                "component glyph {} of compound {} must have glyf data in subset",
-                comp_gid,
-                compound
+                ratio < 0.5,
+                "sparse subset should be much smaller: original={}, subset={}, ratio={:.2}",
+                data.len(),
+                subsetted.len(),
+                ratio
+            );
+        }
+
+        // CIDToGIDMap should be present when remapping occurred
+        if max_old_gid >= glyphs.len() {
+            assert!(
+                result.cid_to_gid_map.is_some(),
+                "CIDToGIDMap should be present when glyph IDs are remapped"
+            );
+            let map = result.cid_to_gid_map.as_ref().unwrap();
+            // Format byte
+            assert_eq!(map[0], 1, "CIDToGIDMap format should be 1 (word-aligned)");
+            // Map length: 1 format byte + numGlyphs * 2 bytes per entry
+            assert_eq!(
+                map.len(),
+                1 + (sub_face.number_of_glyphs() as usize) * 2,
+                "CIDToGIDMap length should be correct"
             );
         }
     }

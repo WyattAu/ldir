@@ -513,8 +513,8 @@ impl PdfDocumentBuilder {
             .collect();
 
         // Embed each font
-        // Per font we need: Type0, CIDFont, FontDescriptor, FontFile2, ToUnicode
-        // = 5 objects per font
+        // Per font we need: Type0, CIDFont, FontDescriptor, FontFile2, CIDToGIDMap, ToUnicode
+        // = 6 objects per font
         let font_ids: Vec<FontPdfIds> = self
             .fonts
             .iter()
@@ -528,6 +528,8 @@ impl PdfDocumentBuilder {
                 next_id += 1;
                 let fontfile_id = Ref::new(next_id);
                 next_id += 1;
+                let cidtogidmap_id = Ref::new(next_id);
+                next_id += 1;
                 let tounicode_id = Ref::new(next_id);
                 next_id += 1;
 
@@ -537,6 +539,7 @@ impl PdfDocumentBuilder {
                     cid_id,
                     descriptor_id,
                     fontfile_id,
+                    cidtogidmap_id,
                     tounicode_id,
                     &font.face,
                     used_gids,
@@ -967,6 +970,7 @@ fn embed_truetype_font(
     cid_id: Ref,
     descriptor_id: Ref,
     fontfile_id: Ref,
+    cidtogidmap_id: Ref,
     tounicode_id: Ref,
     face: &FontFace,
     used_glyphs: &std::collections::HashSet<u32>,
@@ -975,6 +979,8 @@ fn embed_truetype_font(
     let info = face.pdf_info();
     let upem = info.units_per_em as f32;
     let scale = 1000.0 / upem;
+
+    let subset_result = crate::font::subset_font(face.raw_bytes(), used_glyphs);
 
     // --- Type0 font (composite) ---
     {
@@ -1041,8 +1047,19 @@ fn embed_truetype_font(
             widths.consecutive(start, run_widths);
         }
 
-        // CIDToGIDMap: Identity
-        cid.cid_to_gid_map_predefined(Name(b"Identity"));
+        // --- CIDToGIDMap ---
+        if subset_result.cid_to_gid_map.is_some() {
+            cid.cid_to_gid_map_stream(cidtogidmap_id);
+        } else {
+            cid.cid_to_gid_map_predefined(Name(b"Identity"));
+        }
+    }
+
+    // --- CIDToGIDMap stream (if needed) ---
+    if let Some(ref cid_map) = subset_result.cid_to_gid_map {
+        let compressed = compress(cid_map);
+        pdf.stream(cidtogidmap_id, &compressed)
+            .filter(Filter::FlateDecode);
     }
 
     // --- FontDescriptor ---
@@ -1083,11 +1100,10 @@ fn embed_truetype_font(
 
     // --- FontFile2 (TrueType font stream, FlateDecode compressed) ---
     {
-        let subsetted = crate::font::subset_font(face.raw_bytes(), used_glyphs);
-        let compressed = compress(&subsetted);
+        let compressed = compress(&subset_result.font_data);
         pdf.stream(fontfile_id, &compressed)
             .filter(Filter::FlateDecode)
-            .pair(Name(b"Length1"), subsetted.len() as i32);
+            .pair(Name(b"Length1"), subset_result.font_data.len() as i32);
     }
 
     // --- ToUnicode CMap ---
