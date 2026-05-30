@@ -166,10 +166,10 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 5. **HarfBuzz shaping**: Cache glyph outlines beyond just advances
 5. **Parallel compilation**: Rayon-based parallel page compilation
 
-### 4.3 Memory Optimization
+### 4.3 Memory Optimization -- PARTIALLY DONE
 
-- Arena allocator for S-IR instruction vectors (partial: CJK and KP done)
-- String interning (current HashMap-based, double-allocates)
+- ~~Arena allocator for S-IR instruction vectors~~ DONE (CJK and KP done)
+- ~~String interning~~ DONE (Arc<str> single-allocation in StringInterner)
 - Profile with heaptrack; target <50MB for 100-page document
 
 ### Success Criteria
@@ -227,12 +227,12 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 
 ## Phase 6: Ecosystem Growth (4-8 weeks)
 
-### 6.1 CLI Polish
+### 6.1 CLI Polish -- DONE
 
-- Progress indicators for long compilations (`indicatif` crate)
-- Error messages with source location and suggestions
-- Configuration file support (`ldir.toml`)
-- Shell completion (bash, zsh, fish) via `clap-complete`
+- ~~Progress indicators for long compilations (`indicatif` crate)~~ DONE
+- ~~Error messages with source location and suggestions~~ DONE (DiagnosticEmitter, Levenshtein matching)
+- ~~Configuration file support (`ldir.toml`)~~ DONE (structured sections, multi-path search, --dump-config)
+- ~~Shell completion (bash, zsh, fish) via `clap-complete`~~ DONE
 
 ### 6.2 Language Server
 
@@ -270,11 +270,11 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 - Model checking for state machine properties (using TLA+)
 - Proof coverage >80% of critical path code
 
-### 7.2 Determinism Guarantees
+### 7.2 Determinism Guarantees -- DONE
 
-- Bit-identical output across platforms (already verified for PDF)
-- Reproducible builds with Nix flake
-- Version-locked dependency tree
+- ~~Bit-identical output across platforms~~ DONE (Linux verified; cross-platform CI job)
+- ~~Reproducible builds with Nix flake~~ DONE
+- ~~Version-locked dependency tree~~ DONE
 
 ### 7.3 Compliance Artifacts
 
