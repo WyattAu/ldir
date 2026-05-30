@@ -76,6 +76,9 @@ pub mod compiler;
 pub(crate) mod ecs;
 pub mod interner;
 
+/// Typed arena allocator and string arena for compilation hot paths.
+pub mod arena;
+
 /// Cross-reference resolution for document labels and citations.
 pub mod cross_ref;
 

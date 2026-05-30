@@ -5,6 +5,7 @@ import {
     ServerOptions,
     TransportKind
 } from 'vscode-languageclient/node';
+import { registerSymbolProviders } from './symbolProvider';
 
 let client: LanguageClient;
 let statusBarItem: vscode.StatusBarItem;
@@ -104,6 +105,8 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(compileCmd, previewCmd, irCmd);
+
+    registerSymbolProviders(context);
 }
 
 export function deactivate(): Thenable<void> | undefined {

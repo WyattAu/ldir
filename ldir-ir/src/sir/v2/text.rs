@@ -146,6 +146,14 @@ pub fn text_to_module(text: &str) -> Result<SIRModuleV2, String> {
                     rowspan: 1,
                 },
                 "footnote-block" => nodes::NodeType::FootnoteBlock,
+                "endnote" => nodes::NodeType::Endnote {
+                    content: extract_braced_quoted(body_str).unwrap_or_default(),
+                },
+                "comment" => nodes::NodeType::Comment {
+                    author: extract_braced_field(body_str, "author=")
+                        .unwrap_or_else(|| "Anonymous".into()),
+                    content: extract_braced_quoted(body_str).unwrap_or_default(),
+                },
                 "br" => nodes::NodeType::LineBreak,
                 _ => continue,
             };
@@ -418,6 +426,13 @@ fn node_tag(node: &crate::sir::v2::nodes::Node) -> (&'static str, String) {
         crate::sir::v2::nodes::NodeType::TableRow { .. } => ("table-row", "{}".into()),
         crate::sir::v2::nodes::NodeType::TableCell { .. } => ("table-cell", "{}".into()),
         crate::sir::v2::nodes::NodeType::FootnoteBlock => ("footnote-block", "{}".into()),
+        crate::sir::v2::nodes::NodeType::Endnote { content } => {
+            ("endnote", format!("{{ {:?} }}", content))
+        }
+        crate::sir::v2::nodes::NodeType::Comment { author, content } => (
+            "comment",
+            format!("{{ author={:?} {:?} }}", author, content),
+        ),
         crate::sir::v2::nodes::NodeType::Citation { keys, .. } => {
             ("citation", format!("{{ keys={:?} }}", keys))
         }

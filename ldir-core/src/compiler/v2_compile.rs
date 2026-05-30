@@ -762,7 +762,7 @@ fn compile_v2_node(
                 .unwrap_or_else(|| format!("[{}]", label));
             emit_v2_text_inline(&resolved, page, ctx, gir_doc);
         }
-        NodeType::Label { .. } => {}
+        NodeType::Label { .. } | NodeType::Endnote { .. } | NodeType::Comment { .. } => {}
     }
 
     Ok(())

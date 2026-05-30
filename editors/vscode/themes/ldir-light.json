@@ -1,0 +1,31 @@
+{
+  "name": "Ldir Light",
+  "type": "light",
+  "colors": {
+    "editor.background": "#FAFAFA",
+    "editor.foreground": "#1A1A1A",
+    "editor.lineHighlightBackground": "#F0F0F0"
+  },
+  "tokenColors": [
+    {
+      "scope": "support.function.latex.ldir",
+      "settings": { "foreground": "#7B1FA2", "fontStyle": "bold" }
+    },
+    {
+      "scope": "string.math.block.ldir",
+      "settings": { "foreground": "#0D47A1", "background": "#E3F2FD" }
+    },
+    {
+      "scope": "string.math.inline.ldir",
+      "settings": { "foreground": "#0D47A1" }
+    },
+    {
+      "scope": "variable.other.reference.ldir",
+      "settings": { "foreground": "#2E7D32" }
+    },
+    {
+      "scope": "entity.name.tag.environment.ldir",
+      "settings": { "foreground": "#E65100", "fontStyle": "bold" }
+    }
+  ]
+}

@@ -31,6 +31,32 @@ impl ImageRef {
 }
 
 #[derive(Debug, Clone)]
+struct FootnoteEntry {
+    id: u32,
+    content: String,
+}
+
+#[derive(Debug, Clone)]
+struct EndnoteEntry {
+    id: u32,
+    content: String,
+}
+
+#[derive(Debug, Clone)]
+struct CommentEntry {
+    id: u32,
+    author: String,
+    date: String,
+    content: String,
+}
+
+struct CollectedNotes {
+    footnotes: Vec<FootnoteEntry>,
+    endnotes: Vec<EndnoteEntry>,
+    comments: Vec<CommentEntry>,
+}
+
+#[derive(Debug, Clone)]
 pub struct DocxBuilder;
 
 impl Default for DocxBuilder {
@@ -65,7 +91,14 @@ impl DocxBuilder {
 
         let shared_image_map: Arc<HashMap<u32, &ImageRef>> = Arc::new(image_rid_map);
 
-        let document_xml = self.render_document_with_images(module, &shared_image_map);
+        let mut notes = CollectedNotes {
+            footnotes: Vec::new(),
+            endnotes: Vec::new(),
+            comments: Vec::new(),
+        };
+
+        let document_xml =
+            self.render_document_with_images_and_notes(module, &shared_image_map, &mut notes);
 
         let mut content_types_overrides = String::from(
             r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -112,6 +145,51 @@ impl DocxBuilder {
             document_rels.push_str(&format!(
                 "\n  <Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"{}\"/>",
                 img.r_id, &img.zip_path[5..]
+            ));
+        }
+
+        if !notes.footnotes.is_empty() {
+            let footnotes_xml = render_footnotes_xml(&notes.footnotes);
+            zip.add_file("word/footnotes.xml", footnotes_xml.as_bytes(), false);
+
+            content_types_overrides.push_str(
+                "\n  <Override PartName=\"/word/footnotes.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml\"/>",
+            );
+
+            let rid = "rIdFootnotes";
+            document_rels.push_str(&format!(
+                "\n  <Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes\" Target=\"footnotes.xml\"/>",
+                rid
+            ));
+        }
+
+        if !notes.endnotes.is_empty() {
+            let endnotes_xml = render_endnotes_xml(&notes.endnotes);
+            zip.add_file("word/endnotes.xml", endnotes_xml.as_bytes(), false);
+
+            content_types_overrides.push_str(
+                "\n  <Override PartName=\"/word/endnotes.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml\"/>",
+            );
+
+            let rid = "rIdEndnotes";
+            document_rels.push_str(&format!(
+                "\n  <Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes\" Target=\"endnotes.xml\"/>",
+                rid
+            ));
+        }
+
+        if !notes.comments.is_empty() {
+            let comments_xml = render_comments_xml(&notes.comments);
+            zip.add_file("word/comments.xml", comments_xml.as_bytes(), false);
+
+            content_types_overrides.push_str(
+                "\n  <Override PartName=\"/word/comments.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml\"/>",
+            );
+
+            let rid = "rIdComments";
+            document_rels.push_str(&format!(
+                "\n  <Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments\" Target=\"comments.xml\"/>",
+                rid
             ));
         }
 
@@ -179,15 +257,16 @@ impl DocxBuilder {
         }
     }
 
-    fn render_document_with_images(
+    fn render_document_with_images_and_notes(
         &self,
         module: &SIRModuleV2,
         image_map: &HashMap<u32, &ImageRef>,
+        notes: &mut CollectedNotes,
     ) -> String {
         let mut body = String::new();
         for &root_id in module.body.roots() {
             if let Some(root) = module.body.get(root_id) {
-                self.render_node_with_images(&mut body, module, root, image_map);
+                self.render_node_with_images_and_notes(&mut body, module, root, image_map, notes);
             }
         }
 
@@ -205,18 +284,21 @@ impl DocxBuilder {
         )
     }
 
-    fn render_node_with_images(
+    fn render_node_with_images_and_notes(
         &self,
         out: &mut String,
         module: &SIRModuleV2,
         node: &Node,
         image_map: &HashMap<u32, &ImageRef>,
+        notes: &mut CollectedNotes,
     ) {
         match &node.node_type {
             NodeType::Document => {
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_node_with_images(out, module, child, image_map);
+                        self.render_node_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
             }
@@ -225,7 +307,9 @@ impl DocxBuilder {
                 out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Title\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:p>");
@@ -247,7 +331,9 @@ impl DocxBuilder {
                 out.push_str("\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:p>");
@@ -257,7 +343,9 @@ impl DocxBuilder {
                 out.push_str("<w:p>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:p>");
@@ -266,20 +354,22 @@ impl DocxBuilder {
             NodeType::List { ordered, .. } => {
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_list_item(out, module, child, *ordered);
+                        self.render_list_item_with_notes(out, module, child, *ordered, notes);
                     }
                 }
             }
 
             NodeType::ListItem => {
-                self.render_list_item(out, module, node, false);
+                self.render_list_item_with_notes(out, module, node, false, notes);
             }
 
             NodeType::BlockQuote => {
                 out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Quote\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:p>");
@@ -348,6 +438,15 @@ impl DocxBuilder {
                 }
             }
 
+            NodeType::Endnote { content } => {
+                let id = notes.endnotes.len() as u32 + 1;
+                notes.endnotes.push(EndnoteEntry {
+                    id,
+                    content: content.clone(),
+                });
+                out.push_str(&format!("<w:r><w:endnoteReference w:id=\"{}\"/></w:r>", id));
+            }
+
             NodeType::Figure { .. } => {
                 out.push_str("<w:p>");
                 for &child_id in &node.child_ids {
@@ -361,7 +460,9 @@ impl DocxBuilder {
                                 out.push_str(" [image not embedded]</w:t></w:r>");
                             }
                         } else {
-                            self.render_node_with_images(out, module, child, image_map);
+                            self.render_node_with_images_and_notes(
+                                out, module, child, image_map, notes,
+                            );
                         }
                     }
                 }
@@ -372,7 +473,9 @@ impl DocxBuilder {
                 out.push_str("<w:p><w:pPr><w:pStyle w:val=\"Caption\"/></w:pPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:p>");
@@ -402,19 +505,22 @@ impl DocxBuilder {
             _ => {
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_node_with_images(out, module, child, image_map);
+                        self.render_node_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
             }
         }
     }
 
-    fn render_inline_with_images(
+    fn render_inline_with_images_and_notes(
         &self,
         out: &mut String,
         module: &SIRModuleV2,
         node: &Node,
         image_map: &HashMap<u32, &ImageRef>,
+        notes: &mut CollectedNotes,
     ) {
         match &node.node_type {
             NodeType::Text { content } => {
@@ -427,7 +533,9 @@ impl DocxBuilder {
                 out.push_str("<w:r><w:rPr><w:b/></w:rPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:r>");
@@ -437,7 +545,9 @@ impl DocxBuilder {
                 out.push_str("<w:r><w:rPr><w:i/></w:rPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:r>");
@@ -447,7 +557,9 @@ impl DocxBuilder {
                 out.push_str("<w:r><w:rPr><w:rFonts w:ascii=\"Courier New\" w:hAnsi=\"Courier New\"/></w:rPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:r>");
@@ -457,7 +569,9 @@ impl DocxBuilder {
                 out.push_str("<w:r><w:rPr><w:u w:val=\"single\"/></w:rPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:r>");
@@ -467,7 +581,9 @@ impl DocxBuilder {
                 out.push_str("<w:r><w:rPr><w:strike/></w:rPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:r>");
@@ -477,7 +593,9 @@ impl DocxBuilder {
                 out.push_str("<w:r><w:rPr><w:smallCaps/></w:rPr>");
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
                 out.push_str("</w:r>");
@@ -521,15 +639,52 @@ impl DocxBuilder {
             }
 
             NodeType::Footnote { content } => {
-                out.push_str("<w:r><w:rPr><w:vertAlign w:val=\"superscript\"/><w:sz w:val=\"16\"/></w:rPr><w:t>");
+                let id = notes.footnotes.len() as u32 + 1;
+                notes.footnotes.push(FootnoteEntry {
+                    id,
+                    content: content.clone(),
+                });
+                out.push_str(&format!(
+                    "<w:r><w:footnoteReference w:id=\"{}\"/></w:r>",
+                    id
+                ));
+            }
+
+            NodeType::Endnote { content } => {
+                let id = notes.endnotes.len() as u32 + 1;
+                notes.endnotes.push(EndnoteEntry {
+                    id,
+                    content: content.clone(),
+                });
+                out.push_str(&format!("<w:r><w:endnoteReference w:id=\"{}\"/></w:r>", id));
+            }
+
+            NodeType::Comment { author, content } => {
+                let id = notes.comments.len() as u32;
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                notes.comments.push(CommentEntry {
+                    id,
+                    author: author.clone(),
+                    date: format_iso8601(now),
+                    content: content.clone(),
+                });
+                out.push_str(&format!("<w:commentRangeStart w:id=\"{}\"/>", id));
+                out.push_str("<w:r><w:rPr><w:highlight w:val=\"yellow\"/></w:rPr><w:t>");
                 out.push_str(&escape_xml(content));
                 out.push_str("</w:t></w:r>");
+                out.push_str(&format!("<w:commentRangeEnd w:id=\"{}\"/>", id));
+                out.push_str(&format!("<w:r><w:commentReference w:id=\"{}\"/></w:r>", id));
             }
 
             NodeType::Styled { .. } | NodeType::Group => {
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {
-                        self.render_inline_with_images(out, module, child, image_map);
+                        self.render_inline_with_images_and_notes(
+                            out, module, child, image_map, notes,
+                        );
                     }
                 }
             }
@@ -543,6 +698,26 @@ impl DocxBuilder {
                 }
             }
         }
+    }
+
+    fn render_list_item_with_notes(
+        &self,
+        out: &mut String,
+        module: &SIRModuleV2,
+        node: &Node,
+        ordered: bool,
+        notes: &mut CollectedNotes,
+    ) {
+        let num_id = if ordered { "2" } else { "1" };
+        out.push_str(&format!(
+            "<w:p><w:pPr><w:pStyle w:val=\"ListParagraph\"/><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"{num_id}\"/></w:numPr></w:pPr>"
+        ));
+        for &child_id in &node.child_ids {
+            if let Some(child) = module.body.get(child_id) {
+                self.render_inline_with_notes(out, module, child, notes);
+            }
+        }
+        out.push_str("</w:p>");
     }
 
     fn render_inline(&self, out: &mut String, module: &SIRModuleV2, node: &Node) {
@@ -671,17 +846,171 @@ impl DocxBuilder {
         }
     }
 
-    fn render_list_item(&self, out: &mut String, module: &SIRModuleV2, node: &Node, ordered: bool) {
-        let num_id = if ordered { "2" } else { "1" };
-        out.push_str(&format!(
-            "<w:p><w:pPr><w:pStyle w:val=\"ListParagraph\"/><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"{num_id}\"/></w:numPr></w:pPr>"
-        ));
-        for &child_id in &node.child_ids {
-            if let Some(child) = module.body.get(child_id) {
-                self.render_inline(out, module, child);
+    fn render_inline_with_notes(
+        &self,
+        out: &mut String,
+        module: &SIRModuleV2,
+        node: &Node,
+        notes: &mut CollectedNotes,
+    ) {
+        match &node.node_type {
+            NodeType::Text { content } => {
+                out.push_str("<w:r><w:t>");
+                out.push_str(&escape_xml(content));
+                out.push_str("</w:t></w:r>");
+            }
+
+            NodeType::Bold => {
+                out.push_str("<w:r><w:rPr><w:b/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_notes(out, module, child, notes);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Italic => {
+                out.push_str("<w:r><w:rPr><w:i/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_notes(out, module, child, notes);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Mono => {
+                out.push_str("<w:r><w:rPr><w:rFonts w:ascii=\"Courier New\" w:hAnsi=\"Courier New\"/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_notes(out, module, child, notes);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Underline => {
+                out.push_str("<w:r><w:rPr><w:u w:val=\"single\"/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_notes(out, module, child, notes);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Strikethrough => {
+                out.push_str("<w:r><w:rPr><w:strike/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_notes(out, module, child, notes);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::SmallCaps => {
+                out.push_str("<w:r><w:rPr><w:smallCaps/></w:rPr>");
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_notes(out, module, child, notes);
+                    }
+                }
+                out.push_str("</w:r>");
+            }
+
+            NodeType::Link { url, title } => {
+                let text = module.body.collect_text(node.id);
+                out.push_str(
+                    "<w:r><w:rPr><w:color w:val=\"0066CC\"/><w:u w:val=\"single\"/></w:rPr><w:t>",
+                );
+                out.push_str(&escape_xml(&text));
+                out.push_str("</w:t></w:r>");
+                if let Some(t) = title {
+                    out.push_str("<w:r><w:rPr><w:color w:val=\"0066CC\"/></w:rPr><w:t xml:space=\"preserve\"> (");
+                    out.push_str(&escape_xml(t));
+                    out.push_str(")</w:t></w:r>");
+                }
+                out.push_str("<w:r><w:rPr><w:sz w:val=\"16\"/><w:color w:val=\"0066CC\"/></w:rPr><w:t xml:space=\"preserve\"> [");
+                out.push_str(&escape_xml(url));
+                out.push_str("]</w:t></w:r>");
+            }
+
+            NodeType::Image { alt, .. } => {
+                out.push_str("<w:r><w:t>[");
+                out.push_str(&escape_xml(alt));
+                out.push_str("]</w:t></w:r>");
+            }
+
+            NodeType::MathInline { content } => {
+                out.push_str("<w:r><w:rPr><w:i/></w:rPr><w:t>");
+                out.push_str(&escape_xml(content));
+                out.push_str("</w:t></w:r>");
+            }
+
+            NodeType::LineBreak => {
+                out.push_str("<w:r><w:br/></w:r>");
+            }
+
+            NodeType::Footnote { content } => {
+                let id = notes.footnotes.len() as u32 + 1;
+                notes.footnotes.push(FootnoteEntry {
+                    id,
+                    content: content.clone(),
+                });
+                out.push_str(&format!(
+                    "<w:r><w:footnoteReference w:id=\"{}\"/></w:r>",
+                    id
+                ));
+            }
+
+            NodeType::Endnote { content } => {
+                let id = notes.endnotes.len() as u32 + 1;
+                notes.endnotes.push(EndnoteEntry {
+                    id,
+                    content: content.clone(),
+                });
+                out.push_str(&format!("<w:r><w:endnoteReference w:id=\"{}\"/></w:r>", id));
+            }
+
+            NodeType::Comment { author, content } => {
+                let id = notes.comments.len() as u32;
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                notes.comments.push(CommentEntry {
+                    id,
+                    author: author.clone(),
+                    date: format_iso8601(now),
+                    content: content.clone(),
+                });
+                out.push_str(&format!("<w:commentRangeStart w:id=\"{}\"/>", id));
+                out.push_str("<w:r><w:rPr><w:highlight w:val=\"yellow\"/></w:rPr><w:t>");
+                out.push_str(&escape_xml(content));
+                out.push_str("</w:t></w:r>");
+                out.push_str(&format!("<w:commentRangeEnd w:id=\"{}\"/>", id));
+                out.push_str(&format!("<w:r><w:commentReference w:id=\"{}\"/></w:r>", id));
+            }
+
+            NodeType::Styled { .. } | NodeType::Group => {
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_inline_with_notes(out, module, child, notes);
+                    }
+                }
+            }
+
+            _ => {
+                let text = module.body.collect_text(node.id);
+                if !text.is_empty() {
+                    out.push_str("<w:r><w:t>");
+                    out.push_str(&escape_xml(&text));
+                    out.push_str("</w:t></w:r>");
+                }
             }
         }
-        out.push_str("</w:p>");
     }
 
     fn render_table_row(&self, out: &mut String, module: &SIRModuleV2, node: &Node) {
@@ -923,6 +1252,81 @@ fn escape_xml(s: &str) -> String {
         }
     }
     out
+}
+
+fn render_footnotes_xml(footnotes: &[FootnoteEntry]) -> String {
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:footnote w:type="separator" w:id="-1">
+    <w:p><w:separator/></w:p>
+  </w:footnote>
+  <w:footnote w:type="continuationSeparator" w:id="0">
+    <w:p><w:continuationSeparator/></w:p>
+  </w:footnote>"#,
+    );
+    for fn_entry in footnotes {
+        xml.push_str(&format!(
+            r#"
+  <w:footnote w:id="{}">
+    <w:p>
+      <w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>{}</w:t></w:r>
+    </w:p>
+  </w:footnote>"#,
+            fn_entry.id,
+            escape_xml(&fn_entry.content)
+        ));
+    }
+    xml.push_str("\n</w:footnotes>");
+    xml
+}
+
+fn render_endnotes_xml(endnotes: &[EndnoteEntry]) -> String {
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:endnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:endnote w:type="separator" w:id="-1">
+    <w:p><w:separator/></w:p>
+  </w:endnote>
+  <w:endnote w:type="continuationSeparator" w:id="0">
+    <w:p><w:continuationSeparator/></w:p>
+  </w:endnote>"#,
+    );
+    for en_entry in endnotes {
+        xml.push_str(&format!(
+            r#"
+  <w:endnote w:id="{}">
+    <w:p>
+      <w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>{}</w:t></w:r>
+    </w:p>
+  </w:endnote>"#,
+            en_entry.id,
+            escape_xml(&en_entry.content)
+        ));
+    }
+    xml.push_str("\n</w:endnotes>");
+    xml
+}
+
+fn render_comments_xml(comments: &[CommentEntry]) -> String {
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">"#,
+    );
+    for c in comments {
+        xml.push_str(&format!(
+            r#"
+  <w:comment w:id="{}" w:author="{}" w:date="{}">
+    <w:p><w:r><w:t>{}</w:t></w:r></w:p>
+  </w:comment>"#,
+            c.id,
+            escape_xml(&c.author),
+            c.date,
+            escape_xml(&c.content)
+        ));
+    }
+    xml.push_str("\n</w:comments>");
+    xml
 }
 
 fn format_iso8601(secs: u64) -> String {
@@ -1558,6 +1962,232 @@ mod tests {
         let text = String::from_utf8_lossy(&docx);
         assert!(text.contains("[Missing]"));
         assert!(!text.contains("<w:drawing>"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_docx_footnote() -> Result<(), Box<dyn std::error::Error>> {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Hello".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Footnote {
+                    content: "A footnote".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(3);
+        }
+
+        let docx = DocxBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&docx);
+        assert!(text.contains("word/footnotes.xml"));
+        assert!(text.contains("A footnote"));
+        assert!(text.contains("w:id=\"1\""));
+        assert!(text.contains("w:type=\"separator\""));
+        Ok(())
+    }
+
+    #[test]
+    fn test_docx_endnote() -> Result<(), Box<dyn std::error::Error>> {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Hello".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Endnote {
+                    content: "An endnote".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(3);
+        }
+
+        let docx = DocxBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&docx);
+        assert!(text.contains("word/endnotes.xml"));
+        assert!(text.contains("An endnote"));
+        assert!(text.contains("w:id=\"1\""));
+        assert!(text.contains("<w:endnoteReference"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_docx_footnote_reference_in_body() -> Result<(), Box<dyn std::error::Error>> {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Some text".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Footnote {
+                    content: "Note 1".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(3);
+        }
+
+        let docx = DocxBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&docx);
+        assert!(text.contains("<w:footnoteReference w:id=\"1\"/>"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_docx_comment() -> Result<(), Box<dyn std::error::Error>> {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Comment {
+                    author: "Test Author".into(),
+                    content: "A comment".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+
+        let docx = DocxBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&docx);
+        assert!(text.contains("word/comments.xml"));
+        assert!(text.contains("Test Author"));
+        assert!(text.contains("A comment"));
+        assert!(text.contains("<w:commentRangeStart"));
+        assert!(text.contains("<w:commentRangeEnd"));
+        assert!(text.contains("<w:commentReference"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_docx_multiple_footnotes() -> Result<(), Box<dyn std::error::Error>> {
+        let mut m = SIRModuleV2::new();
+        m.body.push(Node::new(0, NodeType::Document));
+        m.body
+            .push(Node::new(1, NodeType::Paragraph).with_parent(0));
+        m.body.push(
+            Node::new(
+                2,
+                NodeType::Text {
+                    content: "Text".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                3,
+                NodeType::Footnote {
+                    content: "First".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        m.body.push(
+            Node::new(
+                4,
+                NodeType::Footnote {
+                    content: "Second".into(),
+                },
+            )
+            .with_parent(1),
+        );
+        if let Some(n) = m.body.get_mut(0) {
+            n.add_child(1);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(2);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(3);
+        }
+        if let Some(n) = m.body.get_mut(1) {
+            n.add_child(4);
+        }
+
+        let docx = DocxBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&docx);
+        assert!(text.contains("<w:footnoteReference w:id=\"1\"/>"));
+        assert!(text.contains("<w:footnoteReference w:id=\"2\"/>"));
+        assert!(text.contains("First"));
+        assert!(text.contains("Second"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_docx_no_footnotes_no_file() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let docx = DocxBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&docx);
+        assert!(!text.contains("word/footnotes.xml"));
+        assert!(!text.contains("word/endnotes.xml"));
+        assert!(!text.contains("word/comments.xml"));
         Ok(())
     }
 }

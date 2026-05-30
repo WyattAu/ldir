@@ -764,6 +764,7 @@ impl HtmlRenderer {
             NodeType::Label { name } => {
                 html.push_str(&format!("<span id=\"{}\"></span>", escape_html(name)));
             }
+            NodeType::Endnote { .. } | NodeType::Comment { .. } => {}
         }
     }
 

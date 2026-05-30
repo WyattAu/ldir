@@ -4,8 +4,12 @@
   "description": "Language Server and tooling for ldir — the LLVM of documents",
   "version": "0.1.0",
   "publisher": "ldir",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Programming Languages"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
   "activationEvents": [
     "onLanguage:ldir-tex",
     "onLanguage:ldir-typst",
@@ -18,20 +22,33 @@
     "languages": [
       {
         "id": "ldir-tex",
-        "aliases": ["LaTeX (ldir)", "TeX (ldir)"],
-        "extensions": [".tex"],
+        "aliases": [
+          "LaTeX (ldir)",
+          "TeX (ldir)"
+        ],
+        "extensions": [
+          ".tex"
+        ],
         "configuration": "./language-configuration.json"
       },
       {
         "id": "ldir-typst",
-        "aliases": ["Typst (ldir)"],
-        "extensions": [".typ"],
+        "aliases": [
+          "Typst (ldir)"
+        ],
+        "extensions": [
+          ".typ"
+        ],
         "configuration": "./language-configuration.json"
       },
       {
         "id": "ldir-markdown",
-        "aliases": ["Markdown (ldir)"],
-        "extensions": [".md"],
+        "aliases": [
+          "Markdown (ldir)"
+        ],
+        "extensions": [
+          ".md"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -40,12 +57,33 @@
         "language": "ldir-tex",
         "scopeName": "text.latex.ldir",
         "path": "./syntaxes/ldir-tex.tmLanguage.json",
-        "injectTo": ["source.tex"]
+        "injectTo": [
+          "source.tex"
+        ]
       },
       {
         "language": "ldir-typst",
         "scopeName": "source.typst.ldir",
         "path": "./syntaxes/ldir-typst.tmLanguage.json"
+      },
+      {
+        "language": "ldir-markdown",
+        "scopeName": "text.html.markdown.ldir",
+        "path": "./syntaxes/ldir-markdown.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.ldir.injection",
+        "path": "./syntaxes/markdown-injection.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      }
+    ],
+    "themes": [
+      {
+        "label": "Ldir Light",
+        "uiTheme": "vs",
+        "path": "./themes/ldir-light.json"
       }
     ],
     "commands": [
@@ -109,9 +147,10 @@
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "typescript": "^5.3.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^5.3.0"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.0"

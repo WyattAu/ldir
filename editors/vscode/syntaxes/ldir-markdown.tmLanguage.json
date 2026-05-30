@@ -1,0 +1,8 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Markdown (ldir)",
+  "scopeName": "text.html.markdown.ldir",
+  "patterns": [
+    { "include": "text.html.markdown" }
+  ]
+}

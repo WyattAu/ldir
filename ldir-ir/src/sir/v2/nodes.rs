@@ -95,6 +95,13 @@ pub enum NodeType {
         content: String,
     },
     FootnoteBlock,
+    Endnote {
+        content: String,
+    },
+    Comment {
+        author: String,
+        content: String,
+    },
     TableOfContents {
         max_depth: u8,
     },

@@ -366,6 +366,14 @@ impl TextRenderer {
             NodeType::Label { name } => {
                 let _ = name;
             }
+
+            NodeType::Endnote { content } => {
+                out.push_str(&format!(" [endnote: {}]", content));
+            }
+
+            NodeType::Comment { author, content } => {
+                out.push_str(&format!(" [{}: {}]", author, content));
+            }
         }
     }
 

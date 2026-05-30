@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "scopeName": "markdown.ldir.injection",
+  "injectionSelector": "L:text.html.markdown",
+  "patterns": [
+    {
+      "match": "\\\\[a-zA-Z]+(?:\\{[^}]*\\})*",
+      "name": "support.function.latex.ldir",
+      "comment": "LaTeX commands"
+    },
+    {
+      "match": "\\$\\$[^$]+\\$\\$",
+      "name": "string.math.block.ldir",
+      "comment": "Block math"
+    },
+    {
+      "match": "\\$[^$\\n]+\\$",
+      "name": "string.math.inline.ldir",
+      "comment": "Inline math"
+    },
+    {
+      "match": "\\\\(cite|ref|label|eqref|cref)\\{[^}]*\\}",
+      "name": "variable.other.reference.ldir",
+      "comment": "Cross-references"
+    },
+    {
+      "match": "\\\\(begin|end)\\{[a-zA-Z]+\\*?\\}",
+      "name": "entity.name.tag.environment.ldir",
+      "comment": "Environment begin/end"
+    }
+  ]
+}

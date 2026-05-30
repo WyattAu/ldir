@@ -1195,7 +1195,10 @@ impl<'a> LirCompiler<'a> {
                 Ok(Vec::new())
             }
 
-            NodeType::Reference { .. } | NodeType::Label { .. } => Ok(Vec::new()),
+            NodeType::Reference { .. }
+            | NodeType::Label { .. }
+            | NodeType::Endnote { .. }
+            | NodeType::Comment { .. } => Ok(Vec::new()),
         }
     }
 

@@ -9,6 +9,7 @@ use bumpalo::Bump;
 use ldir_ir::gir::GIRPage;
 use ldir_ir::sir::StyleModifier;
 
+use crate::arena::{Arena, StringArena};
 use crate::compiler::templates::PageTemplate;
 use crate::font::db::FontDatabase;
 use crate::fp266::Fp266;
@@ -130,6 +131,12 @@ pub struct CompileContext {
     pub shape_cache: ThreadSafeShapeCache,
     /// String interner for deduplicating repeated text across compilation.
     pub interner: StringInterner,
+    /// Typed arena allocator for paragraph-scoped node/value allocations.
+    /// Reset before each paragraph to reuse memory.
+    pub node_arena: Arena<u8>,
+    /// String arena for zero-copy string interning during compilation.
+    /// Reset between compilation passes to reuse memory.
+    pub string_arena: StringArena,
     /// Font database for system font discovery and name-based lookup.
     /// When `Some`, the compiler can resolve font families by name.
     pub font_db: Option<Arc<FontDatabase>>,
@@ -210,6 +217,8 @@ impl CompileContext {
             bump: Bump::with_capacity(32 * 1024),
             shape_cache: ThreadSafeShapeCache::new(1024),
             interner: StringInterner::new(),
+            node_arena: Arena::with_capacity(1024),
+            string_arena: StringArena::new(),
             font_db: None,
             font_family: String::new(),
             font_mono_family: String::new(),
@@ -289,6 +298,8 @@ impl CompileContext {
             bump: Bump::with_capacity(32 * 1024),
             shape_cache: ThreadSafeShapeCache::new(1024),
             interner: StringInterner::new(),
+            node_arena: Arena::with_capacity(1024),
+            string_arena: StringArena::new(),
             font_db: None,
             font_family: String::new(),
             font_mono_family: String::new(),
