@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use ldir_html::{HtmlOptions, HtmlRenderer, MathFormat};
 use ldir_ir::sir::v2::module::SIRModuleV2;
 
@@ -22,9 +24,30 @@ impl Default for EpubOptions {
     }
 }
 
+/// A single text-audio synchronization pair within a media overlay `<par>` element.
+#[derive(Debug, Clone)]
+pub struct OverlayParam {
+    pub text_ref: String,
+    pub audio_ref: String,
+    pub clip_begin: Option<f32>,
+    pub clip_end: Option<f32>,
+}
+
+/// A media overlay for synchronized text and audio playback.
+///
+/// Each overlay corresponds to one SMIL document containing a `<body>` with `<par>` children.
+#[derive(Debug, Clone)]
+pub struct MediaOverlay {
+    pub body_id: String,
+    pub params: Vec<OverlayParam>,
+}
+
 #[derive(Debug, Clone)]
 pub struct EpubBuilder {
     options: EpubOptions,
+    overlays: Vec<MediaOverlay>,
+    narrator: Option<String>,
+    total_duration: Option<Duration>,
 }
 
 impl Default for EpubBuilder {
@@ -39,7 +62,33 @@ impl EpubBuilder {
     }
 
     pub fn with_options(options: EpubOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            overlays: Vec::new(),
+            narrator: None,
+            total_duration: None,
+        }
+    }
+
+    /// Add a media overlay (SMIL document) for synchronized text-audio playback.
+    pub fn add_media_overlay(&mut self, overlay: MediaOverlay) -> Result<(), EpubError> {
+        if overlay.body_id.is_empty() {
+            return Err(EpubError::BuildError(
+                "media overlay body_id must not be empty".into(),
+            ));
+        }
+        self.overlays.push(overlay);
+        Ok(())
+    }
+
+    /// Set the narrator name for media overlay metadata.
+    pub fn set_narrator(&mut self, name: &str) {
+        self.narrator = Some(name.to_string());
+    }
+
+    /// Set the total duration of all media overlays.
+    pub fn set_total_duration(&mut self, duration: Duration) {
+        self.total_duration = Some(duration);
     }
 
     #[must_use = "building EPUB can fail; check the result"]
@@ -61,7 +110,15 @@ impl EpubBuilder {
 
         let chapter_xhtml = format_xhtml(title, &body_content);
         let css = self.options.css.clone().unwrap_or_else(default_css);
-        let opf = format_opf(title, author, lang, &uid);
+        let opf = format_opf(
+            title,
+            author,
+            lang,
+            &uid,
+            &self.overlays,
+            &self.narrator,
+            &self.total_duration,
+        );
         let toc_xhtml = format_nav_xhtml(title, module);
         let container_xml = format_container_xml();
         let toc_ncx = format_toc_ncx(title, &uid);
@@ -76,6 +133,12 @@ impl EpubBuilder {
         zip.add_file("OEBPS/toc.xhtml", toc_xhtml.as_bytes(), false);
         zip.add_file("OEBPS/style.css", css.as_bytes(), false);
         zip.add_file("OEBPS/chapter1.xhtml", chapter_xhtml.as_bytes(), false);
+
+        for overlay in &self.overlays {
+            let smil = format_smil(overlay);
+            let path = format!("OEBPS/overlays/{}.smil", overlay.body_id);
+            zip.add_file(&path, smil.as_bytes(), false);
+        }
 
         zip.finish().map_err(EpubError::BuildError)
     }
@@ -126,7 +189,47 @@ a { color: #0066cc; }
     .to_string()
 }
 
-fn format_opf(title: &str, author: &str, lang: &str, uid: &str) -> String {
+fn format_opf(
+    title: &str,
+    author: &str,
+    lang: &str,
+    uid: &str,
+    overlays: &[MediaOverlay],
+    narrator: &Option<String>,
+    total_duration: &Option<Duration>,
+) -> String {
+    let mut manifest_extra = String::new();
+    let mut spine_extra = String::new();
+    let mut meta_extra = String::new();
+
+    for overlay in overlays {
+        let item_id = format!("{}-mo", overlay.body_id);
+        let href = format!("overlays/{}.smil", overlay.body_id);
+        manifest_extra.push_str(&format!(
+            "  <item id=\"{item_id}\" href=\"{href}\" media-type=\"application/smil+xml\" properties=\"media-overlay\"/>\n",
+            item_id = escape_xml(&item_id),
+            href = escape_xml(&href),
+        ));
+        spine_extra.push_str(&format!(
+            "  <itemref idref=\"{body_id}\" media-overlay=\"{item_id}\"/>\n",
+            body_id = escape_xml(&overlay.body_id),
+            item_id = escape_xml(&item_id),
+        ));
+    }
+
+    if let Some(name) = narrator {
+        meta_extra.push_str(&format!(
+            "  <meta property=\"media:narrator\">{}</meta>\n",
+            escape_xml(name),
+        ));
+    }
+    if let Some(dur) = total_duration {
+        meta_extra.push_str(&format!(
+            "  <meta property=\"media:duration\">{}</meta>\n",
+            format_duration(*dur),
+        ));
+    }
+
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
@@ -139,23 +242,26 @@ fn format_opf(title: &str, author: &str, lang: &str, uid: &str) -> String {
   <meta property="dcterms:modified">{date_now}</meta>
   <meta property="a11y:validate">true</meta>
   <meta property="rendition:layout">reflowable</meta>
-</metadata>
+{meta_extra}</metadata>
 <manifest>
   <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml" properties="scripted"/>
   <item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/>
   <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
   <item id="style" href="style.css" media-type="text/css"/>
-</manifest>
+{manifest_extra}</manifest>
 <spine toc="ncx">
   <itemref idref="chapter1"/>
-</spine>
+{spine_extra}</spine>
 </package>"#,
         title = escape_xml(title),
         author = escape_xml(author),
         lang = lang,
         uid = uid,
         date_only = date_now_str().split('T').next().unwrap_or(""),
-        date_now = date_now_str()
+        date_now = date_now_str(),
+        meta_extra = meta_extra,
+        manifest_extra = manifest_extra,
+        spine_extra = spine_extra,
     )
 }
 
@@ -268,6 +374,54 @@ fn format_container_xml() -> String {
 </rootfiles>
 </container>"#
         .to_string()
+}
+
+fn format_smil(overlay: &MediaOverlay) -> String {
+    let mut par_elements = String::new();
+    for param in &overlay.params {
+        let clip_begin = format_smil_timecode(param.clip_begin);
+        let clip_end = format_smil_timecode(param.clip_end);
+        par_elements.push_str(&format!(
+            "    <par>\n      <text src=\"{}\"/>\n      <audio src=\"{}\" clipBegin=\"{}\" clipEnd=\"{}\"/>\n    </par>\n",
+            escape_xml(&param.text_ref),
+            escape_xml(&param.audio_ref),
+            clip_begin,
+            clip_end,
+        ));
+    }
+
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<smil xmlns="http://www.w3.org/ns/SMIL" xmlns:epub="http://www.idpf.org/2007/ops" version="3.0">
+<body>
+<seq id="{body_id}" epub:textref="{body_id}.xhtml">
+{par_elements}</seq>
+</body>
+</smil>"#,
+        body_id = escape_xml(&overlay.body_id),
+        par_elements = par_elements,
+    )
+}
+
+fn format_smil_timecode(seconds: Option<f32>) -> String {
+    match seconds {
+        Some(s) => {
+            let total_ms = (s * 1000.0).round() as u64;
+            let ms = total_ms % 1000;
+            let total_s = total_ms / 1000;
+            let s_part = total_s % 60;
+            let total_m = total_s / 60;
+            let m_part = total_m % 60;
+            let h_part = total_m / 60;
+            format!("{:02}:{:02}:{:02}.{:03}", h_part, m_part, s_part, ms)
+        }
+        None => "0:00:00.000".to_string(),
+    }
+}
+
+fn format_duration(duration: Duration) -> String {
+    let total_secs = duration.as_secs_f32();
+    format_smil_timecode(Some(total_secs))
 }
 
 fn escape_xml(s: &str) -> String {
@@ -613,5 +767,96 @@ mod tests {
         let epub = builder.build(&m)?;
         assert!(epub.len() > 100);
         Ok(())
+    }
+
+    #[test]
+    fn test_smil_generation() {
+        let overlay = MediaOverlay {
+            body_id: "chapter1".into(),
+            params: vec![
+                OverlayParam {
+                    text_ref: "chapter1.xhtml#p1".into(),
+                    audio_ref: "audio/chapter1.mp3".into(),
+                    clip_begin: Some(0.0),
+                    clip_end: Some(5.25),
+                },
+                OverlayParam {
+                    text_ref: "chapter1.xhtml#p2".into(),
+                    audio_ref: "audio/chapter1.mp3".into(),
+                    clip_begin: Some(5.25),
+                    clip_end: Some(12.75),
+                },
+            ],
+        };
+        let smil = format_smil(&overlay);
+        assert!(smil.contains("xmlns=\"http://www.w3.org/ns/SMIL\""));
+        assert!(smil.contains("epub:textref=\"chapter1.xhtml\""));
+        assert!(smil.contains("<seq id=\"chapter1\""));
+        assert!(smil.contains("<text src=\"chapter1.xhtml#p1\"/>"));
+        assert!(smil.contains("<audio src=\"audio/chapter1.mp3\""));
+        assert!(smil.contains("clipBegin=\"00:00:00.000\""));
+        assert!(smil.contains("clipEnd=\"00:00:05.250\""));
+        assert!(smil.contains("clipBegin=\"00:00:05.250\""));
+        assert!(smil.contains("clipEnd=\"00:00:12.750\""));
+    }
+
+    #[test]
+    fn test_overlay_metadata() -> Result<(), Box<dyn std::error::Error>> {
+        let mut builder = EpubBuilder::new();
+        builder.set_narrator("Jane Smith");
+        builder.set_total_duration(Duration::from_secs(225));
+        builder.add_media_overlay(MediaOverlay {
+            body_id: "chapter1".into(),
+            params: vec![OverlayParam {
+                text_ref: "chapter1.xhtml#p1".into(),
+                audio_ref: "audio/ch1.mp3".into(),
+                clip_begin: Some(0.0),
+                clip_end: Some(10.0),
+            }],
+        })?;
+        let m = make_simple_module();
+        let epub = builder.build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("media:narrator"));
+        assert!(text.contains("Jane Smith"));
+        assert!(text.contains("media:duration"));
+        assert!(text.contains("overlays/chapter1.smil"));
+        assert!(text.contains("media-overlay=\"chapter1-mo\""));
+        assert!(text.contains("properties=\"media-overlay\""));
+        Ok(())
+    }
+
+    #[test]
+    fn test_overlay_duration_format() {
+        assert_eq!(
+            format_duration(Duration::from_secs(225) + Duration::from_millis(0)),
+            "00:03:45.000"
+        );
+        assert_eq!(format_duration(Duration::from_secs(0)), "00:00:00.000");
+        assert_eq!(
+            format_duration(Duration::from_secs(3661) + Duration::from_millis(500)),
+            "01:01:01.500"
+        );
+    }
+
+    #[test]
+    fn test_add_overlay_rejects_empty_id() {
+        let mut builder = EpubBuilder::new();
+        let result = builder.add_media_overlay(MediaOverlay {
+            body_id: String::new(),
+            params: vec![],
+        });
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_smil_timecode_none() {
+        assert_eq!(format_smil_timecode(None), "0:00:00.000");
+    }
+
+    #[test]
+    fn test_smil_timecode_rounding() {
+        assert_eq!(format_smil_timecode(Some(5.9999)), "00:00:06.000");
+        assert_eq!(format_smil_timecode(Some(5.4999)), "00:00:05.500");
     }
 }

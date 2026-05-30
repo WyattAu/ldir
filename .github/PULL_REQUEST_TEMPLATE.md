@@ -1,17 +1,19 @@
-## Description
-<!-- What does this PR do? -->
+## Summary
+Brief description of what this PR does.
 
-## Type of Change
+## Type of change
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation
+- [ ] Refactor
+
+## Testing
+- [ ] `cargo test --workspace` passes
+- [ ] `cargo clippy --workspace -- -D warnings` passes
+- [ ] `cargo fmt --check` passes
+- [ ] New tests added for changed functionality
 
 ## Checklist
-- [ ] `cargo fmt --check` passes
-- [ ] `cargo clippy --workspace -- -D warnings` passes
-- [ ] `cargo test --workspace --exclude ldir-wasm` passes
-- [ ] Lean4 proofs compile (0 errors) -- if .lean files changed
-- [ ] WASM build passes (`cargo build -p ldir-wasm --target wasm32-unknown-unknown`) -- if ldir-wasm changed
-- [ ] No new production unwrap/expect calls (3 justified exceptions exist)
-- [ ] Updated CHANGELOG.md
+- [ ] Updated relevant roadmap files
+- [ ] Updated CHANGELOG.md if user-facing change

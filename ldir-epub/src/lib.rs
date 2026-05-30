@@ -7,3 +7,5 @@ mod builder;
 
 pub use builder::EpubBuilder;
 pub use builder::EpubOptions;
+pub use builder::MediaOverlay;
+pub use builder::OverlayParam;
