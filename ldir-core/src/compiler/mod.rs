@@ -1,4 +1,4 @@
-//! S-IR → G-IR Compiler (IF-COMPILE-001, ALG-COMPILE-001).
+//! S-IR -> G-IR Compiler (IF-COMPILE-001, ALG-COMPILE-001).
 //!
 //! Compiles a well-formed S-IR document into a G-IR document suitable for
 //! rendering. The compilation pipeline:
@@ -15,23 +15,26 @@
 //! - **POST-COMP-003**: Stack balanced per page
 //! - **INV-COMP-001**: Bit-identical output (deterministic)
 
-#[allow(missing_docs)]
+/// BibTeX bibliography parser and IEEE/APA citation formatter.
+///
+/// Parses `.bib` files into structured entries and formats citations
+/// according to IEEE and APA style rules.
 pub mod bibtex;
 pub mod context;
-#[allow(missing_docs)]
+/// Cross-reference resolution: label registration, lookup, and bibliography linking.
 pub mod cross_ref;
 pub mod emit_helpers;
-#[allow(missing_docs)]
+/// Paragraph justification with inter-word spacing and heuristic hyphenation.
 pub mod justify;
-#[allow(missing_docs)]
+/// Knuth-Plass optimal line breaking algorithm (Knuth & Plass, 1981).
 pub mod knuth_plass;
 pub mod math;
-#[allow(missing_docs)]
+/// Page and document template system for headers, footers, and document layouts.
 pub mod templates;
 pub mod tree;
-#[allow(missing_docs)]
+/// S-IR v1 to S-IR v2 migration adapter for backward compatibility.
 pub mod v1_to_v2;
-#[allow(missing_docs)]
+/// S-IR v2 to G-IR compiler: tree traversal, coordinate tracking, and page management.
 pub mod v2_compile;
 
 use indexmap::IndexMap;

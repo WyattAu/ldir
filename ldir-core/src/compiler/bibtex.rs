@@ -1,3 +1,9 @@
+//! BibTeX bibliography parser and IEEE/APA citation formatter.
+//!
+//! Parses `.bib` files into structured [`BibEntry`] values and formats
+//! in-text citations and bibliography entries according to IEEE and APA
+//! style conventions.
+
 #![deny(unsafe_code)]
 #![warn(clippy::unwrap_used, clippy::expect_used)]
 

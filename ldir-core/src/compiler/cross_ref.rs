@@ -1,3 +1,8 @@
+//! Cross-reference resolution: label registry, lookup, and bibliography linking.
+//!
+//! Maintains a [`LabelRegistry`] for tracking section/equation/figure labels
+//! and resolving forward references during S-IR compilation.
+
 use indexmap::IndexMap;
 use ldir_ir::sir::v2::SIRModuleV2;
 use ldir_ir::sir::v2::annotations::LabelCategory;

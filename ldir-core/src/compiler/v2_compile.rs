@@ -1,3 +1,9 @@
+//! S-IR v2 to G-IR compiler: tree traversal, coordinate tracking, and page management.
+//!
+//! Compiles S-IR v2 module trees into flat G-IR command streams suitable
+//! for rendering. Handles font resolution, style application, cross-reference
+//! expansion, and automatic page breaks.
+
 #![deny(unsafe_code)]
 #![warn(clippy::unwrap_used, clippy::expect_used)]
 

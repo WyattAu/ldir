@@ -1,3 +1,8 @@
+//! S-IR v1 to S-IR v2 migration adapter for backward compatibility.
+//!
+//! Translates legacy flat S-IR instruction streams into the tree-structured
+//! S-IR v2 module format, preserving label annotations and block semantics.
+
 use std::collections::HashMap;
 
 use ldir_ir::sir::v2::annotations::LabelCategory;
