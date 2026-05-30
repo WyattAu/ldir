@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "rust";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4cb73b8a.js";
+            window.path_to_searchindex_js = "searchindex-47d5b1bf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-95b4beee.js"></script>
@@ -227,14 +227,13 @@ ldc input.tex -f epub -o output.epub
 </table>
 </div>
 <h2 id="architecture"><a class="header" href="#architecture">Architecture</a></h2>
-<p>LDIR uses a multi-stage compilation pipeline:</p>
-<pre><code>Input -&gt; Parser -&gt; GIR -&gt; S-IR -&gt; Layout -&gt; G-IR -&gt; Renderer -&gt; Output
+<p>LDIR uses a three-stage compilation pipeline:</p>
+<pre><code>Input -&gt; [Parser] -&gt; S-IR -&gt; [Compiler] -&gt; L-IR -&gt; [Renderer] -&gt; Output
 </code></pre>
 <ul>
-<li><strong>GIR</strong> (Generic IR): Format-agnostic document tree</li>
-<li><strong>S-IR</strong> (Semantic IR): Typed, semantic intermediate representation</li>
-<li><strong>L-IR</strong> (Layout IR): Page-level layout with positioning</li>
-<li><strong>G-IR</strong> (Graphic IR): Low-level graphic primitives</li>
+<li><strong>S-IR</strong> (Semantic IR): Format-agnostic document tree with typed nodes</li>
+<li><strong>L-IR</strong> (Layout IR): Page-level layout with positioned glyphs and geometry</li>
+<li><strong>G-IR</strong> (Graphic IR): Low-level rendering commands (move, draw, set-font)</li>
 </ul>
 <h2 id="cli-reference"><a class="header" href="#cli-reference">CLI Reference</a></h2>
 <p>See <code>ldc --help</code> for the full CLI reference. Shell completions are available in the <code>completions/</code> directory for Bash, Zsh, Fish, and PowerShell.</p>
