@@ -157,7 +157,7 @@ jobs:
           fi
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bench-results-${{ github.sha }}
@@ -167,7 +167,7 @@ jobs:
           retention-days: 14
 
       - name: Save baseline artifact (main only)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: github.ref == 'refs/heads/main'
         with:
           name: bench-baseline-main
@@ -477,7 +477,7 @@ jobs:
 
       - name: Upload hash artifact (main only)
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: determinism-baseline-${{ runner.os }}
           path: /tmp/hash.txt
