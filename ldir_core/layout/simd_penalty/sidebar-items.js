@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["evaluate_demerits_batch"],"struct":["BreakPoint","SimdConfig"]};

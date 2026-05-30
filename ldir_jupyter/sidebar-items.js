@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["JupyterError"],"fn":["sir_to_notebook"]};

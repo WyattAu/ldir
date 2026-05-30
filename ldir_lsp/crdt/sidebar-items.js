@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CrdtOp"],"struct":["CharId","CrdtChar","CrdtDocument","TextOperation"]};
+window.SIDEBAR_ITEMS = {"enum":["CrdtOp"],"mod":["ot"],"struct":["CharId","CrdtChar","CrdtDocument","TextOperation"]};

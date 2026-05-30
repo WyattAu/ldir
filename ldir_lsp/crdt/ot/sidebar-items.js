@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TextOperation"],"fn":["apply_op","transform","transform_list"]};

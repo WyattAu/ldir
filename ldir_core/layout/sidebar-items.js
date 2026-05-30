@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["hyphenate","incremental","linebreak","lir_compile","multicolumn","pagination"]};
+window.SIDEBAR_ITEMS = {"mod":["hyphenate","incremental","linebreak","lir_compile","multicolumn","pagination","simd_penalty"]};

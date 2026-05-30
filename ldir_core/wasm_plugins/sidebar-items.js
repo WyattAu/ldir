@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["test_header","test_macro","test_style"]};
+window.SIDEBAR_ITEMS = {"mod":["manifest","test_header","test_macro","test_style"]};

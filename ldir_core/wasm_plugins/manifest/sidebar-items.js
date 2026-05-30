@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CapabilityKind","ManifestError"],"fn":["parse_manifest","serialize_manifest","validate_manifest"],"struct":["PluginCapability","PluginManifest","ResourceLimits"]};
