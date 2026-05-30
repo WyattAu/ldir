@@ -22,7 +22,7 @@ pub struct Cli {
 
     /// Output format.
     #[arg(short = 'f', long, value_name = "FORMAT", default_value = "pdf",
-        value_parser = ["pdf", "gir", "sir", "html", "epub", "txt", "docx", "odt", "sir2", "ldir"])]
+        value_parser = ["pdf", "gir", "sir", "html", "epub", "txt", "docx", "odt", "sir2", "ldir", "pandoc", "ipynb"])]
     pub format: String,
 
     /// Primary font family name (e.g., "DejaVu Sans", "Noto Serif").

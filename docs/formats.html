@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI Reference -- ldir Documentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+    <h1><a href="index.html">ldir</a></h1>
+    <div class="header-right">
+        <select id="version-select" class="version-select" aria-label="Documentation version"></select>
+        <a href="https://github.com/WyattAu/ldir" class="header-link">GitHub</a>
+    </div>
+</header>
+<div class="site-layout">
+<nav class="sidebar">
+    <div class="nav-section">Getting Started</div>
+    <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Quick Start</a></li>
+    </ul>
+    <div class="nav-section">Reference</div>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a></li>
+        <li><a href="formats.html">Formats</a></li>
+    </ul>
+    <div class="nav-section">Internals</div>
+    <ul>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="crates.html">Crate Index</a></li>
+    </ul>
+</nav>
+<main class="content">
+    <h1>CLI Reference</h1>
+
+    <h2>Usage</h2>
+    <pre><code>ldc [OPTIONS] &lt;INPUT&gt;</code></pre>
+
+    <h2>Arguments</h2>
+    <table>
+        <thead>
+            <tr><th>Argument</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>INPUT</code></td><td>Input file path. Format is auto-detected from file extension.</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Options</h2>
+    <table>
+        <thead>
+            <tr><th>Flag</th><th>Description</th><th>Default</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>-o, --output &lt;PATH&gt;</code></td><td>Output file path. Format is inferred from extension if not specified with <code>-f</code>.</td><td>--</td></tr>
+            <tr><td><code>-f, --format &lt;FORMAT&gt;</code></td><td>Output format: <code>pdf</code>, <code>html</code>, <code>epub</code>, <code>docx</code>, <code>txt</code>, <code>odt</code>, <code>sir2</code>, <code>gir</code></td><td>inferred from <code>-o</code></td></tr>
+            <tr><td><code>--pdfa-level &lt;LEVEL&gt;</code></td><td>PDF/A compliance level: <code>off</code>, <code>1b</code>, <code>2b</code>, <code>3b</code></td><td><code>off</code></td></tr>
+            <tr><td><code>--pdf-version &lt;VER&gt;</code></td><td>PDF version: <code>1.4</code>, <code>1.5</code>, <code>1.6</code>, <code>1.7</code></td><td><code>1.7</code></td></tr>
+            <tr><td><code>--ot-features &lt;LIST&gt;</code></td><td>OpenType features to apply (comma-separated)</td><td><code>kern,liga</code></td></tr>
+            <tr><td><code>--font-path &lt;PATH&gt;</code></td><td>Custom font file path (TrueType/OpenType)</td><td>system fonts</td></tr>
+            <tr><td><code>--page-width &lt;DIM&gt;</code></td><td>Page width (e.g. <code>210mm</code>, <code>8.5in</code>, <code>72pt</code>)</td><td><code>210mm</code></td></tr>
+            <tr><td><code>--page-height &lt;DIM&gt;</code></td><td>Page height (e.g. <code>297mm</code>, <code>11in</code>)</td><td><code>297mm</code></td></tr>
+            <tr><td><code>--margin &lt;DIM&gt;</code></td><td>Page margins (applied to all sides)</td><td><code>25mm</code></td></tr>
+            <tr><td><code>--font-size &lt;SIZE&gt;</code></td><td>Base font size (e.g. <code>11pt</code>, <code>12pt</code>)</td><td><code>11pt</code></td></tr>
+            <tr><td><code>--line-height &lt;RATIO&gt;</code></td><td>Line height ratio (unitless multiplier)</td><td><code>1.5</code></td></tr>
+            <tr><td><code>--columns &lt;N&gt;</code></td><td>Number of columns for multi-column layout</td><td><code>1</code></td></tr>
+            <tr><td><code>--color &lt;WHEN&gt;</code></td><td>Color output for diagnostics: <code>always</code>, <code>never</code>, <code>auto</code></td><td><code>auto</code></td></tr>
+            <tr><td><code>--config &lt;PATH&gt;</code></td><td>Configuration file path (overrides default search)</td><td>--</td></tr>
+            <tr><td><code>--no-config</code></td><td>Skip loading configuration files entirely</td><td><code>false</code></td></tr>
+            <tr><td><code>--dump-config</code></td><td>Print effective configuration (merged from all sources) and exit</td><td><code>false</code></td></tr>
+            <tr><td><code>-h, --help</code></td><td>Print help information</td><td>--</td></tr>
+            <tr><td><code>-V, --version</code></td><td>Print version information</td><td>--</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Dimension Syntax</h2>
+    <p>Dimensions accept the following units:</p>
+    <table>
+        <thead>
+            <tr><th>Unit</th><th>Example</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>mm</code></td><td><code>210mm</code></td><td>Millimeters</td></tr>
+            <tr><td><code>in</code></td><td><code>8.5in</code></td><td>Inches</td></tr>
+            <tr><td><code>pt</code></td><td><code>72pt</code></td><td>Points (1/72 inch)</td></tr>
+            <tr><td><code>cm</code></td><td><code>21cm</code></td><td>Centimeters</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Configuration File</h2>
+    <p>Configuration uses TOML format. Create <code>ldir.toml</code> (or <code>.ldir.toml</code>) in your project root:</p>
+    <pre><code>[output]
+format = "pdf"
+pdfa_level = "2b"
+pdf_version = "1.7"
+
+[layout]
+columns = 2
+page_width = "210mm"
+page_height = "297mm"
+margin = "25mm"
+
+[typography]
+font_size = "11pt"
+line_height = 1.5
+ot_features = "kern,liga"
+
+[fonts]
+path = "/usr/share/fonts/MyFont.ttf"</code></pre>
+
+    <h2>Configuration Priority</h2>
+    <ol>
+        <li>CLI flags (highest)</li>
+        <li><code>./ldir.toml</code> or <code>./.ldir.toml</code> (searches current and parent directories)</li>
+        <li><code>$XDG_CONFIG_HOME/ldir/config.toml</code> (<code>~/.config/ldir/config.toml</code>)</li>
+    </ol>
+
+    <p>Use <code>ldc --dump-config</code> to inspect the final merged configuration.</p>
+
+    <h2>Exit Codes</h2>
+    <table>
+        <thead>
+            <tr><th>Code</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>0</code></td><td>Success</td></tr>
+            <tr><td><code>1</code></td><td>General error (parse failure, I/O error, etc.)</td></tr>
+            <tr><td><code>2</code></td><td>Usage error (invalid flags or arguments)</td></tr>
+        </tbody>
+    </table>
+</main>
+</div>
+<footer class="site-footer">
+    <p>ldir -- deterministic document typesetting</p>
+</footer>
+<script src="js/version.js"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting Started -- ldir Documentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+    <h1><a href="index.html">ldir</a></h1>
+    <div class="header-right">
+        <select id="version-select" class="version-select" aria-label="Documentation version"></select>
+        <a href="https://github.com/WyattAu/ldir" class="header-link">GitHub</a>
+    </div>
+</header>
+<div class="site-layout">
+<nav class="sidebar">
+    <div class="nav-section">Getting Started</div>
+    <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Quick Start</a></li>
+    </ul>
+    <div class="nav-section">Reference</div>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a></li>
+        <li><a href="formats.html">Formats</a></li>
+    </ul>
+    <div class="nav-section">Internals</div>
+    <ul>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="crates.html">Crate Index</a></li>
+    </ul>
+</nav>
+<main class="content">
+    <h1>Getting Started</h1>
+
+    <h2>Prerequisites</h2>
+    <ul>
+        <li><strong>Rust 1.88+</strong> (edition 2024, resolver 3)</li>
+        <li>A C compiler (for harfbuzz-sys FFI)</li>
+    </ul>
+
+    <blockquote>
+        The minimum supported Rust version (MSRV) is 1.88. Earlier versions are not supported.
+    </blockquote>
+
+    <h2>Installation</h2>
+
+    <h3>From Source (Recommended)</h3>
+    <pre><code>git clone https://github.com/WyattAu/ldir.git
+cd ldir
+cargo install --path ldc</code></pre>
+
+    <h3>From crates.io</h3>
+    <pre><code>cargo install ldc</code></pre>
+
+    <h2>Your First Compilation</h2>
+
+    <p>Create a simple Markdown file:</p>
+    <pre><code># Hello, ldir
+
+This is a paragraph with **bold** and *italic* text.
+
+- Item one
+- Item two
+- Item three
+
+```rust
+fn main() {
+    println!("Hello from ldir!");
+}
+```</code></pre>
+
+    <p>Compile it to PDF:</p>
+    <pre><code>ldc input.md -o output.pdf</code></pre>
+
+    <p>Compile to other formats:</p>
+    <pre><code>ldc input.md -o output.html
+ldc input.md -o output.epub
+ldc input.md -o output.txt
+ldc input.md -o output.docx</code></pre>
+
+    <h2>PDF/A Compliance</h2>
+    <p>Generate PDF/A-compliant output for archival:</p>
+    <pre><code>ldc input.md --pdfa-level 2b -o output.pdf</code></pre>
+
+    <p>Supported PDF/A levels:</p>
+    <ul>
+        <li><code>1b</code> -- PDF/A-1b (basic)</li>
+        <li><code>2b</code> -- PDF/A-2b (recommended)</li>
+        <li><code>3b</code> -- PDF/A-3b (with attachments)</li>
+        <li><code>off</code> -- no PDF/A compliance (default)</li>
+    </ul>
+
+    <h2>Configuration File</h2>
+    <p>Create <code>ldir.toml</code> in your project directory:</p>
+    <pre><code>[output]
+format = "pdf"
+pdfa_level = "2b"
+
+[layout]
+columns = 2
+page_width = "210mm"
+page_height = "297mm"
+margin = "25mm"
+
+[typography]
+font_size = "11pt"
+line_height = 1.5</code></pre>
+
+    <p>Configuration is read from (in priority order):</p>
+    <ol>
+        <li>CLI flags (highest priority)</li>
+        <li><code>./ldir.toml</code> or <code>./.ldir.toml</code> in the current or parent directories</li>
+        <li><code>$XDG_CONFIG_HOME/ldir/config.toml</code> (usually <code>~/.config/ldir/config.toml</code>)</li>
+    </ol>
+
+    <p>Dump the effective merged configuration:</p>
+    <pre><code>ldc --dump-config</code></pre>
+
+    <h2>Shell Completions</h2>
+    <p>Shell completions for bash, zsh, fish, and PowerShell are available via <code>clap-complete</code>. Generate them with the provided example:</p>
+    <pre><code>cargo run --example generate-completions</code></pre>
+
+    <h2>Development</h2>
+    <pre><code># Build all crates
+cargo build --workspace
+
+# Run tests (1,909 tests)
+cargo test --workspace
+
+# Lint (0 warnings)
+cargo clippy --workspace -- -D warnings
+
+# Format check
+cargo fmt --check</code></pre>
+
+    <h2>Next Steps</h2>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a> -- full flag documentation</li>
+        <li><a href="formats.html">Formats</a> -- supported input and output formats</li>
+        <li><a href="architecture.html">Architecture</a> -- IR pipeline internals</li>
+    </ul>
+</main>
+</div>
+<footer class="site-footer">
+    <p>ldir -- deterministic document typesetting</p>
+</footer>
+<script src="js/version.js"></script>
+</body>
+</html>

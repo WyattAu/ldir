@@ -4,6 +4,9 @@
 //! enabling multiple users to edit the same document simultaneously
 //! without conflicts.
 
+/// Operational Transform fallback for simpler concurrency scenarios.
+pub mod ot;
+
 /// Unique identifier for a character in the sequence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CharId {

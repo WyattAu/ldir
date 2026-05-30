@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture -- ldir Documentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+    <h1><a href="index.html">ldir</a></h1>
+    <div class="header-right">
+        <select id="version-select" class="version-select" aria-label="Documentation version"></select>
+        <a href="https://github.com/WyattAu/ldir" class="header-link">GitHub</a>
+    </div>
+</header>
+<div class="site-layout">
+<nav class="sidebar">
+    <div class="nav-section">Getting Started</div>
+    <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Quick Start</a></li>
+    </ul>
+    <div class="nav-section">Reference</div>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a></li>
+        <li><a href="formats.html">Formats</a></li>
+    </ul>
+    <div class="nav-section">Internals</div>
+    <ul>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="crates.html">Crate Index</a></li>
+    </ul>
+</nav>
+<main class="content">
+    <h1>Architecture</h1>
+
+    <p>
+        ldir uses a three-layer intermediate representation pipeline that decouples
+        input parsing from output rendering. This enables format-agnostic optimization,
+        validation, and transformation.
+    </p>
+
+    <h2>IR Pipeline</h2>
+    <pre><code> Input          Frontends         Core Pipeline         Backends
+  |                |                     |                   |
+  v                v                     v                   v
+.md  .tex  .typ  .html  .adoc  .org  .docx   S-IR v2   PDF  HTML  EPUB
+  |      |     |      |      |      |     |      |       |     |      |
+  +------+-----+------+--+----+------+-----+      |       +--+---+------+
+             ldir-md       ldir-adoc            |          ldir-pdf  ldir-epub
+             ldir-tex       ldir-org        [Compiler]     ldir-html
+             ldir-typst     lir-html-reader   |          ldir-txt
+             ldir-docx-reader                v          ldir-docx
+                                          L-IR            ldir-odt
+                                           |
+                                           v
+                                          G-IR
+                                           |
+                           +---------------+---------------+
+                           |                               |
+                      [Optimizer]                    [LSP Server]
+                      (8 IR passes)             (incremental preview)</code></pre>
+
+    <h2>Three-Layer IR</h2>
+
+    <h3>S-IR (Semantic IR)</h3>
+    <p>The first layer captures document semantics independent of any rendering target:</p>
+    <ul>
+        <li>Document structure (headings, paragraphs, lists, tables, figures)</li>
+        <li>Styles (font family, size, weight, color, spacing)</li>
+        <li>Cross-references and citations</li>
+        <li>Bibliography entries (IEEE, APA, Chicago styles)</li>
+        <li>Mathematical expressions</li>
+        <li>Image and media references</li>
+    </ul>
+    <p>S-IR uses <code>f64</code> for semantic precision -- values represent logical units (points, millimeters) rather than pixels.</p>
+
+    <h3>L-IR (Layout IR)</h3>
+    <p>The second layer captures page-level layout decisions:</p>
+    <ul>
+        <li>Page geometry (width, height, margins)</li>
+        <li>Line and column breaks (Knuth-Plass algorithm)</li>
+        <li>Multi-column reflow with balanced content</li>
+        <li>Full-width spanning elements</li>
+        <li>Positioned elements (floats, footnotes, margins)</li>
+        <li>Dirty-subtree tracking for incremental re-layout</li>
+    </ul>
+
+    <h3>G-IR (Graphics IR)</h3>
+    <p>The third layer captures rendering commands:</p>
+    <ul>
+        <li>Font references and glyph positioning</li>
+        <li>Path operations (fill, stroke, clip)</li>
+        <li>Image placement and scaling</li>
+        <li>Color management</li>
+        <li>Page-level rendering commands</li>
+    </ul>
+    <p>G-IR uses <code>Fp26.6</code> (26.6 fixed-point) for pixel-exact rendering. All floating-point coordinates are quantized to sub-pixel precision to ensure deterministic, platform-independent output.</p>
+
+    <h2>Key Design Decisions</h2>
+
+    <h3>Precision Model</h3>
+    <ul>
+        <li><strong>S-IR</strong>: <code>f64</code> for semantic precision -- represents logical units</li>
+        <li><strong>G-IR</strong>: <code>Fp26.6</code> fixed-point for pixel-exact rendering</li>
+        <li>This separation ensures deterministic output: the same S-IR always produces bit-identical PDF/HTML regardless of platform</li>
+    </ul>
+
+    <h3>Line Breaking</h3>
+    <p>Knuth-Plass line breaking with a configurable penalty model supports:</p>
+    <ul>
+        <li>Optimal line breaks minimizing total demerits</li>
+        <li>Hyphenation integration (5 languages + Liou patterns)</li>
+        <li>Multi-column balanced reflow</li>
+    </ul>
+
+    <h3>Streaming Output</h3>
+    <p>The PDF writer uses a streaming architecture for constant-memory output regardless of document size. Pages are finalized and flushed sequentially without buffering the entire document in memory.</p>
+
+    <h3>Formal Verification</h3>
+    <p>Lean 4 proofs in <code>ldir-proofs/</code> verify IR well-formedness properties with <strong>0 sorry</strong>:</p>
+    <ul>
+        <li>S-IR structural invariants</li>
+        <li>G-IR rendering command validity</li>
+        <li>Layout constraint satisfaction</li>
+    </ul>
+
+    <h2>Crate Dependency Graph</h2>
+    <pre><code>                    ldc (CLI driver)
+                       |
+          +------------+------------+------------+
+          |            |            |            |
+     ldir-core     ldir-ir     frontends    backends
+          |            |            |            |
+          +-----+------+     +----+----+   +----+----+
+                |            |    |    |   |    |    |
+           shipyard        md   tex  typst pdf html epub
+           harfbuzz        adoc org  html-  txt docx odt
+           fixed           docx-     reader
+           rkyv            reader
+                 |
+          +------+------+
+          |      |      |
+       ldir-opt  ldir-link  ldir-validate
+          |          |
+       ldir-as  ldir-dis  ldir-diff
+
+    Integrations: ldir-lsp, ldir-vello, ldir-wasm</code></pre>
+
+    <h2>Build and Test</h2>
+    <pre><code># Build all 25 crates
+cargo build --workspace
+
+# Run all 1,909 tests
+cargo test --workspace
+
+# Lint (0 warnings enforced)
+cargo clippy --workspace -- -D warnings
+
+# Format check
+cargo fmt --check</code></pre>
+
+    <h2>Next Steps</h2>
+    <ul>
+        <li><a href="crates.html">Crate Index</a> -- detailed descriptions of all crates</li>
+        <li><a href="formats.html">Formats</a> -- supported input and output formats</li>
+        <li><a href="cli-reference.html">CLI Reference</a> -- command-line interface documentation</li>
+    </ul>
+</main>
+</div>
+<footer class="site-footer">
+    <p>ldir -- deterministic document typesetting</p>
+</footer>
+<script src="js/version.js"></script>
+</body>
+</html>

@@ -62,14 +62,14 @@ jobs:
           esac
 
       - name: Build benchmarks
-        run: cargo bench -p ldir-core --no-run
+        run: cargo bench -p ldir-core -p ldir-bench --no-run
 
       - name: Run benchmarks
         env:
           CRITERION_PLOT_GENERATION: "false"
           CRITERION_MEASUREMENT_TIME: "${{ steps.profile.outputs.measurement_time }}s"
         run: |
-          cargo bench -p ldir-core -- --save-baseline scheduled 2>&1 | tee bench-output.txt
+          cargo bench -p ldir-core -p ldir-bench -- --save-baseline scheduled 2>&1 | tee bench-output.txt
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4

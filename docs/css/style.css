@@ -1,0 +1,164 @@
+:root {
+    --color-bg: #ffffff;
+    --color-sidebar-bg: #f6f8fa;
+    --color-text: #24292e;
+    --color-heading: #0366d6;
+    --color-border: #e1e4e8;
+    --color-code-bg: #f6f8fa;
+    --color-link: #0366d6;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    --max-width: 1200px;
+    --sidebar-width: 240px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--color-text);
+    background: var(--color-bg);
+}
+
+/* Header */
+.site-header {
+    background: #24292e;
+    color: #fff;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.site-header h1 { font-size: 18px; font-weight: 600; }
+.site-header h1 a { color: #fff; text-decoration: none; }
+
+.header-right { display: flex; align-items: center; gap: 16px; }
+.version-select {
+    font-size: 13px;
+    padding: 4px 8px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: #24292e;
+    color: #fff;
+}
+.header-link { color: #8b949e; font-size: 14px; text-decoration: none; }
+.header-link:hover { color: #fff; }
+
+/* Layout */
+.site-layout {
+    display: flex;
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    min-height: calc(100vh - 52px);
+    border-right: 1px solid var(--color-border);
+    background: var(--color-sidebar-bg);
+    padding: 16px 0;
+    position: sticky;
+    top: 52px;
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+}
+
+.sidebar nav ul { list-style: none; padding: 0; }
+.sidebar nav li { margin: 0; }
+.sidebar nav a {
+    display: block;
+    padding: 6px 16px;
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 14px;
+    border-left: 2px solid transparent;
+}
+.sidebar nav a:hover {
+    background: #e1e4e8;
+    border-left-color: var(--color-heading);
+}
+.sidebar nav a.active {
+    background: #fff;
+    border-left-color: var(--color-heading);
+    font-weight: 600;
+    color: var(--color-heading);
+}
+
+.sidebar .nav-section {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6a737d;
+    padding: 12px 16px 4px;
+}
+
+/* Content */
+.content {
+    flex: 1;
+    padding: 24px 32px 64px;
+    max-width: 800px;
+}
+
+.content h1 { font-size: 2em; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--color-border); }
+.content h2 { font-size: 1.5em; margin: 32px 0 12px; padding-bottom: 4px; border-bottom: 1px solid var(--color-border); }
+.content h3 { font-size: 1.25em; margin: 24px 0 8px; }
+.content p { margin: 12px 0; }
+.content a { color: var(--color-link); text-decoration: none; }
+.content a:hover { text-decoration: underline; }
+.content code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.content pre {
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 16px 0;
+}
+.content pre code { background: none; padding: 0; border-radius: 0; font-size: 13px; line-height: 1.5; }
+.content ul, .content ol { padding-left: 2em; margin: 12px 0; }
+.content li { margin: 4px 0; }
+.content table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+.content th, .content td { padding: 8px 13px; border: 1px solid var(--color-border); text-align: left; }
+.content th { background: var(--color-code-bg); font-weight: 600; }
+.content blockquote { border-left: 4px solid var(--color-border); padding: 8px 16px; margin: 16px 0; color: #6a737d; }
+
+/* Version selector badge */
+.version-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #dafbe1;
+    color: #1a7f37;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Footer */
+.site-footer {
+    border-top: 1px solid var(--color-border);
+    padding: 16px 32px;
+    text-align: center;
+    font-size: 13px;
+    color: #6a737d;
+}
+
+@media (max-width: 768px) {
+    .sidebar { display: none; }
+    .content { padding: 16px; }
+}

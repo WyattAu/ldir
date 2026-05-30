@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crate Index -- ldir Documentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+    <h1><a href="index.html">ldir</a></h1>
+    <div class="header-right">
+        <select id="version-select" class="version-select" aria-label="Documentation version"></select>
+        <a href="https://github.com/WyattAu/ldir" class="header-link">GitHub</a>
+    </div>
+</header>
+<div class="site-layout">
+<nav class="sidebar">
+    <div class="nav-section">Getting Started</div>
+    <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Quick Start</a></li>
+    </ul>
+    <div class="nav-section">Reference</div>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a></li>
+        <li><a href="formats.html">Formats</a></li>
+    </ul>
+    <div class="nav-section">Internals</div>
+    <ul>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="crates.html">Crate Index</a></li>
+    </ul>
+</nav>
+<main class="content">
+    <h1>Crate Index</h1>
+
+    <p>The ldir workspace consists of 25 crates organized into the following categories:</p>
+
+    <h2>Core Infrastructure</h2>
+    <table>
+        <thead>
+            <tr><th>Crate</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>ldir-ir</code></td><td>IR type definitions: S-IR and G-IR data structures with rkyv serialization</td></tr>
+            <tr><td><code>ldir-core</code></td><td>Core: fp26_6 arithmetic, ECS, S-IR validator, compiler, and G-IR emitter</td></tr>
+            <tr><td><code>ldir-test-helpers</code></td><td>Shared test utilities for ldir crates</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Frontends (Input Parsers)</h2>
+    <table>
+        <thead>
+            <tr><th>Crate</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>ldir-md</code></td><td>Markdown input format parser (CommonMark + GFM)</td></tr>
+            <tr><td><code>ldir-tex</code></td><td>TeX input format parser</td></tr>
+            <tr><td><code>ldir-typst</code></td><td>Typst frontend -- converts Typst (.typ) to S-IR v2</td></tr>
+            <tr><td><code>ldir-html-reader</code></td><td>HTML reader frontend -- converts HTML to S-IR v2</td></tr>
+            <tr><td><code>ldir-adoc</code></td><td>Asciidoc frontend -- converts Asciidoc (.adoc) to S-IR v2</td></tr>
+            <tr><td><code>ldir-org</code></td><td>Org-mode frontend -- converts Org-mode (.org) to S-IR v2</td></tr>
+            <tr><td><code>ldir-docx-reader</code></td><td>DOCX reader -- converts DOCX (.docx) to S-IR v2</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Backends (Output Generators)</h2>
+    <table>
+        <thead>
+            <tr><th>Crate</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>ldir-pdf</code></td><td>PDF/A-4 output backend</td></tr>
+            <tr><td><code>ldir-html</code></td><td>HTML backend -- converts S-IR v2 to semantic HTML5</td></tr>
+            <tr><td><code>ldir-epub</code></td><td>EPUB backend -- converts S-IR v2 to EPUB 3</td></tr>
+            <tr><td><code>ldir-txt</code></td><td>Plain text backend -- converts S-IR v2 to plain text</td></tr>
+            <tr><td><code>ldir-docx</code></td><td>DOCX backend -- converts S-IR v2 to DOCX (OOXML)</td></tr>
+            <tr><td><code>ldir-odt</code></td><td>ODT backend -- converts S-IR v2 to ODT (OpenDocument Text)</td></tr>
+        </tbody>
+    </table>
+
+    <h2>IR Tooling</h2>
+    <table>
+        <thead>
+            <tr><th>Crate</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>ldir-opt</code></td><td>IR optimizer -- applies transformation passes to S-IR v2 modules</td></tr>
+            <tr><td><code>ldir-link</code></td><td>IR linker -- merges multiple S-IR v2 modules into one</td></tr>
+            <tr><td><code>ldir-as</code></td><td>IR assembler -- converts .ldir text to binary S-IR</td></tr>
+            <tr><td><code>ldir-dis</code></td><td>IR disassembler -- converts binary S-IR to human-readable text</td></tr>
+            <tr><td><code>ldir-diff</code></td><td>IR structural diff tool</td></tr>
+            <tr><td><code>ldir-validate</code></td><td>IR well-formedness validator</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Integrations</h2>
+    <table>
+        <thead>
+            <tr><th>Crate</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>ldir-lsp</code></td><td>Language Server Protocol server for Markdown, TeX, and Typst</td></tr>
+            <tr><td><code>ldir-vello</code></td><td>Vello/GPU rendering integration</td></tr>
+            <tr><td><code>ldir-wasm</code></td><td>WASM bridge -- browser-based document compilation</td></tr>
+            <tr><td><code>ldc</code></td><td>Compiler CLI: compile documents to PDF and other formats</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Key Dependencies</h2>
+    <table>
+        <thead>
+            <tr><th>Dependency</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>harfbuzz-sys</code></td><td>Text shaping (native FFI)</td></tr>
+            <tr><td><code>ttf-parser</code></td><td>Font parsing and TrueType embedding</td></tr>
+            <tr><td><code>fontdb</code></td><td>System font database</td></tr>
+            <tr><td><code>rkyv</code></td><td>Zero-copy IR serialization</td></tr>
+            <tr><td><code>fixed</code></td><td>Fp26.6 fixed-point arithmetic for pixel-exact rendering</td></tr>
+            <tr><td><code>pdf-writer</code></td><td>Streaming PDF generation</td></tr>
+            <tr><td><code>vello</code></td><td>GPU rendering (WGPU)</td></tr>
+            <tr><td><code>wasmtime</code></td><td>WASM plugin runtime</td></tr>
+            <tr><td><code>clap</code></td><td>CLI argument parsing with derive macros</td></tr>
+            <tr><td><code>shipyard</code></td><td>ECS (Entity Component System) for document nodes</td></tr>
+            <tr><td><code>thiserror</code></td><td>Error type derivation</td></tr>
+            <tr><td><code>tracing</code></td><td>Structured logging and diagnostics</td></tr>
+        </tbody>
+    </table>
+</main>
+</div>
+<footer class="site-footer">
+    <p>ldir -- deterministic document typesetting</p>
+</footer>
+<script src="js/version.js"></script>
+</body>
+</html>

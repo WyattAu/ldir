@@ -32,7 +32,9 @@ use ldir_ir::sir::v2::SIRModuleV2;
 
 use status::{Color, PipelineTimer, styled};
 
-const V2_FORMATS: &[&str] = &["html", "epub", "txt", "docx", "odt", "sir2", "ldir"];
+const V2_FORMATS: &[&str] = &[
+    "html", "epub", "txt", "docx", "odt", "sir2", "ldir", "pandoc", "ipynb",
+];
 
 fn detect_input_format(path: &Path) -> &'static str {
     match path.extension().and_then(|e| e.to_str()).unwrap_or("") {
@@ -56,6 +58,8 @@ fn detect_format_from_extension(ext: &str) -> &str {
         "odt" => "odt",
         "sir2" => "sir2",
         "ldir" => "ldir",
+        "pandoc" => "pandoc",
+        "ipynb" => "ipynb",
         _ => "pdf",
     }
 }
@@ -184,6 +188,20 @@ fn write_output(module: &SIRModuleV2, output_path: &Path, format: &str) -> Resul
             let tag = styled("ldir", Color::Green);
             eprintln!("  {tag} {} bytes -> {}", text.len(), output_path.display());
             std::fs::write(output_path, &text)
+                .with_context(|| format!("failed to write {}", output_path.display()))?;
+        }
+        "pandoc" => {
+            let json = ldir_pandoc::sir_to_pandoc_json(module).map_err(|e| anyhow::anyhow!(e))?;
+            let tag = styled("pandoc", Color::Green);
+            eprintln!("  {tag} {} bytes", json.len());
+            std::fs::write(output_path, &json)
+                .with_context(|| format!("failed to write {}", output_path.display()))?;
+        }
+        "ipynb" => {
+            let json = ldir_jupyter::sir_to_notebook(module).map_err(|e| anyhow::anyhow!(e))?;
+            let tag = styled("ipynb", Color::Green);
+            eprintln!("  {tag} {} bytes", json.len());
+            std::fs::write(output_path, &json)
                 .with_context(|| format!("failed to write {}", output_path.display()))?;
         }
         _ => anyhow::bail!("unsupported output format: {}", format),
@@ -601,6 +619,8 @@ fn main() -> Result<()> {
                 "odt" => "odt",
                 "sir2" => "sir2",
                 "ldir" => "ldir",
+                "pandoc" => "pandoc",
+                "ipynb" => "ipynb",
                 "gir" => "gir",
                 _ => "pdf",
             };

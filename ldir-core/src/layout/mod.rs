@@ -16,3 +16,4 @@ pub mod linebreak;
 pub mod lir_compile;
 pub mod multicolumn;
 pub mod pagination;
+pub mod simd_penalty;

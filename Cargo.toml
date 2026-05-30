@@ -24,10 +24,13 @@ members = [
     "ldir-docx-reader",
     "ldir-opt",
     "ldir-odt",
+    "ldir-pandoc",
+    "ldir-jupyter",
     "ldir-link",
     "ldir-lsp",
     "ldir-test-helpers",
     "tests",
+    "ldir-bench",
 ]
 exclude = ["ldir-core/fuzz"]
 
@@ -59,6 +62,8 @@ ldir-org = { path = "ldir-org", version = "0.1.0" }
 ldir-html-reader = { path = "ldir-html-reader", version = "0.1.0" }
 ldir-docx-reader = { path = "ldir-docx-reader", version = "0.1.0" }
 ldir-odt = { path = "ldir-odt", version = "0.1.0" }
+ldir-pandoc = { path = "ldir-pandoc", version = "0.1.0" }
+ldir-jupyter = { path = "ldir-jupyter", version = "0.1.0" }
 
 # Serialization (REQ-2.3)
 rkyv = { version = "0.8", features = ["bytecheck"] }
