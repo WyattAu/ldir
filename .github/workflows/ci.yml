@@ -64,6 +64,9 @@ jobs:
       - name: Test
         run: cargo test --workspace --exclude ldir-wasm --locked
 
+      - name: Doctests
+        run: cargo test --workspace --exclude ldir-wasm --doc --locked
+
   msrv-check:
     name: MSRV (1.88)
     runs-on: ubuntu-latest
@@ -72,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
 
       - name: Install Rust toolchain (1.88)
         uses: dtolnay/rust-toolchain@1.88.0
@@ -381,3 +384,29 @@ jobs:
             echo "::error::Man pages are out of date. Run: cargo run -p ldc --example generate-completions && cp target/man/* man/"
             exit 1
           }
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and git
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: security-audit-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: security-audit-cargo-
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        run: cargo audit --deny warnings
