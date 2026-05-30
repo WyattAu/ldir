@@ -5,6 +5,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use ldir_core::layout::incremental::IncrementalLayout;
+use ldir_ir::lir::LIRDocument;
+use ldir_ir::sir::v2::SIRModuleV2;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, Notify};
 use tokio::time::{self};
@@ -46,6 +49,14 @@ struct PendingCompile {
     uri: String,
 }
 
+/// Incremental compilation state carried across debounced triggers.
+#[derive(Debug)]
+struct IncrementalState {
+    layout: IncrementalLayout,
+    lir: Arc<LIRDocument>,
+    pdf_path: PathBuf,
+}
+
 /// Manages debounced preview compilation for the LSP server.
 #[derive(Debug, Clone)]
 pub struct PreviewManager {
@@ -55,6 +66,8 @@ pub struct PreviewManager {
     enabled: Arc<AtomicBool>,
     running: Arc<AtomicBool>,
     pending: Arc<Mutex<Option<PendingCompile>>>,
+    #[allow(dead_code)]
+    incremental: Arc<std::sync::Mutex<Option<IncrementalState>>>,
     #[allow(dead_code)]
     client: Client,
 }
@@ -68,12 +81,14 @@ impl PreviewManager {
         let enabled = Arc::new(AtomicBool::new(false));
         let debounce = Duration::from_millis(DEFAULT_DEBOUNCE_MS);
         let output_path = Arc::new(output_path);
+        let incremental = Arc::new(std::sync::Mutex::new(None));
 
         let bg_notify = notify.clone();
         let bg_running = running.clone();
         let bg_pending = pending.clone();
         let bg_output_path = output_path.clone();
         let bg_client = client.clone();
+        let bg_incremental = incremental.clone();
 
         tokio::spawn(async move {
             Self::background_task(
@@ -82,6 +97,7 @@ impl PreviewManager {
                 bg_pending,
                 bg_output_path,
                 bg_client,
+                bg_incremental,
                 debounce,
             )
             .await;
@@ -94,6 +110,7 @@ impl PreviewManager {
             enabled,
             running,
             pending,
+            incremental,
             client,
         }
     }
@@ -152,6 +169,7 @@ impl PreviewManager {
         pending: Arc<Mutex<Option<PendingCompile>>>,
         output_path: Arc<PathBuf>,
         #[allow(dead_code)] client: Client,
+        #[allow(dead_code)] incremental: Arc<std::sync::Mutex<Option<IncrementalState>>>,
         debounce: Duration,
     ) {
         loop {
@@ -196,8 +214,15 @@ impl PreviewManager {
                 .await;
 
             let output = (*output_path).clone();
+            let inc = incremental.clone();
             let result = tokio::task::spawn_blocking(move || {
-                compile_to_pdf(&compile.text, &compile.extension, &compile.uri, &output)
+                compile_to_pdf(
+                    &compile.text,
+                    &compile.extension,
+                    &compile.uri,
+                    &output,
+                    &inc,
+                )
             })
             .await;
 
@@ -237,27 +262,57 @@ impl PreviewManager {
     }
 }
 
+fn parse_to_sir(text: &str, extension: &str) -> Result<SIRModuleV2, String> {
+    match extension {
+        "md" => {
+            let v1 = ldir_md::parse_markdown(text);
+            Ok(ldir_core::compiler::v1_to_v2::convert_v1_to_v2(&v1))
+        }
+        "tex" => {
+            let v1 = ldir_tex::parse_tex(text);
+            Ok(ldir_core::compiler::v1_to_v2::convert_v1_to_v2(&v1))
+        }
+        "typ" => Ok(ldir_typst::parse_typst(text)),
+        _ => Err(format!("unsupported format: .{}", extension)),
+    }
+}
+
 fn compile_to_pdf(
     text: &str,
     extension: &str,
     uri: &str,
     output_dir: &Path,
+    incremental: &std::sync::Mutex<Option<IncrementalState>>,
 ) -> Result<PathBuf, String> {
-    let module = match extension {
-        "md" => {
-            let v1 = ldir_md::parse_markdown(text);
-            ldir_core::compiler::v1_to_v2::convert_v1_to_v2(&v1)
+    let module = parse_to_sir(text, extension)?;
+    let new_module = Arc::new(module);
+
+    {
+        let mut state_guard = incremental
+            .lock()
+            .map_err(|e| format!("lock poisoned: {e}"))?;
+        if let Some(state) = state_guard.as_mut() {
+            state.layout.update_sir(Arc::clone(&new_module));
+            let ctx = ldir_core::compiler::context::CompileContext::new();
+            match state.layout.recompile_lir(&state.lir, &ctx) {
+                Ok(new_lir) => {
+                    if Arc::ptr_eq(&new_lir, &state.lir) {
+                        return Ok(state.pdf_path.clone());
+                    }
+                    state.lir = new_lir;
+                }
+                Err(e) => {
+                    tracing::debug!(
+                        "incremental LIR recompile failed, falling back to full compile: {e}"
+                    );
+                }
+            }
+            drop(state_guard);
         }
-        "tex" => {
-            let v1 = ldir_tex::parse_tex(text);
-            ldir_core::compiler::v1_to_v2::convert_v1_to_v2(&v1)
-        }
-        "typ" => ldir_typst::parse_typst(text),
-        _ => return Err(format!("unsupported format: .{}", extension)),
-    };
+    }
 
     let mut ctx = ldir_core::compiler::context::CompileContext::new();
-    let gir_doc = ldir_core::compiler::v2_compile::compile_v2_document(&module, &mut ctx)
+    let gir_doc = ldir_core::compiler::v2_compile::compile_v2_document(&new_module, &mut ctx)
         .map_err(|e| format!("compile error: {e}"))?;
 
     let pdf_bytes = ldir_pdf::converter::gir_to_pdf(&gir_doc);
@@ -268,6 +323,20 @@ fn compile_to_pdf(
     }
 
     std::fs::write(&pdf_path, &pdf_bytes).map_err(|e| format!("failed to write PDF: {e}"))?;
+
+    let ctx_lir = ldir_core::compiler::context::CompileContext::new();
+    let lir = ldir_core::compile_sir_to_lir(&new_module, &ctx_lir)
+        .map(Arc::new)
+        .unwrap_or_else(|_| Arc::new(LIRDocument::default()));
+
+    let mut state_guard = incremental
+        .lock()
+        .map_err(|e| format!("lock poisoned: {e}"))?;
+    *state_guard = Some(IncrementalState {
+        layout: IncrementalLayout::new(new_module),
+        lir,
+        pdf_path: pdf_path.clone(),
+    });
 
     Ok(pdf_path)
 }
@@ -318,7 +387,6 @@ mod tests {
     #[test]
     fn test_output_path() {
         let output_dir = std::env::temp_dir().join("ldir-preview");
-        // Use a URI with a drive letter on Windows, or an absolute Unix path.
         #[cfg(windows)]
         let uri = "file:///C:/Users/user/doc.md";
         #[cfg(not(windows))]
