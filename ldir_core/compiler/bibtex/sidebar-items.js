@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["format_citation_apa","format_citation_ieee","parse_bib"],"struct":["BibEntry"]};
+window.SIDEBAR_ITEMS = {"fn":["disambiguate_year","format_citation_apa","format_citation_chicago","format_citation_ieee","format_citation_with_disambiguation","parse_bib"],"struct":["BibEntry"]};
