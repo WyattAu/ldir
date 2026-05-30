@@ -7,7 +7,7 @@
 | Rust crates | 26 (+ 1 Lean4 project) |
 | Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,810 (all passing locally) |
+| Total tests | 1,865 (all passing locally) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (2 rkyv INVARIANT-guarded, 1 len()-guarded) |
@@ -29,13 +29,15 @@
 
 ---
 
-## Phase 1: CI/CD Hardening (1-2 weeks) -- PARTIALLY DONE
+## Phase 1: CI/CD Hardening (1-2 weeks) -- MOSTLY DONE
 
 ### 1.1 Resolve Remaining CI Failures -- DONE
 
 - [x] **aarch64 cross-compilation**: Install `libharfbuzz-dev:arm64` with `dpkg --add-architecture arm64`
 - [x] **bench.yml --quick profile**: Replaced invalid `--quick` cargo flag with `CRITERION_MEASUREMENT_TIME` env var
 - [x] **Pre-commit hook**: Removed redundant `--exclude ldir-core-fuzz` (already workspace-excluded)
+- [x] **CI deterministic builds**: Added `--locked` to all cargo commands across ci.yml, docs.yml, release.yml
+- [x] **CI job naming**: Renamed `feature-features` to `feature-gates`
 - [ ] **Font tests on CI**: `fonts-dejavu-core` is installed; `ldir-test-helpers` bundles test font fixture
 - [ ] **veraPDF**: Install via apt or use continue-on-error (already set)
 - [ ] **Lean4 caching**: Cache `~/.elan` and `ldir-lean/.lake` between runs
