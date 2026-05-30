@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["EpubBuilder","EpubOptions"]};
+window.SIDEBAR_ITEMS = {"struct":["EpubBuilder","EpubOptions","MediaOverlay","OverlayParam"]};

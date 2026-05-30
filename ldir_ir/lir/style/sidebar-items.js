@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["FlowDirection","ListType","MathType","Placement","TextAlign"],"struct":["LIRStyleTable","LIRTextStyle","Padding"]};
+window.SIDEBAR_ITEMS = {"enum":["ColumnBreak","FlowDirection","ListType","MathType","Placement","SpanBehavior","TextAlign"],"struct":["LIRStyleTable","LIRTextStyle","Padding"]};

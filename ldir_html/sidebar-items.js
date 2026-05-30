@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["MathFormat"],"struct":["HtmlOptions","HtmlRenderer"]};
+window.SIDEBAR_ITEMS = {"enum":["MathFormat"],"mod":["themes"],"struct":["HtmlOptions","HtmlRenderOptions","HtmlRenderer"]};

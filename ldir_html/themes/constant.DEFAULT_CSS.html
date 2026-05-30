@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `DEFAULT_CSS` constant in crate `ldir_html`."><title>DEFAULT_CSS in ldir_html::themes - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="ldir_html" data-themes="" data-resource-suffix="" data-rustdoc-version="1.96.0 (ac68faa20 2026-05-25)" data-channel="1.96.0" data-search-js="search-b5634cc7.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc constant"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">DEFAULT_CSS</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../ldir_html/index.html">ldir_<wbr>html</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In ldir_<wbr>html::<wbr>themes</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">ldir_html</a>::<wbr><a href="index.html">themes</a></div><h1>Constant <span class="constant">DEFAULT_<wbr>CSS</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/ldir_html/themes.rs.html#3-142">Source</a> </span></div><pre class="rust item-decl"><code>pub const DEFAULT_CSS: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.96.0/std/primitive.str.html">str</a> = r#&quot;
+:root {
+    --color-text: #1a1a1a;
+    --color-heading: #111;
+    --color-link: #0366d6;
+    --color-code-bg: #f6f8fa;
+    --color-border: #e1e4e8;
+    --color-blockquote-border: #dfe2e5;
+    --color-table-border: #dfe2e5;
+    --font-body: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif;
+    --font-heading: var(--font-body);
+    --font-mono: SFMono-Regular, Consolas, &quot;Liberation Mono&quot;, Menlo, monospace;
+    --max-width: 860px;
+    --font-size: 16px;
+    --line-height: 1.6;
+}
+
+@media print {
+    :root {
+        --max-width: 100%;
+    }
+    body { padding: 0; }
+}
+
+body {
+    font-family: var(--font-body);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    color: var(--color-text);
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    color: var(--color-heading);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    line-height: 1.25;
+}
+
+h1 { font-size: 2em; border-bottom: 1px solid var(--color-border); padding-bottom: 0.3em; }
+h2 { font-size: 1.5em; border-bottom: 1px solid var(--color-border); padding-bottom: 0.3em; }
+h3 { font-size: 1.25em; }
+h4 { font-size: 1em; }
+
+a { color: var(--color-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-code-bg);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+pre {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--color-code-bg);
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+}
+
+blockquote {
+    margin: 0;
+    padding: 0.5em 1em;
+    border-left: 4px solid var(--color-blockquote-border);
+    color: #555;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+th, td {
+    padding: 0.5em 1em;
+    border: 1px solid var(--color-table-border);
+    text-align: left;
+}
+
+th { background: var(--color-code-bg); font-weight: 600; }
+
+img { max-width: 100%; height: auto; }
+
+hr { border: none; border-top: 1px solid var(--color-border); margin: 2em 0; }
+
+ul, ol { padding-left: 2em; }
+li { margin: 0.25em 0; }
+
+figure { margin: 1.5em 0; text-align: center; }
+figcaption { font-size: 0.9em; color: #555; margin-top: 0.5em; }
+
+.toc {
+    background: var(--color-code-bg);
+    border: 1px solid var(--color-border);
+    padding: 1em 1.5em;
+    margin-bottom: 2em;
+    border-radius: 6px;
+}
+.toc h2 { margin-top: 0; font-size: 1.2em; }
+.toc ul { list-style: none; padding-left: 0; }
+.toc ul ul { padding-left: 1.5em; }
+.toc a { color: var(--color-text); }
+
+.math-display { display: block; text-align: center; margin: 1em 0; padding: 0.5em; overflow-x: auto; }
+.math { font-family: serif; font-style: italic; }
+.eq-number { float: right; }
+.ref { color: var(--color-link); }
+
+.footnote-ref { font-size: 0.8em; vertical-align: super; }
+.footnotes { font-size: 0.9em; border-top: 1px solid var(--color-border); margin-top: 2em; padding-top: 1em; }
+.footnotes li { margin-bottom: 0.3em; }
+
+.figure { margin: 1em 0; text-align: center; }
+.figure img { display: block; margin: 0 auto; }
+.caption { font-size: 0.9em; color: #555; margin-top: 0.3em; }
+
+.anchor-link {
+    color: var(--color-link);
+    text-decoration: none;
+    margin-left: 0.2em;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+:hover &gt; .anchor-link { opacity: 1; }
+&quot;#;</code></pre></section></div></main></body></html>

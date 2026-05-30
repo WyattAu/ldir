@@ -1,2 +1,2 @@
-window.ALL_CRATES = ["ldc","ldir_adoc","ldir_as","ldir_core","ldir_diff","ldir_dis","ldir_docx","ldir_docx_reader","ldir_epub","ldir_html","ldir_html_reader","ldir_ir","ldir_link","ldir_lsp","ldir_md","ldir_opt","ldir_org","ldir_pdf","ldir_test_helpers","ldir_tex","ldir_txt","ldir_typst","ldir_validate","ldir_vello"];
-//{"start":21,"fragment_lengths":[5,12,10,12,12,11,12,19,12,12,19,10,12,11,10,11,11,11,20,11,11,13,16,13]}
+window.ALL_CRATES = ["ldc","ldir_adoc","ldir_as","ldir_core","ldir_diff","ldir_dis","ldir_docx","ldir_docx_reader","ldir_epub","ldir_html","ldir_html_reader","ldir_ir","ldir_link","ldir_lsp","ldir_md","ldir_odt","ldir_opt","ldir_org","ldir_pdf","ldir_test_helpers","ldir_tex","ldir_txt","ldir_typst","ldir_validate","ldir_vello"];
+//{"start":21,"fragment_lengths":[5,12,10,12,12,11,12,19,12,12,19,10,12,11,10,11,11,11,11,20,11,11,13,16,13]}

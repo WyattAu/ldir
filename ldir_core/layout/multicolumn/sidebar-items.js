@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["reflow_multicolumn"],"struct":["MultiColumnOptions"]};
+window.SIDEBAR_ITEMS = {"fn":["reflow_multicolumn"],"struct":["MultiColumnOptions","NodeColumnAnnotation"]};
