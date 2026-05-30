@@ -49,6 +49,7 @@ impl LanguageServer for Backend {
                 references_provider: Some(OneOf::Left(true)),
                 document_symbol_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions::default()),
+                rename_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -333,6 +334,119 @@ impl LanguageServer for Backend {
         let syms = symbols::extract_symbols(&state.text, uri);
         Ok(Some(DocumentSymbolResponse::Nested(syms)))
     }
+
+    async fn prepare_rename(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> Result<Option<PrepareRenameResponse>> {
+        let docs = self.documents.read().await;
+        let uri = &params.text_document.uri;
+        let pos = params.position;
+        let Some(state) = docs.get(&uri.to_string()) else {
+            return Ok(None);
+        };
+        let ext = crate::detect_extension(uri.path());
+        if ext != "tex" {
+            return Ok(None);
+        }
+        let Some(line_text) = state.text.lines().nth(pos.line as usize) else {
+            return Ok(None);
+        };
+        let prefixes = [
+            "\\label{",
+            "\\ref{",
+            "\\eqref{",
+            "\\cref{",
+            "\\Cref{",
+            "\\autoref{",
+            "\\cite{",
+        ];
+        let Some((key, start, end)) = find_key_at_position(line_text, pos.character, &prefixes)
+        else {
+            return Ok(None);
+        };
+        Ok(Some(PrepareRenameResponse::RangeWithPlaceholder {
+            range: Range {
+                start: Position {
+                    line: pos.line,
+                    character: start,
+                },
+                end: Position {
+                    line: pos.line,
+                    character: end,
+                },
+            },
+            placeholder: key,
+        }))
+    }
+
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+        let docs = self.documents.read().await;
+        let uri = &params.text_document_position.text_document.uri;
+        let pos = params.text_document_position.position;
+        let new_name = params.new_name;
+        let Some(state) = docs.get(&uri.to_string()) else {
+            return Ok(None);
+        };
+        let ext = crate::detect_extension(uri.path());
+        if ext != "tex" {
+            return Ok(None);
+        }
+        let Some(line_text) = state.text.lines().nth(pos.line as usize) else {
+            return Ok(None);
+        };
+        let prefixes = [
+            "\\label{",
+            "\\ref{",
+            "\\eqref{",
+            "\\cref{",
+            "\\Cref{",
+            "\\autoref{",
+            "\\cite{",
+        ];
+        let Some((label, _, _)) = find_key_at_position(line_text, pos.character, &prefixes) else {
+            return Ok(None);
+        };
+        let mut changes: HashMap<Url, Vec<TextEdit>> = HashMap::new();
+        for (doc_uri_str, doc_state) in docs.iter() {
+            let Ok(doc_url) = Url::parse(doc_uri_str) else {
+                continue;
+            };
+            let mut edits = Vec::new();
+            for (li, line) in doc_state.text.lines().enumerate() {
+                for &cmd in &prefixes {
+                    let pattern = format!("{cmd}{label}}}");
+                    let mut offset = 0;
+                    while let Some(idx) = line[offset..].find(&pattern) {
+                        let abs_col = offset + idx;
+                        let key_start = abs_col + cmd.len();
+                        let key_end = abs_col + pattern.len() - 1;
+                        edits.push(TextEdit {
+                            range: Range {
+                                start: Position {
+                                    line: li as u32,
+                                    character: key_start as u32,
+                                },
+                                end: Position {
+                                    line: li as u32,
+                                    character: key_end as u32,
+                                },
+                            },
+                            new_text: new_name.clone(),
+                        });
+                        offset = abs_col + 1;
+                    }
+                }
+            }
+            if !edits.is_empty() {
+                changes.insert(doc_url, edits);
+            }
+        }
+        Ok(Some(WorkspaceEdit {
+            changes: Some(changes),
+            ..Default::default()
+        }))
+    }
 }
 
 fn extract_ref_label(line: &str) -> Option<String> {
@@ -371,6 +485,28 @@ fn extract_label_name(line: &str) -> Option<String> {
             let label = rest[..end].trim().to_string();
             if !label.is_empty() {
                 return Some(label);
+            }
+        }
+    }
+    None
+}
+
+fn find_key_at_position(line: &str, col: u32, prefixes: &[&str]) -> Option<(String, u32, u32)> {
+    for &prefix in prefixes {
+        let mut offset = 0;
+        while let Some(idx) = line[offset..].find(prefix) {
+            let abs_idx = offset + idx;
+            let key_start = abs_idx + prefix.len();
+            let rest = &line[key_start..];
+            if let Some(brace_pos) = rest.find('}') {
+                let key = rest[..brace_pos].trim().to_string();
+                let key_end = key_start + brace_pos;
+                if !key.is_empty() && col >= key_start as u32 && col < key_end as u32 {
+                    return Some((key, key_start as u32, key_end as u32));
+                }
+                offset = key_start + brace_pos + 1;
+            } else {
+                break;
             }
         }
     }
