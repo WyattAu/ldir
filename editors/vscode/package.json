@@ -9,6 +9,7 @@
   "activationEvents": [
     "onLanguage:ldir-tex",
     "onLanguage:ldir-typst",
+    "onLanguage:ldir-markdown",
     "onCommand:ldir.compile",
     "onCommand:ldir.showPreview"
   ],
@@ -25,6 +26,12 @@
         "id": "ldir-typst",
         "aliases": ["Typst (ldir)"],
         "extensions": [".typ"],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "ldir-markdown",
+        "aliases": ["Markdown (ldir)"],
+        "extensions": [".md"],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -67,6 +74,31 @@
           "type": "string",
           "default": "ldc",
           "description": "Path to the ldc compiler binary"
+        },
+        "ldir.livePreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable live preview with incremental compilation"
+        },
+        "ldir.completion.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable completion provider"
+        },
+        "ldir.references.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable references provider"
+        },
+        "ldir.rename.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable rename provider"
+        },
+        "ldir.codeActions.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable code actions provider"
         }
       }
     }

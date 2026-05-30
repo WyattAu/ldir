@@ -9,9 +9,14 @@ import {
 let client: LanguageClient;
 let statusBarItem: vscode.StatusBarItem;
 
+interface PreviewStatusParams {
+    state: 'compiling' | 'ready' | 'error';
+    message?: string;
+}
+
 export function activate(context: vscode.ExtensionContext) {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.text = 'ldir';
+    statusBarItem.text = 'LDIR: Starting...';
     statusBarItem.show();
     context.subscriptions.push(statusBarItem);
 
@@ -26,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
         documentSelector: [
             { scheme: 'file', language: 'ldir-tex' },
             { scheme: 'file', language: 'ldir-typst' },
-            { scheme: 'file', language: 'markdown' }
+            { scheme: 'file', language: 'ldir-markdown' }
         ],
         synchronize: {
             configurationSection: 'ldir'
@@ -34,14 +39,38 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     client = new LanguageClient('ldir', 'ldir Language Server', serverOptions, clientOptions);
-    client.start().catch(() => {
-        statusBarItem.text = 'ldir (no server)';
+
+    client.onNotification('ldir/previewStatus', (params: PreviewStatusParams) => {
+        switch (params.state) {
+            case 'compiling':
+                statusBarItem.text = 'LDIR: Compiling...';
+                statusBarItem.color = undefined;
+                break;
+            case 'ready':
+                statusBarItem.text = 'LDIR: Ready';
+                statusBarItem.color = undefined;
+                break;
+            case 'error':
+                statusBarItem.text = 'LDIR: Error';
+                statusBarItem.color = new vscode.ThemeColor('errorForeground');
+                if (params.message) {
+                    vscode.window.showErrorMessage(`ldir: ${params.message}`);
+                }
+                break;
+        }
+    });
+
+    client.start().then(() => {
+        statusBarItem.text = 'LDIR: Ready';
+    }).catch(() => {
+        statusBarItem.text = 'LDIR: No Server';
+        statusBarItem.color = new vscode.ThemeColor('errorForeground');
     });
 
     const compileCmd = vscode.commands.registerCommand('ldir.compile', async () => {
         const doc = vscode.window.activeTextEditor?.document;
         if (!doc) return;
-        statusBarItem.text = '$(sync~spin) ldir: compiling...';
+        statusBarItem.text = 'LDIR: Compiling...';
         try {
             const compilerPath = vscode.workspace.getConfiguration('ldir').get<string>('compilerPath', 'ldc');
             const terminal = vscode.window.createTerminal('ldir compile');
@@ -49,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
             const outPath = doc.uri.fsPath.replace(/\.\w+$/, '.pdf');
             terminal.sendText(`${compilerPath} "${doc.uri.fsPath}" -o "${outPath}"`);
         } finally {
-            statusBarItem.text = 'ldir';
+            statusBarItem.text = 'LDIR: Ready';
         }
     });
 
