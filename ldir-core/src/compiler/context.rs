@@ -13,6 +13,8 @@ use crate::compiler::templates::PageTemplate;
 use crate::font::db::FontDatabase;
 use crate::fp266::Fp266;
 use crate::interner::StringInterner;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::shaping::Feature;
 use crate::shaping::cache::ThreadSafeShapeCache;
 
 /// Maximum allowed nesting depth for PushStack/PopStack.
@@ -150,6 +152,10 @@ pub struct CompileContext {
     /// Keyed by node ID; populated before the sequential emit phase.
     #[allow(dead_code)]
     pub precomputed_paragraphs: std::collections::HashMap<u32, PrecomputedParagraph>,
+    /// OpenType features to apply during text shaping (e.g., kern, liga, dlig).
+    /// Empty vector means no feature overrides (HarfBuzz defaults apply).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub opentype_features: Vec<Feature>,
 }
 
 impl Default for CompileContext {
@@ -213,6 +219,8 @@ impl CompileContext {
             section_title: String::new(),
             first_page: true,
             precomputed_paragraphs: std::collections::HashMap::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            opentype_features: Vec::new(),
         }
     }
 
@@ -290,6 +298,8 @@ impl CompileContext {
             section_title: String::new(),
             first_page: true,
             precomputed_paragraphs: std::collections::HashMap::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            opentype_features: Vec::new(),
         }
     }
 
@@ -607,5 +617,22 @@ mod tests {
         assert_eq!(parse_page_size("letter"), Some((612, 792)));
         assert_eq!(parse_page_size("legal"), Some((612, 1008)));
         assert_eq!(parse_page_size("unknown"), None);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_context_opentype_features_default_empty() {
+        let ctx = CompileContext::new();
+        assert!(ctx.opentype_features.is_empty());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn test_context_set_opentype_features() {
+        let mut ctx = CompileContext::new();
+        ctx.opentype_features = crate::shaping::Feature::parse_features("kern,liga");
+        assert_eq!(ctx.opentype_features.len(), 2);
+        assert_eq!(ctx.opentype_features[0].tag, *crate::shaping::KERN);
+        assert_eq!(ctx.opentype_features[1].tag, *crate::shaping::LIGA);
     }
 }

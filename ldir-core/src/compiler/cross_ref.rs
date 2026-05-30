@@ -264,6 +264,10 @@ pub fn resolve_text_references(
                 i += consumed;
                 continue;
             }
+            if let Some((_, consumed)) = try_parse_cmd(rest, "\\label{", 7) {
+                i += consumed;
+                continue;
+            }
         }
 
         if bytes[i] == b'@' && i + 1 < bytes.len() {
@@ -624,6 +628,17 @@ mod tests {
         let text = r"See \ref{sec:intro}, \eqref{eq:einstein}, and \autoref{fig:diagram}.";
         let resolved = resolve_text_references(text, &numbers, &kinds);
         assert_eq!(resolved, "See 1, (1), and Figure 2.");
+    }
+
+    #[test]
+    fn test_resolve_text_references_label_stripped() {
+        let numbers = IndexMap::new();
+        let kinds = IndexMap::new();
+
+        let text = "Text \\label{sec:here} more text";
+        let resolved = resolve_text_references(text, &numbers, &kinds);
+        assert_eq!(resolved, "Text  more text");
+        assert!(!resolved.contains("\\label"));
     }
 
     #[test]

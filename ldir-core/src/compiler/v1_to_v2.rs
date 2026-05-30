@@ -1,8 +1,59 @@
 use std::collections::HashMap;
 
+use ldir_ir::sir::v2::annotations::LabelCategory;
 use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
 use ldir_ir::sir::{BlockType, SIRDocument, SIROpcode, StyleModifier};
+
+fn extract_labels_from_text(text: &str) -> (String, Vec<String>) {
+    let mut result = String::with_capacity(text.len());
+    let mut labels = Vec::new();
+    let bytes = text.as_bytes();
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if i + 7 <= bytes.len() && bytes[i] == b'\\' && &bytes[i + 1..i + 7] == b"label{" {
+            let rest = &text[i + 7..];
+            if let Some(end) = rest.find('}') {
+                labels.push(rest[..end].to_string());
+                i += 7 + end + 1;
+                continue;
+            }
+        }
+        result.push(bytes[i] as char);
+        i += 1;
+    }
+
+    (result, labels)
+}
+
+fn infer_label_category(node_type: &NodeType) -> LabelCategory {
+    match node_type {
+        NodeType::Part
+        | NodeType::Chapter
+        | NodeType::Section
+        | NodeType::Subsection
+        | NodeType::Subsubsection => LabelCategory::Section,
+        NodeType::MathBlock { .. } => LabelCategory::Equation,
+        NodeType::Figure { .. } => LabelCategory::Figure,
+        NodeType::Table { .. } => LabelCategory::Table,
+        _ => LabelCategory::Custom,
+    }
+}
+
+fn is_labelable_type(node_type: &NodeType) -> bool {
+    matches!(
+        node_type,
+        NodeType::Part
+            | NodeType::Chapter
+            | NodeType::Section
+            | NodeType::Subsection
+            | NodeType::Subsubsection
+            | NodeType::Figure { .. }
+            | NodeType::Table { .. }
+            | NodeType::MathBlock { .. }
+    )
+}
 
 pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
     let mut module = SIRModuleV2::new();
@@ -12,6 +63,8 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
 
     let mut style_stack: Vec<NodeType> = Vec::new();
     let mut current_block_v2: Option<u32> = None;
+    let mut last_labelable_v2: Option<u32> = None;
+    let mut pending_labels: Vec<String> = Vec::new();
 
     for instr in doc.iter() {
         let v1_id = instr.entity_id();
@@ -121,16 +174,49 @@ pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
                     node = node.with_parent(pid);
                 }
 
+                if is_labelable_type(&node.node_type) {
+                    let category = infer_label_category(&node.node_type);
+                    for label in pending_labels.drain(..) {
+                        node.label = Some(label.clone());
+                        module.annotations.add_label(label, v2_id, category);
+                    }
+                    last_labelable_v2 = Some(v2_id);
+                }
+
                 current_block_v2 = Some(v2_id);
                 module.body.push(node);
             }
 
             SIROpcode::SetContent => {
-                let text = doc
+                let raw_text = doc
                     .payload_text(instr)
                     .unwrap_or_default()
                     .trim_end_matches('\0')
                     .to_string();
+
+                let (text, extracted_labels) = extract_labels_from_text(&raw_text);
+
+                for label in extracted_labels {
+                    if let Some(node_id) = last_labelable_v2 {
+                        let category = if let Some(node) = module.body.get(node_id) {
+                            infer_label_category(&node.node_type)
+                        } else {
+                            LabelCategory::Custom
+                        };
+                        if let Some(node) = module.body.get_mut(node_id)
+                            && node.label.is_none()
+                        {
+                            node.label = Some(label.clone());
+                        }
+                        module.annotations.add_label(label, node_id, category);
+                    } else {
+                        pending_labels.push(label);
+                    }
+                }
+
+                if text.trim().is_empty() {
+                    continue;
+                }
 
                 if let Some(style_node_type) = style_stack.last().cloned() {
                     let mut style_node = Node::new(v2_id, style_node_type);
@@ -349,5 +435,142 @@ mod tests {
                 content: "Test content".to_string()
             }
         );
+    }
+
+    #[test]
+    fn test_convert_label_extracted_from_text() {
+        let mut doc = SIRDocument::new();
+        doc.push(SIRInstruction::new(
+            SIROpcode::PushBlock,
+            0,
+            ROOT_SENTINEL,
+            0,
+        ));
+        let mut heading_payload = vec![BlockType::Heading as u8];
+        heading_payload.extend_from_slice(&2u32.to_le_bytes());
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 1, 0, 0),
+            &heading_payload,
+        );
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::SetContent, 2, 1, 0),
+            b"Introduction",
+        );
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 3, 0, 0),
+            &[BlockType::Paragraph as u8],
+        );
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::SetContent, 4, 3, 0),
+            b"\\label{sec:intro}",
+        );
+
+        let module = convert_v1_to_v2(&doc);
+
+        let section_node = module.body.get(1).unwrap();
+        assert_eq!(section_node.label.as_deref(), Some("sec:intro"));
+        assert!(module.annotations.find_label("sec:intro").is_some());
+
+        for node in module.body.iter() {
+            if let NodeType::Text { content } = &node.node_type {
+                assert!(
+                    !content.contains("sec:intro"),
+                    "label should be stripped from text: {content}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_convert_pending_label_attached_to_next_heading() {
+        let mut doc = SIRDocument::new();
+        doc.push(SIRInstruction::new(
+            SIROpcode::PushBlock,
+            0,
+            ROOT_SENTINEL,
+            0,
+        ));
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 1, 0, 0),
+            &[BlockType::Paragraph as u8],
+        );
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::SetContent, 2, 1, 0),
+            b"\\label{sec:intro}",
+        );
+        let mut heading_payload = vec![BlockType::Heading as u8];
+        heading_payload.extend_from_slice(&2u32.to_le_bytes());
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 3, 0, 0),
+            &heading_payload,
+        );
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::SetContent, 4, 3, 0),
+            b"Introduction",
+        );
+
+        let module = convert_v1_to_v2(&doc);
+
+        let section_node = module.body.get(3).unwrap();
+        assert_eq!(section_node.label.as_deref(), Some("sec:intro"));
+        assert!(module.annotations.find_label("sec:intro").is_some());
+    }
+
+    #[test]
+    fn test_convert_label_in_figure_attached() {
+        let mut doc = SIRDocument::new();
+        doc.push(SIRInstruction::new(
+            SIROpcode::PushBlock,
+            0,
+            ROOT_SENTINEL,
+            0,
+        ));
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 1, 0, 0),
+            &[BlockType::Figure as u8],
+        );
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::SetContent, 2, 1, 0),
+            b"\\label{fig:diagram}",
+        );
+
+        let module = convert_v1_to_v2(&doc);
+
+        let fig_node = module.body.get(1).unwrap();
+        assert_eq!(fig_node.label.as_deref(), Some("fig:diagram"));
+        assert_eq!(
+            module
+                .annotations
+                .find_label("fig:diagram")
+                .unwrap()
+                .category,
+            LabelCategory::Figure
+        );
+    }
+
+    #[test]
+    fn test_convert_ref_kept_in_text() {
+        let mut doc = SIRDocument::new();
+        doc.push(SIRInstruction::new(
+            SIROpcode::PushBlock,
+            0,
+            ROOT_SENTINEL,
+            0,
+        ));
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::PushBlock, 1, 0, 0),
+            &[BlockType::Paragraph as u8],
+        );
+        doc.push_with_payload(
+            SIRInstruction::new(SIROpcode::SetContent, 2, 1, 0),
+            b"See \\ref{sec:intro} for details.",
+        );
+
+        let module = convert_v1_to_v2(&doc);
+
+        let text_node = module.body.get(2).unwrap();
+        if let NodeType::Text { content } = &text_node.node_type {
+            assert!(content.contains("\\ref{sec:intro}"));
+        }
     }
 }

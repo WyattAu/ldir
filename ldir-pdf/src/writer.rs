@@ -28,7 +28,7 @@ pub enum PdfImageFormat {
 }
 
 /// Compress data with FlateDecode (zlib/deflate).
-fn compress(data: &[u8]) -> Vec<u8> {
+pub(crate) fn compress(data: &[u8]) -> Vec<u8> {
     use flate2::Compression;
     use flate2::write::ZlibEncoder;
     use std::io::Write;
@@ -67,41 +67,41 @@ fn jpeg_dims(data: &[u8]) -> Option<(u32, u32)> {
     jpeg_info(data).map(|(w, h, _)| (w, h))
 }
 
-struct PageState {
-    width: f64,
-    height: f64,
-    content: Content,
-    links: Vec<(f64, f64, f64, f64, String, Option<usize>)>,
-    images: Vec<(f64, f64, f64, f64, usize)>,
+pub(crate) struct PageState {
+    pub width: f64,
+    pub height: f64,
+    pub content: Content,
+    pub links: Vec<(f64, f64, f64, f64, String, Option<usize>)>,
+    pub images: Vec<(f64, f64, f64, f64, usize)>,
 }
 
 /// Describes an embedded font in the PDF.
-struct EmbeddedFont {
+pub(crate) struct EmbeddedFont {
     /// Font face with parsed metrics.
-    face: FontFace,
+    pub face: FontFace,
     /// PDF resource name (e.g. b"F1").
-    resource_name: Vec<u8>,
+    pub resource_name: Vec<u8>,
     /// Font size in points.
-    size: f32,
+    pub size: f32,
 }
 
 /// PDF document builder supporting multiple embedded fonts.
 pub struct PdfDocumentBuilder {
-    title: String,
-    author: String,
-    subject: String,
-    creator: String,
-    language: String,
-    pages: Vec<PageState>,
+    pub(crate) title: String,
+    pub(crate) author: String,
+    pub(crate) subject: String,
+    pub(crate) creator: String,
+    pub(crate) language: String,
+    pub(crate) pages: Vec<PageState>,
     current_page: usize,
-    fonts: Vec<EmbeddedFont>,
+    pub(crate) fonts: Vec<EmbeddedFont>,
     current_font: usize,
-    pending_glyphs: Vec<Vec<u32>>,
-    images: Vec<PdfImage>,
-    structure_tree: Vec<StructureNode>,
-    tagged: bool,
-    icc_profile: Option<IccProfile>,
-    conformance: PdfConformance,
+    pub(crate) pending_glyphs: Vec<Vec<u32>>,
+    pub(crate) images: Vec<PdfImage>,
+    pub(crate) structure_tree: Vec<StructureNode>,
+    pub(crate) tagged: bool,
+    pub(crate) icc_profile: Option<IccProfile>,
+    pub(crate) conformance: PdfConformance,
 }
 
 impl PdfDocumentBuilder {

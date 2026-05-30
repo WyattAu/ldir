@@ -694,6 +694,10 @@ fn main() -> Result<()> {
         .unwrap_or_else(|| "DejaVu Sans".to_string());
     ctx.font_mono_family = cli.font_mono.clone().unwrap_or_default();
 
+    if let Some(ref features_str) = cli.ot_features {
+        ctx.opentype_features = ldir_core::shaping::Feature::parse_features(features_str);
+    }
+
     let gir_doc = if cli.lir {
         use ldir_core::compile_sir_to_lir;
         use ldir_pdf::lir_render::render_lir_to_gir;

@@ -21,7 +21,10 @@ use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(unused_imports)]
 #[allow(dead_code)]
-pub use harfbuzz::{CALT, Feature, KERN, LIGA, LNUM, ONUM, TNUM};
+pub use harfbuzz::{
+    CALT, DLIG, Feature, HLIG, KERN, LIGA, LNUM, ONUM, SALT, SS01, SS02, SS03, SS04, SS05, SS06,
+    SS07, SS08, SS09, SS10, SS11, SS12, SS13, SS14, SS15, SS16, SS17, SS18, SS19, SS20, TNUM, ZERO,
+};
 
 /// No-op OpenType feature placeholder for WASM targets.
 ///
@@ -166,7 +169,7 @@ pub fn shape_text_with_features(
     if text.is_empty() {
         return ShapedRun::empty();
     }
-    if is_ascii_simple(text) {
+    if features.is_none() && is_ascii_simple(text) {
         shape_ascii_with_metrics(font_data, text, font_size)
     } else {
         #[cfg(not(target_arch = "wasm32"))]
@@ -234,6 +237,48 @@ pub fn shape_text_cached_auto_font(
     })
 }
 
+/// Shapes text using the shape cache with optional OpenType feature overrides.
+///
+/// Features are incorporated into the cache key to ensure different feature
+/// sets produce distinct cache entries.
+///
+/// Returns `Arc<ShapedRun>` -- callers can deref to access glyphs without cloning.
+#[inline]
+pub fn shape_text_cached_with_features(
+    cache: &ThreadSafeShapeCache,
+    font_data: &[u8],
+    text: &str,
+    font_size: Fp266,
+    font_id: u32,
+    features: Option<&[Feature]>,
+) -> Arc<ShapedRun> {
+    if text.is_empty() {
+        return Arc::new(ShapedRun::empty());
+    }
+    if features.is_none() {
+        return shape_text_cached(cache, font_data, text, font_size, font_id);
+    }
+    let stable_font_id = font_id;
+    let feature_list: Vec<Feature> = features.map(|f| f.to_vec()).unwrap_or_default();
+    let composite_id = stable_font_id
+        .wrapping_mul(31)
+        .wrapping_add(feature_list_hash(&feature_list));
+    cache.get_or_shape(text, composite_id, font_size, |t, _fid, fs| {
+        shape_text_with_features(font_data, t, fs, Some(&feature_list))
+    })
+}
+
+fn feature_list_hash(features: &[Feature]) -> u32 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::Hasher;
+    let mut hasher = DefaultHasher::new();
+    for f in features {
+        hasher.write_u32(u32::from_be_bytes(f.tag));
+        hasher.write_u32(f.value);
+    }
+    hasher.finish() as u32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,5 +312,62 @@ mod tests {
         };
         assert_eq!(g.glyph_id, 42);
         assert_eq!(g.advance, Fp266::from_int(10));
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn shape_with_features_routes_to_harfbuzz() {
+        let data = ldir_test_helpers::test_font_data();
+        let features = vec![Feature::enable(KERN), Feature::enable(LIGA)];
+        let run = shape_text_with_features(&data, "fi fl", Fp266::from_int(12), Some(&features));
+        assert!(!run.glyphs.is_empty());
+        assert!(run.total_advance.raw() > 0);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn shape_with_features_deterministic() {
+        let data = ldir_test_helpers::test_font_data();
+        let features = vec![Feature::enable(KERN)];
+        let run1 = shape_text_with_features(&data, "AV", Fp266::from_int(12), Some(&features));
+        let run2 = shape_text_with_features(&data, "AV", Fp266::from_int(12), Some(&features));
+        assert_eq!(run1, run2);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn shape_cached_with_features() {
+        let data = ldir_test_helpers::test_font_data();
+        let cache = ThreadSafeShapeCache::new(64);
+        let features = vec![Feature::enable(LIGA)];
+        let run1 = shape_text_cached_with_features(
+            &cache,
+            &data,
+            "fi",
+            Fp266::from_int(12),
+            0,
+            Some(&features),
+        );
+        let run2 = shape_text_cached_with_features(
+            &cache,
+            &data,
+            "fi",
+            Fp266::from_int(12),
+            0,
+            Some(&features),
+        );
+        assert!(run1.total_advance.raw() > 0);
+        assert_eq!(run1, run2);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn shape_cached_without_features_uses_existing_path() {
+        let data = ldir_test_helpers::test_font_data();
+        let cache = ThreadSafeShapeCache::new(64);
+        let run1 =
+            shape_text_cached_with_features(&cache, &data, "fi", Fp266::from_int(12), 0, None);
+        let run2 = shape_text_cached(&cache, &data, "fi", Fp266::from_int(12), 0);
+        assert_eq!(run1, run2);
     }
 }

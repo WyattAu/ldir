@@ -8,8 +8,11 @@
 
 use ldir_ir::gir::{GIRDocument, GIROpcode, ImageFormat};
 
+use std::io::Write;
+
 use crate::conformance::PdfConformance;
 use crate::font::FontFace;
+use crate::streaming_writer::build_streaming;
 use crate::writer::{PdfDocumentBuilder, PdfImage, PdfImageFormat};
 
 /// Options for PDF generation.
@@ -291,6 +294,182 @@ pub fn gir_to_pdf_with_font(gir_doc: &GIRDocument, font_data: Option<&[u8]>) -> 
     }
 }
 
+/// Convert a G-IR document to PDF, streaming output directly to a Write sink.
+///
+/// This is the streaming counterpart to [`gir_to_pdf_with_fonts_and_options`].
+/// It writes PDF content sequentially to the sink, dropping page data as it goes,
+/// which reduces peak memory usage for large documents.
+pub fn gir_to_pdf_streaming<W: Write>(
+    gir_doc: &GIRDocument,
+    fonts: &[FontFace],
+    options: &PdfOptions,
+    sink: W,
+) -> std::io::Result<()> {
+    let mut builder = PdfDocumentBuilder::new();
+
+    if let Some(ref title) = options.title {
+        builder.set_title(title);
+    }
+    if let Some(ref author) = options.author {
+        builder.set_author(author);
+    }
+    if let Some(ref subject) = options.subject {
+        builder.set_subject(subject);
+    }
+    if let Some(ref creator) = options.creator {
+        builder.set_creator(creator);
+    }
+    builder.set_conformance(options.conformance);
+
+    let has_embedded_fonts = !fonts.is_empty();
+    for face in fonts {
+        builder.add_font((*face).clone(), 12.0);
+    }
+    if has_embedded_fonts {
+        builder.set_active_font(0);
+    }
+
+    let page_count = gir_doc.page_count();
+    for (page_idx, page) in gir_doc.iter().enumerate() {
+        let width = page.width as f64 / 64.0;
+        let height = page.height as f64 / 64.0;
+        builder.add_page(width, height);
+
+        let mut cursor_x: f64 = 0.0;
+        let mut cursor_y: f64 = 0.0;
+
+        for cmd in page.iter() {
+            match cmd.opcode() {
+                GIROpcode::SetFont => {
+                    let font_id = cmd.arg(0).unwrap_or(0) as usize;
+                    if has_embedded_fonts && font_id < fonts.len() {
+                        builder.set_active_font(font_id);
+                    }
+                }
+                GIROpcode::MoveXY => {
+                    cursor_x = cmd.arg(0).unwrap_or(0) as f64 / 64.0;
+                    cursor_y = cmd.arg(1).unwrap_or(0) as f64 / 64.0;
+                }
+                GIROpcode::PutGlyph => {
+                    let glyph_id = cmd.arg(0).unwrap_or(0);
+                    let advance = cmd.arg(1).unwrap_or(0) as f64 / 64.0;
+
+                    if has_embedded_fonts {
+                        builder.write_glyph(cursor_x, cursor_y, glyph_id as u32, advance);
+                    } else {
+                        let ch = char::from_u32(glyph_id as u32).unwrap_or('?');
+                        builder.write_text(cursor_x, cursor_y, &ch.to_string());
+                    }
+                    cursor_x += advance;
+                }
+                GIROpcode::DrawRule => {
+                    let raw_x = cmd.arg(0).unwrap_or(0);
+                    let raw_y = cmd.arg(1).unwrap_or(0);
+                    let raw_w = cmd.arg(2).unwrap_or(0);
+                    let raw_h = cmd.arg(3).unwrap_or(0);
+
+                    if raw_x == -1 {
+                        let image_index = raw_y as usize;
+                        let w = raw_w as f64 / 64.0;
+                        let h = raw_h as f64 / 64.0;
+                        builder.add_image(cursor_x, cursor_y, w, h, image_index);
+                    } else {
+                        let x = raw_x as f64 / 64.0;
+                        let y = raw_y as f64 / 64.0;
+                        let w = raw_w as f64 / 64.0;
+                        let h = raw_h as f64 / 64.0;
+                        builder.draw_rect(x, y, w, h);
+                    }
+                }
+                GIROpcode::PushStack | GIROpcode::PopStack | GIROpcode::AttachMetadata => {}
+            }
+        }
+
+        for link in &page.links {
+            builder.add_link(
+                link.x,
+                link.y,
+                link.width,
+                link.height,
+                link.url.clone(),
+                link.destination_page,
+            );
+        }
+
+        let has_header = options.header_left.is_some() || options.header_right.is_some();
+        let has_custom_footer = options.footer_left.is_some() || options.footer_right.is_some();
+
+        if has_header && !(options.suppress_first_header && page_idx == 0) {
+            if let Some(ref tmpl) = options.header_left {
+                let text = expand_template(tmpl, page_idx + 1, page_count, options);
+                if has_embedded_fonts {
+                    builder.set_active_font(0);
+                }
+                builder.write_text(72.0, height - 36.0, &text);
+            }
+            if let Some(ref tmpl) = options.header_right {
+                let text = expand_template(tmpl, page_idx + 1, page_count, options);
+                if has_embedded_fonts {
+                    builder.set_active_font(0);
+                }
+                let approx_width = text.len() as f64 * 3.5;
+                builder.write_text(width - 72.0 - approx_width, height - 36.0, &text);
+            }
+        }
+
+        if has_custom_footer {
+            if let Some(ref tmpl) = options.footer_left {
+                let text = expand_template(tmpl, page_idx + 1, page_count, options);
+                if has_embedded_fonts {
+                    builder.set_active_font(0);
+                }
+                builder.write_text(72.0, 24.0, &text);
+            }
+            if let Some(ref tmpl) = options.footer_right {
+                let text = expand_template(tmpl, page_idx + 1, page_count, options);
+                if has_embedded_fonts {
+                    builder.set_active_font(0);
+                }
+                let approx_width = text.len() as f64 * 3.5;
+                builder.write_text(width - 72.0 - approx_width, 24.0, &text);
+            }
+        }
+
+        if page_count > 1 && !has_custom_footer {
+            let page_num = page_idx + 1;
+            let text = page_num.to_string();
+            let font_size = 10.0;
+            let text_width = text.len() as f64 * font_size * 0.5;
+            let center_x = width / 2.0 - text_width / 2.0;
+            let bottom_y = 30.0;
+
+            if has_embedded_fonts {
+                builder.set_active_font(0);
+            }
+            builder.write_text(center_x, bottom_y, &text);
+        }
+    }
+
+    if !gir_doc.images().is_empty() {
+        let pdf_images: Vec<PdfImage> = gir_doc
+            .images()
+            .iter()
+            .map(|img| PdfImage {
+                data: img.data.clone(),
+                format: match img.format {
+                    ImageFormat::Png => PdfImageFormat::Png,
+                    ImageFormat::Jpeg => PdfImageFormat::Jpeg,
+                },
+                alt_text: None,
+            })
+            .collect();
+        builder.set_images(pdf_images);
+    }
+
+    build_streaming(&builder, sink)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -461,5 +640,57 @@ mod tests {
 
         let bytes = gir_to_pdf_with_fonts_and_options(&doc, &[], &options);
         assert!(bytes.starts_with(b"%PDF"));
+    }
+
+    #[test]
+    fn test_gir_to_pdf_streaming_fallback() {
+        let mut doc = GIRDocument::with_capacity(1);
+        let mut page = GIRPage::with_dimensions(612 * 64, 792 * 64);
+        page.push(GIRCommand::new_move_xy((72 * 64) as i32, (720 * 64) as i32));
+        page.push(GIRCommand::new_put_glyph(72, (7 * 64) as i32));
+        doc.push_page(page);
+
+        let mut buf = Vec::new();
+        gir_to_pdf_streaming(&doc, &[], &PdfOptions::default(), &mut buf).unwrap();
+        assert!(buf.starts_with(b"%PDF"));
+        assert!(buf.ends_with(b"%%EOF\n"));
+    }
+
+    #[test]
+    fn test_gir_to_pdf_streaming_with_fonts() {
+        let Some(font_data) = get_font_data() else {
+            return;
+        };
+        let face = FontFace::from_bytes(&font_data).unwrap();
+
+        let mut doc = GIRDocument::with_capacity(1);
+        let mut page = GIRPage::with_dimensions(612 * 64, 792 * 64);
+        page.push(GIRCommand::new_set_font(0));
+        page.push(GIRCommand::new_move_xy((72 * 64) as i32, (720 * 64) as i32));
+        page.push(GIRCommand::new_put_glyph(36, (7 * 64) as i32));
+        doc.push_page(page);
+
+        let mut buf = Vec::new();
+        gir_to_pdf_streaming(&doc, &[face], &PdfOptions::default(), &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("/FontDescriptor"));
+        assert!(pdf_str.contains("/FontFile2"));
+    }
+
+    #[test]
+    fn test_gir_to_pdf_streaming_multi_page() {
+        let mut doc = GIRDocument::with_capacity(3);
+        for _ in 0..3 {
+            let mut page = GIRPage::with_dimensions(612 * 64, 792 * 64);
+            page.push(GIRCommand::new_move_xy((72 * 64) as i32, (720 * 64) as i32));
+            page.push(GIRCommand::new_put_glyph(72, (7 * 64) as i32));
+            doc.push_page(page);
+        }
+
+        let mut buf = Vec::new();
+        gir_to_pdf_streaming(&doc, &[], &PdfOptions::default(), &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("xref"));
+        assert!(pdf_str.contains("/Count 3"));
     }
 }

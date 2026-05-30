@@ -33,6 +33,9 @@ pub struct StyleProperties {
     pub page_break_before: Option<bool>,
     pub first_line_indent: Option<Dimension>,
     pub margins: Option<(Dimension, Dimension, Dimension, Dimension)>, // top, right, bottom, left
+    /// OpenType features to enable/disable (e.g., ["kern", "liga", "dlig", "-calt"]).
+    /// Prefix with `-` to disable a feature.
+    pub opentype_features: Option<Vec<String>>,
 }
 
 /// A named style declaration with optional parent for inheritance.
@@ -94,5 +97,36 @@ mod tests {
         assert!(props.font_weight.is_none());
         assert!(props.text_color.is_none());
         assert!(props.margins.is_none());
+        assert!(props.opentype_features.is_none());
+    }
+
+    #[test]
+    fn test_style_properties_with_features() {
+        let props = StyleProperties {
+            opentype_features: Some(vec![
+                "kern".to_string(),
+                "liga".to_string(),
+                "-calt".to_string(),
+            ]),
+            ..Default::default()
+        };
+        let features = props.opentype_features.unwrap();
+        assert_eq!(features, vec!["kern", "liga", "-calt"]);
+    }
+
+    #[test]
+    fn test_style_properties_serde_roundtrip() {
+        let props = StyleProperties {
+            font_name: Some("DejaVu Sans".to_string()),
+            opentype_features: Some(vec!["kern".to_string(), "liga".to_string()]),
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&props).unwrap();
+        let restored: StyleProperties = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.font_name.as_deref(), Some("DejaVu Sans"));
+        assert_eq!(
+            restored.opentype_features.as_deref(),
+            Some(["kern".to_string(), "liga".to_string()].as_slice())
+        );
     }
 }

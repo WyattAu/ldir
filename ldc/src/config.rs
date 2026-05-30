@@ -37,6 +37,7 @@ pub struct LdirConfig {
     pub drop_caps: Option<bool>,
     pub bibliography: Option<String>,
     pub pdfa_level: Option<String>,
+    pub ot_features: Option<String>,
 }
 
 pub fn load_config(path: Option<&Path>) -> Result<LdirConfig> {
@@ -131,6 +132,9 @@ pub fn apply_config_to_cli(config: &LdirConfig, cli: &mut Cli) {
         && let Some(ref v) = config.pdfa_level
     {
         cli.pdfa_level = v.clone();
+    }
+    if cli.ot_features.is_none() {
+        cli.ot_features = config.ot_features.clone();
     }
 }
 

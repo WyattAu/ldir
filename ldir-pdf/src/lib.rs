@@ -69,3 +69,5 @@ pub mod xmp;
 mod pdf_test;
 
 pub(crate) mod writer;
+
+pub(crate) mod streaming_writer;

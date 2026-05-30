@@ -57,14 +57,73 @@ impl Feature {
             end: u32::MAX,
         }
     }
+
+    pub fn parse_tag(tag_str: &str) -> Option<[u8; 4]> {
+        let bytes = tag_str.as_bytes();
+        if bytes.len() < 2 || bytes.len() > 5 {
+            return None;
+        }
+        let disable = bytes.starts_with(b"-");
+        let inner = if disable { &bytes[1..] } else { bytes };
+        if inner.len() < 2 || inner.len() > 4 || !inner.iter().all(|b| b.is_ascii_alphanumeric()) {
+            return None;
+        }
+        let mut tag = [b' '; 4];
+        let offset = 4usize.saturating_sub(inner.len());
+        tag[offset..].copy_from_slice(inner);
+        Some(tag)
+    }
+
+    pub fn parse_feature_string(s: &str) -> Option<Self> {
+        let s = s.trim();
+        let disable = s.starts_with('-');
+        let inner = if disable { &s[1..] } else { s };
+        let tag = Self::parse_tag(inner)?;
+        if disable {
+            Some(Self::disable(&tag))
+        } else {
+            Some(Self::enable(&tag))
+        }
+    }
+
+    pub fn parse_features(input: &str) -> Vec<Self> {
+        input
+            .split(',')
+            .filter_map(Self::parse_feature_string)
+            .collect()
+    }
 }
 
 pub const KERN: &[u8; 4] = b"kern";
 pub const LIGA: &[u8; 4] = b"liga";
 pub const CALT: &[u8; 4] = b"calt";
+pub const DLIG: &[u8; 4] = b"dlig";
+pub const HLIG: &[u8; 4] = b"hlig";
 pub const TNUM: &[u8; 4] = b"tnum";
 pub const ONUM: &[u8; 4] = b"onum";
 pub const LNUM: &[u8; 4] = b"lnum";
+pub const SALT: &[u8; 4] = b"salt";
+pub const ZERO: &[u8; 4] = b"zero";
+pub const SS01: &[u8; 4] = b"ss01";
+pub const SS02: &[u8; 4] = b"ss02";
+pub const SS03: &[u8; 4] = b"ss03";
+pub const SS04: &[u8; 4] = b"ss04";
+pub const SS05: &[u8; 4] = b"ss05";
+pub const SS06: &[u8; 4] = b"ss06";
+pub const SS07: &[u8; 4] = b"ss07";
+pub const SS08: &[u8; 4] = b"ss08";
+pub const SS09: &[u8; 4] = b"ss09";
+pub const SS10: &[u8; 4] = b"ss10";
+pub const SS11: &[u8; 4] = b"ss11";
+pub const SS12: &[u8; 4] = b"ss12";
+pub const SS13: &[u8; 4] = b"ss13";
+pub const SS14: &[u8; 4] = b"ss14";
+pub const SS15: &[u8; 4] = b"ss15";
+pub const SS16: &[u8; 4] = b"ss16";
+pub const SS17: &[u8; 4] = b"ss17";
+pub const SS18: &[u8; 4] = b"ss18";
+pub const SS19: &[u8; 4] = b"ss19";
+pub const SS20: &[u8; 4] = b"ss20";
 
 /// Shapes text using HarfBuzz with optional script, language, direction, and feature overrides.
 pub fn shape_harfbuzz(
@@ -347,5 +406,145 @@ mod tests {
         let data = test_font_data();
         let run = shape_harfbuzz(&data, "café", Fp266::from_int(12), None, None, None, None);
         assert!(!run.glyphs.is_empty());
+    }
+
+    #[test]
+    fn shape_with_kern_enabled() {
+        let data = test_font_data();
+        let features = vec![Feature::enable(KERN)];
+        let run = shape_harfbuzz(
+            &data,
+            "AV",
+            Fp266::from_int(12),
+            None,
+            None,
+            None,
+            Some(&features),
+        );
+        assert!(!run.glyphs.is_empty());
+        assert!(run.total_advance.raw() > 0);
+    }
+
+    #[test]
+    fn shape_with_liga_enabled() {
+        let data = test_font_data();
+        let features = vec![Feature::enable(LIGA)];
+        let run = shape_harfbuzz(
+            &data,
+            "fi",
+            Fp266::from_int(12),
+            None,
+            None,
+            None,
+            Some(&features),
+        );
+        assert!(!run.glyphs.is_empty());
+        assert!(run.total_advance.raw() > 0);
+    }
+
+    #[test]
+    fn shape_with_features_deterministic() {
+        let data = test_font_data();
+        let features = vec![Feature::enable(KERN), Feature::enable(LIGA)];
+        let run1 = shape_harfbuzz(
+            &data,
+            "fi",
+            Fp266::from_int(12),
+            None,
+            None,
+            None,
+            Some(&features),
+        );
+        let run2 = shape_harfbuzz(
+            &data,
+            "fi",
+            Fp266::from_int(12),
+            None,
+            None,
+            None,
+            Some(&features),
+        );
+        assert_eq!(run1, run2);
+    }
+
+    #[test]
+    fn shape_with_disabled_feature() {
+        let data = test_font_data();
+        let features = vec![Feature::disable(LIGA)];
+        let run = shape_harfbuzz(
+            &data,
+            "fi",
+            Fp266::from_int(12),
+            None,
+            None,
+            None,
+            Some(&features),
+        );
+        assert!(!run.glyphs.is_empty());
+    }
+
+    #[test]
+    fn test_parse_features_simple() {
+        let features = Feature::parse_features("kern,liga");
+        assert_eq!(features.len(), 2);
+        assert_eq!(features[0].tag, *KERN);
+        assert_eq!(features[0].value, 1);
+        assert_eq!(features[1].tag, *LIGA);
+        assert_eq!(features[1].value, 1);
+    }
+
+    #[test]
+    fn test_parse_features_disabled() {
+        let features = Feature::parse_features("-liga,calt");
+        assert_eq!(features.len(), 2);
+        assert_eq!(features[0].tag, *LIGA);
+        assert_eq!(features[0].value, 0);
+        assert_eq!(features[1].tag, *CALT);
+        assert_eq!(features[1].value, 1);
+    }
+
+    #[test]
+    fn test_parse_features_stylistic_sets() {
+        let features = Feature::parse_features("ss01,ss03");
+        assert_eq!(features.len(), 2);
+        assert_eq!(features[0].tag, *SS01);
+        assert_eq!(features[0].value, 1);
+        assert_eq!(features[1].tag, *SS03);
+        assert_eq!(features[1].value, 1);
+    }
+
+    #[test]
+    fn test_parse_features_empty_string() {
+        let features = Feature::parse_features("");
+        assert!(features.is_empty());
+    }
+
+    #[test]
+    fn test_parse_features_ignores_invalid() {
+        let features = Feature::parse_features("kern,!!,liga");
+        assert_eq!(features.len(), 2);
+        assert_eq!(features[0].tag, *KERN);
+        assert_eq!(features[1].tag, *LIGA);
+    }
+
+    #[test]
+    fn test_parse_feature_string_trim() {
+        let f = Feature::parse_feature_string("  kern  ").unwrap();
+        assert_eq!(f.tag, *KERN);
+        assert_eq!(f.value, 1);
+    }
+
+    #[test]
+    fn test_parse_feature_string_disable_prefix() {
+        let f = Feature::parse_feature_string("-liga").unwrap();
+        assert_eq!(f.tag, *LIGA);
+        assert_eq!(f.value, 0);
+    }
+
+    #[test]
+    fn test_parse_feature_string_invalid() {
+        assert!(Feature::parse_feature_string("").is_none());
+        assert!(Feature::parse_feature_string("a").is_none());
+        assert!(Feature::parse_feature_string("toolongtag").is_none());
     }
 }

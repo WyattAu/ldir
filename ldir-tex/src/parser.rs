@@ -812,6 +812,17 @@ impl<'a> TeXParser<'a> {
                         );
                     }
                 }
+                Token::ControlSequence(name) if name == "label" => {
+                    self.advance();
+                    let key = self.parse_group_content();
+                    if !key.is_empty() {
+                        let label_id = self.next_entity_id();
+                        self.push_instr_with_payload(
+                            SIRInstruction::new(SIROpcode::SetContent, label_id, fig_id, 0),
+                            format!("\\label{{{}}}", key).as_bytes(),
+                        );
+                    }
+                }
                 Token::ControlSequence(name) if name == "centering" => {
                     self.advance();
                 }
@@ -847,6 +858,17 @@ impl<'a> TeXParser<'a> {
                         self.push_instr_with_payload(
                             SIRInstruction::new(SIROpcode::SetContent, content_id, table_id, 0),
                             caption.as_bytes(),
+                        );
+                    }
+                }
+                Token::ControlSequence(name) if name == "label" => {
+                    self.advance();
+                    let key = self.parse_group_content();
+                    if !key.is_empty() {
+                        let label_id = self.next_entity_id();
+                        self.push_instr_with_payload(
+                            SIRInstruction::new(SIROpcode::SetContent, label_id, table_id, 0),
+                            format!("\\label{{{}}}", key).as_bytes(),
                         );
                     }
                 }

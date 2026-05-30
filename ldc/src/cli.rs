@@ -124,6 +124,11 @@ pub struct Cli {
     #[arg(long, value_name = "WHEN", default_value = "auto")]
     pub color: String,
 
+    /// OpenType features (e.g., "kern,liga,dlig,hlig").
+    /// Prefix with - to disable: "kern,-liga". Default: HarfBuzz defaults.
+    #[arg(long, value_name = "FEATURES")]
+    pub ot_features: Option<String>,
+
     /// Path to configuration file. Default: ./ldir.toml
     #[arg(long, value_name = "PATH")]
     pub config: Option<PathBuf>,
