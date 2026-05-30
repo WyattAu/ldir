@@ -11,7 +11,7 @@
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded, 1 len()-guarded) |
-| Unsafe blocks | 25 (all justified FFI: 19 harfbuzz, 4 font loader, 1 font tables, 1 ecs) |
+| Unsafe blocks | 24 (22 blocks + 2 fn: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
 | Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
 

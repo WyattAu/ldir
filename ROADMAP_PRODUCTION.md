@@ -12,7 +12,7 @@
 | Clippy warnings | 0 (`-D warnings`) |
 | cargo fmt | Clean |
 | Production unwrap/expect | 3 (2 rkyv INVARIANT-guarded, 1 len()-guarded in linker) |
-| Unsafe blocks | 25 (all justified FFI: 19 harfbuzz, 4 font loader, 1 font tables, 1 ecs) |
+| Unsafe blocks | 24 (22 blocks + 2 fn: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
 | Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
 | MSRV | 1.88 (edition 2024) |
@@ -92,23 +92,25 @@ pub fn compile_and_render(_sir_bytes: &[u8]) -> Vec<u8> { Vec::new() }
 
 ---
 
-## Phase B: crates.io Publication (2-3 weeks)
+## Phase B: crates.io Publication (2-3 weeks) -- IN PROGRESS
 
 Publish all 25 public crates to crates.io.
 
 ### B-1: API Stabilization (1 week)
 
-1. Audit all `pub` items for stability -- mark unstable APIs with `#[doc(hidden)]` or `#[cfg(feature = "unstable")]`
-2. Ensure all public types implement `Debug`, `Clone` where appropriate
-3. Verify all crate-level `//!` documentation is complete (ldir-link and ldir-opt now done)
-4. Ensure `cargo doc --workspace --no-deps` produces zero warnings
-5. Add `#[doc(alias = "...")]` for common alternative names
+- [x] Audit all `pub` items for stability -- mark unstable APIs with `#[doc(hidden)]` or `#[cfg(feature = "unstable")]`
+- [ ] Ensure all public types implement `Debug`, `Clone` where appropriate
+3. [x] Verify all crate-level `//!` documentation is complete (ldir-link and ldir-opt now done)
+4. [x] Ensure `cargo doc --workspace --no-deps` produces zero warnings
+5. [ ] Add `#[doc(alias = "...")]` for common alternative names
 
-### B-2: Publication Dry-Run (2-3 days)
+### B-2: Publication Dry-Run (2-3 days) -- PARTIALLY DONE
 
-1. `cargo publish --dry-run` for each crate in dependency order
-2. Fix any missing metadata (repository, license, description, keywords, categories)
-3. Ensure `Cargo.lock` is committed and `Cargo.toml` versions are consistent
+1. [x] `cargo publish --dry-run` for `ldir-ir` -- PASS (36 files, 252.7KiB)
+2. [x] `cargo publish --dry-run` for `ldir-test-helpers` -- PASS (6 files, 4.7KiB)
+3. [x] All 22 remaining crates blocked on ldir-ir not yet published (dependency resolution expected behavior)
+4. [x] All crates have complete metadata (repository, license, description, keywords, categories)
+5. [x] `Cargo.lock` committed and `Cargo.toml` versions consistent (workspace inheritance)
 
 ### B-3: Publication Order
 

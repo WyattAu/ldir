@@ -12,6 +12,7 @@
 YP-NUMERICAL-FIXEDPOINT-001  (26.6 Fixed-Point Arithmetic)
   |
   +---> YP-LAYOUT-KNUTHPLASS-001      (Knuth-Plass Line Breaking)
+  +---> YP-LAYOUT-LIR-001             (Layout Intermediate Representation)
   +---> YP-LAYOUT-PAGINATION-001       (Page Breaking and Float Placement)
   +---> YP-CONSTRAINT-CASSOWARY-001    (Cassowary Constraint Solver)
 
@@ -23,6 +24,7 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 | Yellow Paper | Depends On | Dependency Type |
 |---|---|---|
 | YP-LAYOUT-KNUTHPLASS-001 | YP-NUMERICAL-FIXEDPOINT-001 | Axioms (fixed-point arithmetic) |
+| YP-LAYOUT-LIR-001 | YP-NUMERICAL-FIXEDPOINT-001 | Axioms (26.6 geometry, AX-LIR-001) |
 | YP-LAYOUT-PAGINATION-001 | YP-NUMERICAL-FIXEDPOINT-001 | Axioms (fixed-point arithmetic) |
 | YP-CONSTRAINT-CASSOWARY-001 | YP-NUMERICAL-FIXEDPOINT-001 | Axioms (fixed-point arithmetic) |
 | YP-CONCURRENCY-DETERM-001 | YP-MEMORY-ECS-001 | Axioms (ECS memory model) |
@@ -127,7 +129,18 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 | REQ-4.2.2 | YP-CONCURRENCY-DETERM-001 | ldir-core | TBD (lock-free cache) | Concurrency stress tests |
 | REQ-4.2.3 | YP-CONCURRENCY-DETERM-001 | ldir-core | TBD (work-stealing) | Test vectors: `test_vectors_concurrency.toml` |
 
-### 3.8 Frontends
+### 3.9 Layout -- L-IR (YP-LAYOUT-LIR-001)
+
+| Requirement ID | Yellow Paper | Crate | Implementation File | Test Coverage |
+|---|---|---|---|---|
+| AX-LIR-001 | YP-LAYOUT-LIR-001 | ldir-ir | `src/lir/mod.rs`, `src/lir/position.rs`, `src/lir/types.rs` | Unit tests in `src/lir/` |
+| AX-LIR-002 | YP-LAYOUT-LIR-001 | ldir-ir | `src/lir/mod.rs` | Unit tests in `src/lir/` |
+| AX-LIR-003 | YP-LAYOUT-LIR-001 | ldir-core | `src/layout/` | Test vectors: `test_vectors_lir.toml` |
+| DEF-LIR-GEOM | YP-LAYOUT-LIR-001 | ldir-ir | `src/lir/position.rs`, `src/fp266.rs` | Unit tests in `src/lir/`, `src/fp266.rs` |
+| ALG-LIR-LAYOUT | YP-LAYOUT-LIR-001 | ldir-core | `src/layout/` | Test vectors: `test_vectors_lir.toml` |
+| ALG-LIR-FLATTEN | YP-LAYOUT-LIR-001 | ldir-core | `src/compiler/v2_compile.rs` | Unit tests in `src/compiler/` |
+
+### 3.10 Frontends
 
 | Requirement ID | Yellow Paper | Crate | Implementation File | Test Coverage |
 |---|---|---|---|---|
@@ -138,7 +151,7 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 | REQ-5.2.1 | YP-IR-SEMANTICS-001 | ldir-md | `src/lib.rs` | Unit tests |
 | REQ-5.2.2 | YP-IR-SEMANTICS-001 | ldir-md | `src/lib.rs` | Unit tests |
 
-### 3.9 Backends
+### 3.11 Backends
 
 | Requirement ID | Yellow Paper | Crate | Implementation File | Test Coverage |
 |---|---|---|---|---|
@@ -151,7 +164,7 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 | REQ-6.2.4 | YP-IR-SEMANTICS-001 | ldir-pdf | `src/font/subset.rs`, `src/font/loader.rs` | Unit tests |
 | REQ-6.3.1 | YP-IR-SEMANTICS-001 | ldir-wasm | `src/html_renderer.rs` | `ldir-wasm/tests/wasm_build.rs` |
 
-### 3.10 WASM Extensibility
+### 3.12 WASM Extensibility
 
 | Requirement ID | Yellow Paper | Crate | Implementation File | Test Coverage |
 |---|---|---|---|---|
@@ -161,7 +174,7 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 | REQ-7.4 | YP-IR-SEMANTICS-001 | ldir-wasm | `src/bridge.rs` | `ldir-wasm/tests/wasm_build.rs` |
 | REQ-7.5 | YP-IR-SEMANTICS-001 | ldir-wasm | `src/versioning.rs` | Unit tests |
 
-### 3.11 LIR / PDF Rendering
+### 3.13 LIR / PDF Rendering
 
 | Requirement ID | Yellow Paper | Crate | Implementation File | Test Coverage |
 |---|---|---|---|---|
@@ -171,7 +184,7 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 | REQ-6.2.1 | YP-IR-SEMANTICS-001 | ldir-pdf | `src/xmp.rs` | Unit tests |
 | REQ-6.2.1 | YP-IR-SEMANTICS-001 | ldir-pdf | `src/image.rs` | Unit tests |
 
-### 3.12 CLI / Linking
+### 3.14 CLI / Linking
 
 | Requirement ID | Yellow Paper | Crate | Implementation File | Test Coverage |
 |---|---|---|---|---|
@@ -186,13 +199,14 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 |---|---|---|---|
 | YP-IR-SEMANTICS-001 | `test_vectors/test_vectors_ir.toml` | 23 | nominal (5), boundary (4), adversarial (9), random (3), regression (2) |
 | YP-NUMERICAL-FIXEDPOINT-001 | `test_vectors/test_vectors_numerical.toml` | 7 | nominal (3), boundary (2), adversarial (2) |
+| YP-LAYOUT-LIR-001 | `test_vectors/test_vectors_lir.toml` | 6 | nominal (2), positioning (2), boundary (2) |
 | YP-LAYOUT-KNUTHPLASS-001 | `test_vectors/test_vectors_linebreak.toml` | 6 | nominal (2), boundary (2), adversarial (2) |
 | YP-LAYOUT-PAGINATION-001 | `test_vectors/test_vectors_pagination.toml` | 6 | nominal (2), boundary (2), adversarial (2) |
 | YP-CONSTRAINT-CASSOWARY-001 | `test_vectors/test_vectors_constraint.toml` | 6 | nominal (5), adversarial (1) |
 | YP-MEMORY-ECS-001 | `test_vectors/test_vectors_ecs.toml` | 5 | nominal (2), boundary (1), adversarial (2) |
 | YP-CONCURRENCY-DETERM-001 | `test_vectors/test_vectors_concurrency.toml` | 5 | nominal (4), boundary (1) |
 
-**Total test vectors:** 58 (across all 7 yellow papers)
+**Total test vectors:** 64 (across all 8 yellow papers)
 **Missing test vector files:** 0
 
 ---
@@ -203,8 +217,8 @@ YP-MEMORY-ECS-001  (Entity Component System Memory Architecture)
 
 | Crate | Yellow Papers | Requirement Sections |
 |---|---|---|
-| ldir-ir | YP-IR-SEMANTICS-001, YP-NUMERICAL-FIXEDPOINT-001 | 3.1, 3.2, 11.3 |
-| ldir-core | YP-LAYOUT-KNUTHPLASS-001, YP-LAYOUT-PAGINATION-001, YP-CONSTRAINT-CASSOWARY-001, YP-MEMORY-ECS-001, YP-CONCURRENCY-DETERM-001 | 2.1, 2.5, 2.6, 2.7, 4.1, 4.2, 4.3 |
+| ldir-ir | YP-IR-SEMANTICS-001, YP-NUMERICAL-FIXEDPOINT-001, YP-LAYOUT-LIR-001 | 3.1, 3.2, 11.3 |
+| ldir-core | YP-LAYOUT-KNUTHPLASS-001, YP-LAYOUT-LIR-001, YP-LAYOUT-PAGINATION-001, YP-CONSTRAINT-CASSOWARY-001, YP-MEMORY-ECS-001, YP-CONCURRENCY-DETERM-001 | 2.1, 2.5, 2.6, 2.7, 4.1, 4.2, 4.3 |
 | ldir-opt | BP-IR-COMPILER-001 (-> YP-IR-SEMANTICS-001) | 3.3 |
 | ldir-tex | YP-IR-SEMANTICS-001 | 5.1 |
 | ldir-md | YP-IR-SEMANTICS-001 | 5.2 |

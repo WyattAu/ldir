@@ -2,8 +2,8 @@
 # Tracks all Yellow Papers and their relationships
 
 [metadata]
-last_updated = "2026-04-23T00:00:00Z"
-total_papers = 7
+last_updated = "2026-05-30T00:00:00Z"
+total_papers = 8
 
 [[yellow_paper]]
 id = "YP-IR-SEMANTICS-001"
@@ -68,6 +68,30 @@ domain = "Typography"
 algorithms = ["ALG-KP-BREAK", "ALG-KP-DEMERITS", "ALG-KP-PRUNE", "ALG-KP-CJK"]
 theorems = ["THM-KP-OPTIMALITY", "THM-KP-TERMINATION", "THM-KP-DETERMINISM", "THM-KP-SINGLE-PASS"]
 test_vector_file = "test_vectors_linebreak.toml"
+constraints_file = "domain_constraints_typesetting.toml"
+
+[yellow_paper.dependencies]
+axioms_from = ["YP-NUMERICAL-FIXEDPOINT-001"]
+lemmas_from = []
+
+[yellow_paper.consumers]
+blue_papers = []
+
+[[yellow_paper]]
+id = "YP-LAYOUT-LIR-001"
+title = "Layout Intermediate Representation (L-IR)"
+status = "DRAFT"
+version = "0.1.0"
+created = "2026-05-02"
+author = "DeepThought"
+confidence_level = 0.90
+tqa_level = 3
+
+[yellow_paper.scope]
+domain = "Typography"
+algorithms = ["ALG-LIR-LAYOUT", "ALG-LIR-FLATTEN"]
+theorems = ["THM-LIR-TERMINATION", "THM-LIR-COMPLETENESS", "THM-LIR-DETERMINISM", "THM-LIR-FLATTEN-COMPOSITION"]
+test_vector_file = "test_vectors_lir.toml"
 constraints_file = "domain_constraints_typesetting.toml"
 
 [yellow_paper.dependencies]

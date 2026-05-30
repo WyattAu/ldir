@@ -1,0 +1,214 @@
+# Test Vector Specification for LDIR Layout Intermediate Representation (L-IR)
+# Covers ALG-LIR-LAYOUT, ALG-LIR-FLATTEN, and L-IR structural invariants
+
+[metadata]
+algorithm_id = "ALG-LIR-LAYOUT"
+algorithm_version = "0.1.0"
+generation_date = "2026-05-30T00:00:00Z"
+generator = "manual"
+verification_status = "verified"
+
+[precision_requirements]
+floating_point_type = "i32"
+absolute_tolerance = 1
+relative_tolerance = 0.0
+ulp_tolerance = 0
+note = "All geometry is 26.6 fixed-point per AX-LIR-001. Exact equality required."
+
+# ============================================================
+# CATEGORY: NOMINAL (33% coverage -- 2 of 6 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-LIR-001"
+name = "Single paragraph on single page"
+category = "nominal"
+priority = "critical"
+description = "Minimal S-IR (one paragraph) produces a single-page L-IR document with one LIRParagraph containing one or more LIRLine nodes."
+
+[test_vector.input]
+sir_nodes = ["document", "paragraph"]
+text = "Hello, world."
+page_width = 39168
+page_height = 50688
+margin_top = 4608
+margin_bottom = 4608
+margin_left = 4608
+margin_right = 4608
+
+[test_vector.expected_output]
+lir_pages = 1
+lir_node_types = ["LIRDocument", "LIRPage", "LIRFlow", "LIRParagraph", "LIRLine"]
+tree_well_formed = true
+all_geometry_non_negative = true
+all_geometry_fp266 = true
+
+[test_vector.domain_constraints]
+references = ["AX-LIR-001", "AX-LIR-002", "AX-LIR-003"]
+note = "Verifies tree structure, page containment, and 26.6 geometry axioms."
+
+[test_vector.verification]
+source = "ALG-LIR-LAYOUT specification (YP-LAYOUT-LIR-001)"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-05-30"
+
+[[test_vector]]
+id = "TV-LIR-002"
+name = "Multi-paragraph multi-page"
+category = "nominal"
+priority = "critical"
+description = "S-IR with enough paragraphs to overflow a single page produces an L-IR document with multiple LIRPage nodes."
+
+[test_vector.input]
+sir_nodes = ["document", "paragraph x 20"]
+text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore."
+page_width = 39168
+page_height = 50688
+margin_top = 4608
+margin_bottom = 4608
+margin_left = 4608
+margin_right = 4608
+
+[test_vector.expected_output]
+lir_pages_gt = 1
+tree_well_formed = true
+all_pages_have_children = true
+no_sibling_overlap = true
+
+[test_vector.domain_constraints]
+references = ["AX-LIR-003", "AX-LIR-004"]
+note = "Verifies page containment and sibling non-overlap across pages."
+
+[test_vector.verification]
+source = "ALG-LIR-LAYOUT + YP-LAYOUT-PAGINATION-001"
+method = "Analytical"
+confidence = 0.90
+verifier = "DeepThought"
+verification_date = "2026-05-30"
+
+# ============================================================
+# CATEGORY: POSITIONING (33% coverage -- 2 of 6 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-LIR-003"
+name = "Heading with first-line indent paragraph"
+category = "positioning"
+priority = "high"
+description = "L-IR heading followed by paragraph with first-line indent. Verify that heading geometry and paragraph geometry have correct vertical stacking (no overlap)."
+
+[test_vector.input]
+sir_nodes = ["document", "heading", "paragraph"]
+heading_text = "Section 1"
+paragraph_text = "This paragraph has a first-line indent."
+first_line_indent = 384
+page_width = 39168
+page_height = 50688
+
+[test_vector.expected_output]
+heading_node_type = "LIRHeading"
+heading_level = 2
+paragraph_node_type = "LIRParagraph"
+heading_below_top_of_page = true
+paragraph_below_heading = true
+vertical_gap_ge_0 = true
+
+[test_vector.domain_constraints]
+references = ["AX-LIR-004", "DEF-LIR-GEOM"]
+note = "Sibling non-overlap: heading and paragraph must not overlap vertically."
+
+[test_vector.verification]
+source = "ALG-LIR-LAYOUT per-node dispatch (YP-LAYOUT-LIR-001 YP-6)"
+method = "Analytical"
+confidence = 0.90
+verifier = "DeepThought"
+verification_date = "2026-05-30"
+
+[[test_vector]]
+id = "TV-LIR-004"
+name = "Block quote with left indent"
+category = "positioning"
+priority = "high"
+description = "LIRBlockQuote is indented from the left margin with a decorative rule. Verify indent offset and rule geometry."
+
+[test_vector.input]
+sir_nodes = ["document", "blockquote", "paragraph"]
+blockquote_text = "A quoted passage that should appear indented."
+blockquote_indent = 1152
+blockquote_rule_width = 64
+
+[test_vector.expected_output]
+blockquote_node_type = "LIRBlockQuote"
+blockquote_x_gt_margin_left = true
+rule_width = 64
+inner_flow_present = true
+
+[test_vector.domain_constraints]
+references = ["AX-LIR-003", "AX-LIR-004"]
+note = "Blockquote must be contained within page margins despite indent."
+
+[test_vector.verification]
+source = "ALG-LIR-BLOCKQUOTE (YP-LAYOUT-LIR-001)"
+method = "Analytical"
+confidence = 0.90
+verifier = "DeepThought"
+verification_date = "2026-05-30"
+
+# ============================================================
+# CATEGORY: BOUNDARY (33% coverage -- 2 of 6 vectors)
+# ============================================================
+
+[[test_vector]]
+id = "TV-LIR-005"
+name = "Empty document"
+category = "boundary"
+priority = "high"
+description = "S-IR with only a document root and no children produces an L-IR document with zero content pages or a single empty page."
+
+[test_vector.input]
+sir_nodes = ["document"]
+page_width = 39168
+page_height = 50688
+
+[test_vector.expected_output]
+tree_well_formed = true
+lir_pages_lte = 1
+
+[test_vector.domain_constraints]
+references = ["AX-LIR-002"]
+note = "Tree well-formedness must hold even for empty documents."
+
+[test_vector.verification]
+source = "ALG-LIR-LAYOUT edge case analysis"
+method = "Analytical"
+confidence = 0.95
+verifier = "DeepThought"
+verification_date = "2026-05-30"
+
+[[test_vector]]
+id = "TV-LIR-006"
+name = "Geometry at 26.6 fixed-point boundaries"
+category = "boundary"
+priority = "critical"
+description = "L-IR nodes with geometry values at minimum and maximum representable 26.6 fixed-point range."
+
+[test_vector.input]
+test_coordinates = { min = -2147483648, max = 2147483647, zero = 0, one_sp = 64 }
+
+[test_vector.expected_output]
+min_value = -33554432.0
+max_value = 33554431.984375
+quantization_error_max = 0.0078125
+
+[test_vector.domain_constraints]
+references = ["NC-LIR-001", "DEF-FP266"]
+note = "NC-LIR-001: geometry range [-33554432, 33554431.984375] scaled points."
+
+[test_vector.verification]
+source = "YP-NUMERICAL-FIXEDPOINT-001 (DEF-FP266)"
+method = "Analytical"
+confidence = 0.99
+verifier = "DeepThought"
+verification_date = "2026-05-30"
