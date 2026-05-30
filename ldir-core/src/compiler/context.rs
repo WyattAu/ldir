@@ -372,6 +372,19 @@ impl CompileContext {
         self.font_id
     }
 
+    /// Get OpenType features as a slice, returning `None` when empty.
+    ///
+    /// Used to pass features into shaping functions without allocating.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
+    pub fn opentype_features_slice(&self) -> Option<&[Feature]> {
+        if self.opentype_features.is_empty() {
+            None
+        } else {
+            Some(&self.opentype_features)
+        }
+    }
+
     /// Push a style modifier onto the style stack.
     ///
     /// Updates `active_style` and `font_id` based on the combined modifiers.

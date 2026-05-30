@@ -737,7 +737,14 @@ fn emit_paragraph_inline(
         .and_then(|opt| opt.as_ref())
         .or(ctx.font_data.as_ref());
     let shaped: std::sync::Arc<_> = if let Some(data) = font_data_for_style {
-        crate::shaping::shape_text_cached(&ctx.shape_cache, data, text, font_size, ctx.font_id)
+        crate::shaping::shape_text_cached_with_features(
+            &ctx.shape_cache,
+            data,
+            text,
+            font_size,
+            ctx.font_id,
+            ctx.opentype_features_slice(),
+        )
     } else if text.is_ascii() {
         std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
             text,
@@ -1693,12 +1700,13 @@ fn emit_drop_cap_paragraph(
         .or(ctx.font_data.as_ref());
 
     let drop_cap_width = if let Some(data) = font_data_for_style {
-        let shaped = crate::shaping::shape_text_cached(
+        let shaped = crate::shaping::shape_text_cached_with_features(
             &ctx.shape_cache,
             data,
             &first_char.to_string(),
             drop_cap_size,
             ctx.font_id,
+            ctx.opentype_features_slice(),
         );
         shaped
             .glyphs
@@ -1714,12 +1722,13 @@ fn emit_drop_cap_paragraph(
 
     let drop_cap_str = first_char.to_string();
     let drop_cap_shaped: std::sync::Arc<_> = if let Some(data) = font_data_for_style {
-        crate::shaping::shape_text_cached(
+        crate::shaping::shape_text_cached_with_features(
             &ctx.shape_cache,
             data,
             &drop_cap_str,
             drop_cap_size,
             ctx.font_id,
+            ctx.opentype_features_slice(),
         )
     } else if drop_cap_str.is_ascii() {
         std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
@@ -1758,7 +1767,14 @@ fn emit_drop_cap_paragraph(
         .and_then(|opt| opt.as_ref())
         .or(ctx.font_data.as_ref());
     let rest_shaped: std::sync::Arc<_> = if let Some(data) = rest_font_data {
-        crate::shaping::shape_text_cached(&ctx.shape_cache, data, rest, body_size, ctx.font_id)
+        crate::shaping::shape_text_cached_with_features(
+            &ctx.shape_cache,
+            data,
+            rest,
+            body_size,
+            ctx.font_id,
+            ctx.opentype_features_slice(),
+        )
     } else if rest.is_ascii() {
         std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
             rest,
@@ -1893,7 +1909,14 @@ fn emit_paragraph(
         .and_then(|opt| opt.as_ref())
         .or(ctx.font_data.as_ref());
     let shaped: std::sync::Arc<_> = if let Some(data) = font_data_for_style {
-        crate::shaping::shape_text_cached(&ctx.shape_cache, data, text, font_size, ctx.font_id)
+        crate::shaping::shape_text_cached_with_features(
+            &ctx.shape_cache,
+            data,
+            text,
+            font_size,
+            ctx.font_id,
+            ctx.opentype_features_slice(),
+        )
     } else if text.is_ascii() {
         std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
             text,

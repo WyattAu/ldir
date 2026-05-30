@@ -1782,7 +1782,14 @@ fn emit_v2_styled_paragraph(
         all_text.push_str(text);
 
         let shaped: std::sync::Arc<_> = if let Some(data) = font_data_for_style {
-            crate::shaping::shape_text_cached(&ctx.shape_cache, data, text, font_size, font_id)
+            crate::shaping::shape_text_cached_with_features(
+                &ctx.shape_cache,
+                data,
+                text,
+                font_size,
+                font_id,
+                ctx.opentype_features_slice(),
+            )
         } else if text.is_ascii() {
             std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
                 text, font_size, font_id,
@@ -2048,7 +2055,14 @@ fn emit_v2_paragraph_text(
         .and_then(|opt| opt.as_ref())
         .or(ctx.font_data.as_ref());
     let shaped: std::sync::Arc<_> = if let Some(data) = font_data_for_style {
-        crate::shaping::shape_text_cached(&ctx.shape_cache, data, text, font_size, ctx.font_id)
+        crate::shaping::shape_text_cached_with_features(
+            &ctx.shape_cache,
+            data,
+            text,
+            font_size,
+            ctx.font_id,
+            ctx.opentype_features_slice(),
+        )
     } else if text.is_ascii() {
         std::sync::Arc::new(crate::shaping::fast_path::shape_ascii(
             text,

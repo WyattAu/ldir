@@ -234,8 +234,19 @@ fn count_pattern(haystack: &[u8], needle: &[u8]) -> usize {
 /// Helper: extract page count from PDF by counting /Type /Page entries.
 fn pdf_page_count(pdf: &[u8]) -> usize {
     let pdf_str = String::from_utf8_lossy(pdf);
-    // Count /Type /Page (not /Pages) to get leaf page objects
-    pdf_str.matches("/Type /Page\n").count()
+    // Count leaf page objects: /Type /Page followed by space or newline, but NOT /Type /Pages.
+    // Handles both old writer ("<< /Type /Page\n") and streaming ("<< /Type /Page /Parent").
+    let mut count = 0;
+    let mut search_from = 0;
+    while let Some(idx) = pdf_str[search_from..].find("/Type /Page ") {
+        let abs_idx = search_from + idx;
+        // Check it's not actually /Type /Pages (the 's' follows 'Page ')
+        if !pdf_str[abs_idx..].starts_with("/Type /Pages ") {
+            count += 1;
+        }
+        search_from = abs_idx + 1;
+    }
+    count
 }
 
 // ---------------------------------------------------------------------------

@@ -18,7 +18,8 @@ mod cli;
 mod config;
 mod status;
 
-use std::io::IsTerminal;
+use std::fs::File;
+use std::io::{BufWriter, IsTerminal};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -465,7 +466,11 @@ fn emit_pdf(
 
     let total_fonts = 1 + variant_fonts.len();
 
-    let pdf_bytes = if let Some(primary) = font_data {
+    let file =
+        File::create(output).with_context(|| format!("failed to create {}", output.display()))?;
+    let sink = BufWriter::new(file);
+
+    let result = if let Some(primary) = font_data {
         let mut font_data_vec: Vec<Arc<Vec<u8>>> = vec![primary.clone()];
         font_data_vec.resize(5, primary.clone());
         for (id, data) in variant_fonts {
@@ -488,29 +493,25 @@ fn emit_pdf(
             );
         }
 
-        ldir_pdf::converter::gir_to_pdf_with_fonts_and_options(gir_doc, &font_faces, &options)
+        ldir_pdf::converter::gir_to_pdf_streaming(gir_doc, &font_faces, &options, sink)
     } else {
         let warn = styled("warn", Color::Yellow);
         eprintln!(
             "  {warn}: no embedded fonts available, using viewer-resident Helvetica fallback"
         );
-        ldir_pdf::converter::gir_to_pdf_with_fonts_and_options(gir_doc, &[], &options)
+        ldir_pdf::converter::gir_to_pdf_streaming(gir_doc, &[], &options, sink)
     };
+
+    result.with_context(|| format!("failed to write {}", output.display()))?;
+
     let tag = styled("pdf", Color::Green);
     let embed = if font_data.is_some() {
         "embedded"
     } else {
         "fallback"
     };
-    eprintln!(
-        "  {tag} {} bytes ({}, {} fonts)",
-        pdf_bytes.len(),
-        embed,
-        total_fonts
-    );
-
-    std::fs::write(output, &pdf_bytes)
-        .with_context(|| format!("failed to write {}", output.display()))?;
+    let bytes = std::fs::metadata(output).map(|m| m.len()).unwrap_or(0);
+    eprintln!("  {tag} {} bytes ({}, {} fonts)", bytes, embed, total_fonts);
     let wrote = styled("wrote", Color::Green);
     eprintln!("  {wrote} {}", output.display());
     Ok(())
