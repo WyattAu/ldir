@@ -162,7 +162,8 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 1. **Profile first**: Use `perf` and `tracing-chrome` to identify actual bottlenecks (not assumed)
 2. **PDF output**: Stream-based writing for large documents (currently builds entire PDF in memory)
 3. **Font subsetting**: Optimize subset algorithm for large CJK fonts
-4. **HarfBuzz shaping**: Cache glyph outlines beyond just advances
+4. **Font subsetting C-3 (DONE)**: Compound glyph resolution, GSUB/GPOS/VORG tables included in subset
+5. **HarfBuzz shaping**: Cache glyph outlines beyond just advances
 5. **Parallel compilation**: Rayon-based parallel page compilation
 
 ### 4.3 Memory Optimization
@@ -300,15 +301,19 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 ### 8.2 Advanced Typesetting
 
 - TeX macro expansion (`\newcommand`, `\def`)
-- Multi-column layout with column spanning
+- Multi-column layout with column spanning -- **DONE (E-2)**: MultiColumnOptions, reflow_multicolumn(), balanced mode
 - OpenType feature support (ligatures, old-style numerals, small caps)
-- Extended hyphenation dictionaries (German, French, Spanish)
+- Extended hyphenation dictionaries -- **DONE (E-4)**: HyphenationLang enum, DE/FR/ES/PT support, per-language affixes
 
 ### 8.3 Format Completeness
 
-- DOCX output: Full OOXML compliance
-- EPUB3: Navigation document, accessibility metadata
+- DOCX output: Full OOXML compliance -- **DONE (G-2)**: numbering, styles, heading differentiation, doc properties, new node handlers
+- EPUB3: Navigation document, accessibility metadata -- **DONE (G-2)**: accessibility metadata, nested TOC, landmarks, dc:date, spine toc
 - HTML output: Configurable CSS templates
+
+### 8.4 VS Code Extension
+
+- LSP integration -- **DONE (D-3)**: preview status notifications, config options, language definition
 
 ### Success Criteria
 

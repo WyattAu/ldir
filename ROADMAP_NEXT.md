@@ -7,13 +7,19 @@
 | Rust crates | 26 |
 | Rust LOC | ~72,400 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,810 (all passing) |
+| Total tests | 1,865 (all passing, 5 ignored) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded, 1 len()-guarded) |
 | Unsafe blocks | 24 (22 blocks + 2 fn: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
 | Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
+| Multi-column layout | DONE (MultiColumnOptions, reflow_multicolumn, balanced mode) |
+| Multilingual hyphenation | DONE (EN/DE/FR/ES/PT, HyphenationLang, per-language affixes) |
+| Font subsetting | Compound glyph resolution + GSUB/GPOS/VORG (glyph ID remapping TODO) |
+| VS Code extension | LSP integration done (preview notifications, config, language def) |
+| DOCX output | Numbering, styles, heading differentiation, doc properties, node handlers |
+| EPUB3 | Accessibility metadata, nested TOC, landmarks, dc:date, spine toc |
 
 ---
 

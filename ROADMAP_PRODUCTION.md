@@ -162,11 +162,14 @@ Publish all 25 public crates to crates.io.
 3. ~~Public API: gir_to_pdf_streaming<W>()~~ DONE
 4. Full font subsetting, link annotations, image XObjects in streaming mode
 
-### C-3: Font Subsetting Optimization (1 week)
+### C-3: Font Subsetting Optimization (1 week) -- PARTIALLY DONE
 
-1. Optimize subset algorithm for large CJK fonts (can be 10-25MB)
-2. Lazy glyph loading -- only load glyphs actually used
-3. Target: subset a 15MB CJK font to <500KB for typical documents
+1. ~~Compound glyph resolution~~ DONE
+2. ~~GSUB/GPOS/VORG tables included in subset~~ DONE
+3. Optimize subset algorithm for large CJK fonts (can be 10-25MB)
+4. Lazy glyph loading -- only load glyphs actually used
+5. Target: subset a 15MB CJK font to <500KB for typical documents
+6. Glyph ID remapping for compound glyphs -- TODO
 
 **Note:** CmapIterator CJK Unicode ranges fixed (correctness bug). CJK subsetting now correctly handles all CJK code point ranges, improving correctness for PDF/A CJK documents.
 
@@ -201,13 +204,13 @@ Current HashMap-based interning double-allocates. Replace with:
 3. Multi-format support in single workspace
 4. Diagnostics with quick-fix suggestions
 
-### D-3: VS Code Extension (1-2 weeks)
+### D-3: VS Code Extension (1-2 weeks) -- PARTIALLY DONE
 
 1. Publish to VS Code Marketplace
-2. Compile-on-save with PDF preview panel
-3. Syntax highlighting for all input formats
-4. LSP integration for diagnostics and completion
-5. Theme support
+2. ~~Compile-on-save with PDF preview panel~~ DONE (preview status notifications)
+3. ~~LSP integration for diagnostics and completion~~ DONE (config options, language definition)
+4. Syntax highlighting for all input formats -- TODO
+5. Theme support -- TODO
 
 ### D-4: Documentation Site (~~1-2 weeks~~ partially done)
 
@@ -238,12 +241,12 @@ Current HashMap-based interning double-allocates. Replace with:
 4. Conditional compilation (`\ifx`, `\ifnum`, `\ifdim`)
 5. Common real-world macro packages (amsmath subset, graphicx subset)
 
-### E-2: Multi-Column Layout (2-3 weeks)
+### E-2: Multi-Column Layout (2-3 weeks) -- DONE
 
-1. CSS-style column count and gap specification
-2. Column spanning (full-width elements)
-3. Balanced columns (equal height)
-4. Column break control
+1. ~~CSS-style column count and gap specification~~ DONE (MultiColumnOptions)
+2. ~~reflow_multicolumn() with balanced mode~~ DONE
+3. ~~Column spanning (full-width elements)~~ TODO
+4. ~~Column break control~~ TODO
 
 ### E-3: OpenType Feature Support -- DONE
 
@@ -254,11 +257,12 @@ Current HashMap-based interning double-allocates. Replace with:
 5. ~~Feature-aware shaping cache with bypass for ASCII fast-path~~ DONE
 6. StyleProperties.opentype_features in S-IR v2 style system
 
-### E-4: Extended Hyphenation (1-2 weeks)
+### E-4: Extended Hyphenation (1-2 weeks) -- DONE
 
-1. Additional hyphenation patterns (German, French, Spanish, Portuguese)
-2. Hyphenation exception dictionary
-3. Configurable hyphenation penalties per language
+1. ~~HyphenationLang enum with 5 languages~~ DONE (EN, DE, FR, ES, PT)
+2. ~~Per-language affix patterns and dictionaries~~ DONE
+3. ~~Configurable hyphenation penalties per language~~ DONE
+4. Liou pattern engine for CJK hyphenation -- TODO
 
 ### E-5: Cross-Reference Completeness -- DONE
 
@@ -304,10 +308,10 @@ Current HashMap-based interning double-allocates. Replace with:
 3. Operational transform fallback for simple cases
 4. Presence indicators
 
-### G-2: Format Completeness (2-3 weeks)
+### G-2: Format Completeness (2-3 weeks) -- PARTIALLY DONE
 
-1. DOCX output: Full OOXML compliance (currently subset)
-2. EPUB3: Navigation document, accessibility metadata, media overlays
+1. DOCX output: ~~numbering, styles, heading differentiation, doc properties, new node handlers~~ DONE; full OOXML compliance -- remaining
+2. EPUB3: ~~accessibility metadata, nested TOC, landmarks, dc:date, spine toc~~ DONE; media overlays -- TODO
 3. HTML output: Configurable CSS templates and themes
 4. ODT output (OpenDocument Text)
 
