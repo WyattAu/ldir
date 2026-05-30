@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TableParseError"],"fn":["parse_gpos_kerning","parse_gsub_ligatures","parse_kern_table"],"struct":["KernPair","Ligature","ManualOpenTypeTables"]};

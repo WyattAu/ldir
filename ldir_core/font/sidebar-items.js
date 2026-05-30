@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["db","loader"]};
+window.SIDEBAR_ITEMS = {"mod":["db","loader","outline_cache","tables"]};

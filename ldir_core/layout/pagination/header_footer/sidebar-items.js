@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PageNumberPlacement"],"fn":["parse_page_number_style","resolve_header_footer","substitute_template"],"struct":["HeaderFooterConfig","PaginationState","ResolvedFooter","ResolvedHeader","TemplateMetadata"]};

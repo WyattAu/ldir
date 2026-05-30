@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["OutlinePointKind"],"struct":["Contour","GlyphOutline","GlyphOutlineCache","OutlinePoint"]};

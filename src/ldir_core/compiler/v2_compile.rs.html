@@ -762,7 +762,7 @@
 <a href=#762 id=762 data-nosnippet>762</a>                .unwrap_or_else(|| <span class="macro">format!</span>(<span class="string">"[{}]"</span>, label));
 <a href=#763 id=763 data-nosnippet>763</a>            emit_v2_text_inline(<span class="kw-2">&amp;</span>resolved, page, ctx, gir_doc);
 <a href=#764 id=764 data-nosnippet>764</a>        }
-<a href=#765 id=765 data-nosnippet>765</a>        NodeType::Label { .. } =&gt; {}
+<a href=#765 id=765 data-nosnippet>765</a>        NodeType::Label { .. } | NodeType::Endnote { .. } | NodeType::Comment { .. } =&gt; {}
 <a href=#766 id=766 data-nosnippet>766</a>    }
 <a href=#767 id=767 data-nosnippet>767</a>
 <a href=#768 id=768 data-nosnippet>768</a>    <span class="prelude-val">Ok</span>(())
