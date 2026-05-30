@@ -7,6 +7,7 @@
 pub mod db;
 pub mod loader;
 pub mod outline_cache;
+pub mod tables;
 
 pub use db::FontDatabase;
 pub use loader::{
@@ -14,3 +15,7 @@ pub use loader::{
     load_font, units_per_em,
 };
 pub use outline_cache::{Contour, GlyphOutline, GlyphOutlineCache, OutlinePoint, OutlinePointKind};
+pub use tables::{
+    KernPair, Ligature, ManualOpenTypeTables, TableParseError, parse_gpos_kerning,
+    parse_gsub_ligatures, parse_kern_table,
+};

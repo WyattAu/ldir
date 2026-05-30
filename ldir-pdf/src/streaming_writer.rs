@@ -4,7 +4,7 @@
 //! this writes PDF objects sequentially and drops page data as it goes,
 //! reducing peak memory usage for large documents.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 
 use pdf_writer::types::{SystemInfo, UnicodeCmap};
@@ -15,6 +15,22 @@ use crate::conformance::PdfConformance;
 use crate::structure::StructureNode;
 use crate::writer::{PdfDocumentBuilder, PdfImageFormat};
 
+pub struct LinkAnnotation {
+    pub rect: (f32, f32, f32, f32),
+    pub url: Option<String>,
+    pub dest_page: Option<u32>,
+}
+
+#[allow(dead_code)]
+pub struct ImageXObject {
+    pub id: i32,
+    pub width: u32,
+    pub height: u32,
+    pub color_space: String,
+    pub bits_per_component: u8,
+    pub filter: String,
+}
+
 pub(crate) struct StreamingPdfWriter<W: Write> {
     sink: W,
     byte_offset: usize,
@@ -22,6 +38,8 @@ pub(crate) struct StreamingPdfWriter<W: Write> {
     next_id: i32,
     catalog_id: i32,
     pages_id: i32,
+    pending_links: Vec<LinkAnnotation>,
+    pending_draw_images: Vec<(i32, f32, f32, f32, f32)>,
 }
 
 impl<W: Write> StreamingPdfWriter<W> {
@@ -43,6 +61,8 @@ impl<W: Write> StreamingPdfWriter<W> {
             next_id: 3,
             catalog_id,
             pages_id,
+            pending_links: Vec::new(),
+            pending_draw_images: Vec::new(),
         })
     }
 
@@ -104,15 +124,13 @@ impl<W: Write> StreamingPdfWriter<W> {
 
         self.begin_object(id)?;
 
-        if !dict_entries.is_empty() {
-            self.write_str(dict_entries)?;
-            if has_flate {
-                self.write_str("/Filter /FlateDecode ")?;
-            }
-        } else if has_flate {
-            self.write_str("<< /Filter /FlateDecode ")?;
-        } else {
+        if dict_entries.is_empty() {
             self.write_str("<< ")?;
+        } else {
+            self.write_str(dict_entries)?;
+        }
+        if let Some(f) = filter {
+            self.write_str(&format!("/Filter /{f} "))?;
         }
 
         self.write_str(&format!("/Length {} >>\nstream\n", stream_data.len()))?;
@@ -164,6 +182,80 @@ impl<W: Write> StreamingPdfWriter<W> {
 
     pub(crate) fn into_inner(self) -> W {
         self.sink
+    }
+
+    pub fn add_link(&mut self, rect: (f32, f32, f32, f32), url: &str) {
+        self.pending_links.push(LinkAnnotation {
+            rect,
+            url: Some(url.to_string()),
+            dest_page: None,
+        });
+    }
+
+    pub fn add_internal_link(&mut self, rect: (f32, f32, f32, f32), dest_page: u32) {
+        self.pending_links.push(LinkAnnotation {
+            rect,
+            url: None,
+            dest_page: Some(dest_page),
+        });
+    }
+
+    pub fn embed_image_jpeg(&mut self, data: &[u8]) -> std::io::Result<ImageXObject> {
+        let id = self.alloc_id();
+        let (width, height, components) = jpeg_info(data).unwrap_or((100, 100, 3));
+        let cs_name = if components == 1 {
+            "DeviceGray"
+        } else {
+            "DeviceRGB"
+        };
+        let dict = format!(
+            "/Type /XObject /Subtype /Image /Width {width} /Height {height} /ColorSpace /{cs_name} /BitsPerComponent 8"
+        );
+        self.write_stream(id, &dict, data, Some("DctDecode"))?;
+        Ok(ImageXObject {
+            id,
+            width,
+            height,
+            color_space: cs_name.to_string(),
+            bits_per_component: 8,
+            filter: "DctDecode".to_string(),
+        })
+    }
+
+    pub fn embed_image_png(&mut self, data: &[u8]) -> std::io::Result<ImageXObject> {
+        let decoded = crate::image::decode_png(data)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let id = self.alloc_id();
+        let cs_name = match decoded.color_space {
+            crate::image::ColorSpace::RGB => "DeviceRGB",
+            crate::image::ColorSpace::Gray => "DeviceGray",
+        };
+        let dict = format!(
+            "/Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace /{cs_name} /BitsPerComponent {}",
+            decoded.width, decoded.height, decoded.bits_per_component
+        );
+        self.write_stream(id, &dict, &decoded.data, Some("FlateDecode"))?;
+        Ok(ImageXObject {
+            id,
+            width: decoded.width,
+            height: decoded.height,
+            color_space: cs_name.to_string(),
+            bits_per_component: decoded.bits_per_component,
+            filter: "FlateDecode".to_string(),
+        })
+    }
+
+    pub fn draw_image(&mut self, img_ref: i32, x: f32, y: f32, width: f32, height: f32) {
+        self.pending_draw_images
+            .push((img_ref, x, y, width, height));
+    }
+
+    pub fn take_page_links(&mut self) -> Vec<LinkAnnotation> {
+        std::mem::take(&mut self.pending_links)
+    }
+
+    pub fn take_page_draw_images(&mut self) -> Vec<(i32, f32, f32, f32, f32)> {
+        std::mem::take(&mut self.pending_draw_images)
     }
 }
 
@@ -228,15 +320,9 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
         None
     };
 
-    // Link annotations
-    let page_link_ids: Vec<Vec<i32>> = builder
-        .pages
-        .iter()
-        .map(|p| (0..p.links.len()).map(|_| w.alloc_id()).collect())
-        .collect();
+    // Link annotations are allocated dynamically per-page (no pre-allocation needed).
 
-    // Image XObjects
-    let image_xobject_ids: Vec<i32> = (0..builder.images.len()).map(|_| w.alloc_id()).collect();
+    // Image XObjects -- embed before pages so IDs are available for resource dicts.
 
     // Font IDs (6 per font)
     let font_ids: Vec<StreamingFontIds> = builder
@@ -316,9 +402,45 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
         write_streaming_font(&mut w, font, used_gids, ids)?;
     }
 
+    // --- Embed image XObjects (before pages so IDs are available) ---
+    let image_xobject_ids: Vec<Option<i32>> = builder
+        .images
+        .iter()
+        .map(|img| match img.format {
+            PdfImageFormat::Jpeg => w.embed_image_jpeg(&img.data).ok().map(|x| x.id),
+            PdfImageFormat::Png => w.embed_image_png(&img.data).ok().map(|x| x.id),
+        })
+        .collect();
+
+    let img_ref_to_idx: HashMap<i32, usize> = image_xobject_ids
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, id)| id.map(|id| (id, idx)))
+        .collect();
+
     // --- Write pages, content streams, and link annotations ---
     for i in 0..builder.pages.len() {
         let page_state = &builder.pages[i];
+
+        // Add link annotations to streaming writer
+        for (x, y, lw, lh, url, dest_page) in &page_state.links {
+            let rect = (*x as f32, *y as f32, (*x + *lw) as f32, (*y + *lh) as f32);
+            if let Some(dp) = dest_page {
+                w.add_internal_link(rect, *dp as u32);
+            } else {
+                w.add_link(rect, url);
+            }
+        }
+
+        // Add image draw commands
+        for &(x, y, w_dim, h_dim, image_index) in &page_state.images {
+            if let Some(Some(id)) = image_xobject_ids.get(image_index) {
+                w.draw_image(*id, x as f32, y as f32, w_dim as f32, h_dim as f32);
+            }
+        }
+
+        // Take draw commands for content stream and resource dict
+        let draw_cmds = w.take_page_draw_images();
 
         // Build content bytes
         let mut content = pdf_writer::Content::new();
@@ -331,21 +453,13 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
         }
 
         // Inject image Do operations
-        for &(x, y, w_dim, h_dim, image_index) in &page_state.images {
-            if image_index < builder.images.len() {
-                let resource_name = format!("Im{}", image_index);
-                content.save_state();
-                content.transform([
-                    w_dim as f32,
-                    0.0,
-                    0.0,
-                    h_dim as f32,
-                    x as f32,
-                    (y - h_dim) as f32,
-                ]);
-                content.x_object(Name(resource_name.as_bytes()));
-                content.restore_state();
-            }
+        for &(img_ref, x, y, w_dim, h_dim) in &draw_cmds {
+            let name_idx = img_ref_to_idx.get(&img_ref).copied().unwrap_or(0);
+            let resource_name = format!("Im{}", name_idx);
+            content.save_state();
+            content.transform([w_dim, 0.0, 0.0, h_dim, x, y - h_dim]);
+            content.x_object(Name(resource_name.as_bytes()));
+            content.restore_state();
         }
 
         if builder.tagged {
@@ -356,6 +470,12 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
 
         // Write content stream
         w.write_stream(content_ids[i], "", &content_bytes, Some("FlateDecode"))?;
+
+        // Take link annotations for page dict
+        let links = w.take_page_links();
+
+        // Allocate annotation IDs dynamically
+        let annot_ids: Vec<i32> = (0..links.len()).map(|_| w.alloc_id()).collect();
 
         // Write page dict
         {
@@ -377,17 +497,15 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
             dict.push_str(">> ");
 
             // XObjects
-            let page_image_indices: Vec<usize> = page_state
-                .images
-                .iter()
-                .map(|(_, _, _, _, idx)| *idx)
-                .filter(|idx| *idx < builder.images.len())
-                .collect();
-            if !page_image_indices.is_empty() {
+            if !draw_cmds.is_empty() {
                 dict.push_str("/XObject << ");
-                for &idx in &page_image_indices {
-                    let name = format!("Im{}", idx);
-                    dict.push_str(&format!("/{name} {} 0 R ", image_xobject_ids[idx]));
+                let mut seen: HashSet<i32> = HashSet::new();
+                for &(img_ref, _, _, _, _) in &draw_cmds {
+                    if seen.insert(img_ref) {
+                        let name_idx = img_ref_to_idx.get(&img_ref).copied().unwrap_or(0);
+                        let name = format!("Im{}", name_idx);
+                        dict.push_str(&format!("/{name} {img_ref} 0 R "));
+                    }
                 }
                 dict.push_str(">> ");
             }
@@ -403,9 +521,9 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
             dict.push_str(">> ");
 
             // Annotations
-            if !page_link_ids[i].is_empty() {
+            if !annot_ids.is_empty() {
                 dict.push_str("/Annots [");
-                for &aid in &page_link_ids[i] {
+                for &aid in &annot_ids {
                     dict.push_str(&format!("{} 0 R ", aid));
                 }
                 dict.push(']');
@@ -415,59 +533,22 @@ pub fn build_streaming<W: Write>(builder: &PdfDocumentBuilder, sink: W) -> std::
             w.write_indirect_dict(page_ids[i], &dict)?;
         }
 
-        // Write link annotations
-        for (j, (x, y, lw, lh, url, dest_page)) in page_state.links.iter().enumerate() {
-            let aid = page_link_ids[i][j];
+        // Write link annotation objects
+        for (j, link) in links.iter().enumerate() {
+            let aid = annot_ids[j];
             let mut dict = format!(
                 "<< /Type /Annot /Subtype /Link /Rect [{:.4} {:.4} {:.4} {:.4}]",
-                x,
-                y,
-                x + lw,
-                y + lh
+                link.rect.0, link.rect.1, link.rect.2, link.rect.3
             );
-            if let Some(page_idx) = dest_page {
-                if *page_idx < page_ids.len() {
-                    dict.push_str(&format!(" /Dest {} 0 R", page_ids[*page_idx]));
+            if let Some(page_idx) = link.dest_page {
+                if (page_idx as usize) < page_ids.len() {
+                    dict.push_str(&format!(" /Dest {} 0 R", page_ids[page_idx as usize]));
                 }
-            } else {
+            } else if let Some(ref url) = link.url {
                 dict.push_str(&format!(" /A << /Type /Action /S /URI /URI ({url}) >>"));
             }
             dict.push_str(" >>");
             w.write_indirect_dict(aid, &dict)?;
-        }
-    }
-
-    // --- Write image XObjects ---
-    for (img_idx, img) in builder.images.iter().enumerate() {
-        let xobj_id = image_xobject_ids[img_idx];
-        match img.format {
-            PdfImageFormat::Png => {
-                let decoded = match crate::image::decode_png(&img.data) {
-                    Ok(d) => d,
-                    Err(_) => continue,
-                };
-                let cs_name = match decoded.color_space {
-                    crate::image::ColorSpace::RGB => "DeviceRGB",
-                    crate::image::ColorSpace::Gray => "DeviceGray",
-                };
-                let dict = format!(
-                    "/Type /XObject /Subtype /Image /Width {} /Height {} /ColorSpace /{cs_name} /BitsPerComponent {}",
-                    decoded.width, decoded.height, decoded.bits_per_component
-                );
-                w.write_stream(xobj_id, &dict, &decoded.data, Some("FlateDecode"))?;
-            }
-            PdfImageFormat::Jpeg => {
-                let (w_dim, h_dim, components) = jpeg_info(&img.data).unwrap_or((100, 100, 3));
-                let cs_name = if components == 1 {
-                    "DeviceGray"
-                } else {
-                    "DeviceRGB"
-                };
-                let dict = format!(
-                    "/Type /XObject /Subtype /Image /Width {w_dim} /Height {h_dim} /ColorSpace /{cs_name} /BitsPerComponent 8"
-                );
-                w.write_stream(xobj_id, &dict, &img.data, Some("DctDecode"))?;
-            }
         }
     }
 
@@ -1093,5 +1174,157 @@ mod tests {
         assert_eq!(escape_pdf_string("hello"), "hello");
         assert_eq!(escape_pdf_string("(test)"), "\\(test\\)");
         assert_eq!(escape_pdf_string("back\\slash"), "back\\\\slash");
+    }
+
+    fn make_test_jpeg_data() -> Vec<u8> {
+        let mut data = Vec::new();
+        // SOI
+        data.extend_from_slice(&[0xFF, 0xD8]);
+        // APP0 (JFIF header)
+        data.extend_from_slice(&[0xFF, 0xE0, 0x00, 0x10]);
+        data.extend_from_slice(b"JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00");
+        // SOF0: 8x4, 3 components (RGB)
+        data.extend_from_slice(&[0xFF, 0xC0, 0x00, 0x0B, 0x08]);
+        data.extend_from_slice(&[0x00, 0x04]); // height = 4
+        data.extend_from_slice(&[0x00, 0x08]); // width = 8
+        data.push(3); // components = 3 (RGB)
+        data.extend_from_slice(&[0x01, 0x11, 0x00]); // Y
+        data.extend_from_slice(&[0x02, 0x11, 0x00]); // Cb
+        data.extend_from_slice(&[0x03, 0x11, 0x00]); // Cr
+        // EOI
+        data.extend_from_slice(&[0xFF, 0xD9]);
+        data
+    }
+
+    fn make_test_png_data() -> Vec<u8> {
+        let mut buf = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut buf, 8, 4);
+            encoder.set_color(png::ColorType::Rgb);
+            encoder.set_depth(png::BitDepth::Eight);
+            let mut writer = encoder.write_header().expect("header");
+            let pixel_data: Vec<u8> = (0..8 * 4).flat_map(|_| [0xFF, 0x00, 0x00]).collect();
+            writer.write_image_data(&pixel_data).expect("write data");
+        }
+        buf
+    }
+
+    #[test]
+    fn test_streaming_pdf_link_external() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.add_link(
+            72.0,
+            700.0,
+            100.0,
+            20.0,
+            "https://example.com".to_string(),
+            None,
+        );
+        let mut buf = Vec::new();
+        build_streaming(&builder, &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("/Annots ["));
+        assert!(pdf_str.contains("/Subtype /Link"));
+        assert!(pdf_str.contains("/S /URI"));
+        assert!(pdf_str.contains("https://example.com"));
+        assert!(pdf_str.contains("/Rect ["));
+    }
+
+    #[test]
+    fn test_streaming_pdf_link_internal() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.add_page(612.0, 792.0);
+        builder.add_link(72.0, 700.0, 100.0, 20.0, String::new(), Some(1));
+        let mut buf = Vec::new();
+        build_streaming(&builder, &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("/Subtype /Link"));
+        assert!(pdf_str.contains("/Dest"));
+    }
+
+    #[test]
+    fn test_streaming_pdf_link_rect_coordinates() {
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.add_link(
+            100.0,
+            200.0,
+            50.0,
+            30.0,
+            "https://test.com".to_string(),
+            None,
+        );
+        let mut buf = Vec::new();
+        build_streaming(&builder, &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("/Rect [100.0000 200.0000 150.0000 230.0000]"));
+    }
+
+    #[test]
+    fn test_streaming_pdf_embed_jpeg() {
+        let jpeg_data = make_test_jpeg_data();
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.set_images(vec![crate::writer::PdfImage {
+            data: jpeg_data,
+            format: crate::writer::PdfImageFormat::Jpeg,
+            alt_text: None,
+        }]);
+        let mut buf = Vec::new();
+        build_streaming(&builder, &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("/Type /XObject"));
+        assert!(pdf_str.contains("/Subtype /Image"));
+        assert!(pdf_str.contains("/Filter /DctDecode"));
+        assert!(pdf_str.contains("/Width 8"));
+        assert!(pdf_str.contains("/Height 4"));
+        assert!(pdf_str.contains("/ColorSpace /DeviceRGB"));
+    }
+
+    #[test]
+    fn test_streaming_pdf_draw_image() {
+        let jpeg_data = make_test_jpeg_data();
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.set_images(vec![crate::writer::PdfImage {
+            data: jpeg_data,
+            format: crate::writer::PdfImageFormat::Jpeg,
+            alt_text: None,
+        }]);
+        builder.add_image(72.0, 700.0, 100.0, 50.0, 0);
+        let mut buf = Vec::new();
+        build_streaming(&builder, &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("/XObject <<"));
+        assert!(pdf_str.contains("/Im0"));
+    }
+
+    #[test]
+    fn test_streaming_pdf_multiple_images() {
+        let jpeg1 = make_test_jpeg_data();
+        let jpeg2 = make_test_png_data();
+        let mut builder = PdfDocumentBuilder::new();
+        builder.add_page(612.0, 792.0);
+        builder.set_images(vec![
+            crate::writer::PdfImage {
+                data: jpeg1,
+                format: crate::writer::PdfImageFormat::Jpeg,
+                alt_text: None,
+            },
+            crate::writer::PdfImage {
+                data: jpeg2,
+                format: crate::writer::PdfImageFormat::Png,
+                alt_text: None,
+            },
+        ]);
+        builder.add_image(72.0, 700.0, 100.0, 50.0, 0);
+        builder.add_image(200.0, 600.0, 80.0, 40.0, 1);
+        let mut buf = Vec::new();
+        build_streaming(&builder, &mut buf).unwrap();
+        let pdf_str = String::from_utf8_lossy(&buf);
+        assert!(pdf_str.contains("/Im0"));
+        assert!(pdf_str.contains("/Im1"));
     }
 }

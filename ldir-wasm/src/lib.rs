@@ -12,6 +12,8 @@ pub mod bridge;
 pub mod sandbox;
 pub mod versioning;
 
+use ldir_ir::sir::SIRDocument;
+
 /// Initialize the WASM module. Call this once from JS.
 #[wasm_bindgen(start)]
 pub fn init() {
@@ -32,6 +34,22 @@ pub fn compile_markdown_to_html(markdown: &str) -> String {
 #[wasm_bindgen]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// Compile a document from the given input format to HTML.
+///
+/// Supported formats: `"markdown"`, `"latex"`.
+/// Returns an HTML string, or an error message for unsupported formats.
+#[wasm_bindgen]
+pub fn compile(input: &str, format: &str) -> String {
+    match format {
+        "markdown" => html_renderer::render_markdown(input),
+        "latex" => {
+            let doc: SIRDocument = ldir_tex::parse_tex(input);
+            html_renderer::render_sir_document(&doc)
+        }
+        _ => format!("<p>Unsupported format: {format}</p>"),
+    }
 }
 
 /// Compile S-IR bytes and render to pixels.

@@ -44,6 +44,7 @@
 
 mod lexer;
 mod macro_expander;
+mod macros;
 mod parser;
 
 use ldir_ir::sir::SIRDocument;
@@ -545,5 +546,78 @@ mod tests {
         assert!(find_block_type(&doc, BlockType::List));
         assert!(find_content(&doc, "bold item"));
         assert!(find_content(&doc, "italic item"));
+    }
+
+    #[test]
+    fn test_align_environment() {
+        let doc = parse_tex(r"\begin{align}a &= b \\ c &= d\end{align}");
+        assert!(find_block_type(&doc, BlockType::Math));
+        let text = collect_all_text(&doc);
+        assert!(text.contains("a"), "should contain a, got: {text}");
+        assert!(text.contains("b"), "should contain b, got: {text}");
+    }
+
+    #[test]
+    fn test_dfrac() {
+        let doc = parse_tex(r"$\dfrac{1}{2}$");
+        assert!(find_content(&doc, "1/2"));
+    }
+
+    #[test]
+    fn test_text_command() {
+        let doc = parse_tex(r"\begin{equation}x = \text{the value}\end{equation}");
+        assert!(find_block_type(&doc, BlockType::Math));
+        assert!(find_content(&doc, "\\text{the value}"));
+    }
+
+    #[test]
+    fn test_cases_environment() {
+        let doc = parse_tex(
+            r"\begin{equation}f(x) = \begin{cases}1 & x > 0 \\ 0 & x \leq 0\end{cases}\end{equation}",
+        );
+        assert!(find_block_type(&doc, BlockType::Math));
+        let text = collect_all_text(&doc);
+        assert!(
+            text.contains("\\begin{cases}"),
+            "cases env should be preserved, got: {text}"
+        );
+        assert!(
+            text.contains("\\end{cases}"),
+            "end cases should be preserved, got: {text}"
+        );
+    }
+
+    #[test]
+    fn test_mathbb() {
+        let doc = parse_tex(r"$\mathbb{R}$");
+        assert!(find_content(&doc, "\\mathbb{R}"));
+    }
+
+    #[test]
+    fn test_includegraphics_basic() {
+        let doc = parse_tex(r"\includegraphics{photo.jpg}");
+        assert!(find_block_type(&doc, BlockType::Image));
+        assert!(find_content(&doc, "photo.jpg"));
+    }
+
+    #[test]
+    fn test_includegraphics_with_width() {
+        let doc = parse_tex(r"\includegraphics[width=5cm]{photo.jpg}");
+        assert!(find_block_type(&doc, BlockType::Image));
+        assert!(find_content(&doc, "photo.jpg"));
+        assert!(find_content(&doc, "width=5cm"));
+    }
+
+    #[test]
+    fn test_includegraphics_scale() {
+        let doc = parse_tex(r"\includegraphics[scale=0.5]{photo.jpg}");
+        assert!(find_block_type(&doc, BlockType::Image));
+        assert!(find_content(&doc, "scale=0.5"));
+    }
+
+    #[test]
+    fn test_graphicspath() {
+        let doc = parse_tex(r"\graphicspath{{images}{figures}}");
+        assert!(doc.len() >= 1, "should parse without error");
     }
 }

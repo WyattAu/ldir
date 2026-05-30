@@ -3,6 +3,7 @@ use ldir_ir::sir::{
 };
 
 use crate::lexer::{SpannedToken, Token};
+use crate::macros;
 
 pub struct TeXParser<'a> {
     tokens: &'a [SpannedToken],
@@ -13,6 +14,7 @@ pub struct TeXParser<'a> {
     footnote_counter: u32,
     current_span: Option<SourceSpan>,
     warnings: Vec<(SourceSpan, String)>,
+    registry: macros::MacroRegistry,
 }
 
 impl<'a> TeXParser<'a> {
@@ -26,6 +28,7 @@ impl<'a> TeXParser<'a> {
             footnote_counter: 0,
             current_span: None,
             warnings: Vec::new(),
+            registry: macros::MacroRegistry::new(),
         }
     }
 
@@ -174,7 +177,7 @@ impl<'a> TeXParser<'a> {
                     }
                     Some(Token::ControlSequence(name)) => {
                         if in_math {
-                            if let Some(sym) = Self::substitute_math_cmd(&name) {
+                            if let Some(sym) = self.resolve_math_symbol(&name) {
                                 result.push_str(sym);
                             } else {
                                 result.push_str(&name);
@@ -260,9 +263,16 @@ impl<'a> TeXParser<'a> {
                     "includegraphics" => {
                         self.flush_paragraph(&mut text_buffer, parent_id);
                         self.advance();
-                        self.parse_optional();
+                        let opts_str = self.parse_optional();
                         let path = self.parse_group_content();
-                        self.emit_block(BlockType::Image, parent_id, None, &path);
+                        let content = match opts_str {
+                            Some(ref opts) => {
+                                let parsed = macros::graphicx::GraphicsOptions::parse(opts);
+                                format!("{}{}", path, parsed.format_suffix())
+                            }
+                            None => path,
+                        };
+                        self.emit_block(BlockType::Image, parent_id, None, &content);
                     }
                     "section" | "subsection" | "subsubsection" | "paragraph" => {
                         self.flush_paragraph(&mut text_buffer, parent_id);
@@ -368,9 +378,20 @@ impl<'a> TeXParser<'a> {
                         text_buffer.push_str(&mark);
                         self.doc.footnotes.push((num, content));
                     }
+                    "graphicspath" => {
+                        self.flush_paragraph(&mut text_buffer, parent_id);
+                        self.advance();
+                        let content = self.parse_group_content();
+                        let paths = macros::graphicx::parse_graphics_paths(&content);
+                        self.registry.graphicx_paths.extend(paths);
+                    }
+                    "centering" => {
+                        self.flush_paragraph(&mut text_buffer, parent_id);
+                        self.advance();
+                    }
                     _ => {
                         if self.in_math {
-                            if let Some(sym) = Self::substitute_math_cmd(name) {
+                            if let Some(sym) = self.resolve_math_symbol(name) {
                                 text_buffer.push_str(sym);
                             } else {
                                 text_buffer.push_str(&format!("\\{name}"));
@@ -511,8 +532,49 @@ impl<'a> TeXParser<'a> {
                 let key = self.parse_group_content();
                 math.push_str(&format!("\\label{{{}}}", key));
             }
+            "dfrac" => {
+                self.advance();
+                let num = self.parse_group_content();
+                let den = self.parse_group_content();
+                math.push_str(&format!("{num}/{den}"));
+            }
+            "tfrac" => {
+                self.advance();
+                let num = self.parse_group_content();
+                let den = self.parse_group_content();
+                math.push_str(&format!("{num}/{den}"));
+            }
+            "binom" => {
+                self.advance();
+                let top = self.parse_group_content();
+                let bot = self.parse_group_content();
+                math.push_str(&format!("({top}/{bot})"));
+            }
+            "mathbb" | "mathcal" | "mathbf" | "mathrm" | "boldsymbol" | "overline"
+            | "underbrace" => {
+                math.push_str(&format!("\\{name}"));
+                self.advance();
+                if let Some(&Token::BraceOpen) = self.peek() {
+                    let content = self.parse_group_content();
+                    math.push_str(&format!("{{{}}}", content));
+                }
+            }
+            "overset" => {
+                math.push_str("\\overset");
+                self.advance();
+                let top = self.parse_group_content();
+                let bot = self.parse_group_content();
+                math.push_str(&format!("{{{}}}{{{}}}", top, bot));
+            }
+            "underset" => {
+                math.push_str("\\underset");
+                self.advance();
+                let bot = self.parse_group_content();
+                let top = self.parse_group_content();
+                math.push_str(&format!("{{{}}}{{{}}}", bot, top));
+            }
             _ => {
-                if let Some(sym) = Self::substitute_math_cmd(&name) {
+                if let Some(sym) = self.resolve_math_symbol(&name) {
                     math.push_str(sym);
                 } else {
                     math.push_str(&format!("\\{name}"));
@@ -647,6 +709,30 @@ impl<'a> TeXParser<'a> {
             }
             "align*" => {
                 let math = self.collect_math_env_content("align");
+                self.emit_math_block(BlockType::Math, parent_id, false, &math);
+            }
+            "gather" => {
+                let math = self.collect_math_env_content("gather");
+                self.emit_math_block(BlockType::Math, parent_id, true, &math);
+            }
+            "gather*" => {
+                let math = self.collect_math_env_content("gather");
+                self.emit_math_block(BlockType::Math, parent_id, false, &math);
+            }
+            "multline" => {
+                let math = self.collect_math_env_content("multline");
+                self.emit_math_block(BlockType::Math, parent_id, true, &math);
+            }
+            "multline*" => {
+                let math = self.collect_math_env_content("multline");
+                self.emit_math_block(BlockType::Math, parent_id, false, &math);
+            }
+            "cases" => {
+                let math = self.collect_math_env_content("cases");
+                self.emit_math_block(BlockType::Math, parent_id, false, &math);
+            }
+            "split" => {
+                let math = self.collect_math_env_content("split");
                 self.emit_math_block(BlockType::Math, parent_id, false, &math);
             }
             "figure" => {
@@ -797,9 +883,16 @@ impl<'a> TeXParser<'a> {
                 }
                 Token::ControlSequence(name) if name == "includegraphics" => {
                     self.advance();
-                    self.parse_optional();
+                    let opts_str = self.parse_optional();
                     let path = self.parse_group_content();
-                    self.emit_block(BlockType::Image, fig_id, None, &path);
+                    let content = match opts_str {
+                        Some(ref opts) => {
+                            let parsed = macros::graphicx::GraphicsOptions::parse(opts);
+                            format!("{}{}", path, parsed.format_suffix())
+                        }
+                        None => path,
+                    };
+                    self.emit_block(BlockType::Image, fig_id, None, &content);
                 }
                 Token::ControlSequence(name) if name == "caption" => {
                     self.advance();
@@ -1337,5 +1430,9 @@ impl<'a> TeXParser<'a> {
         let para_id = self.emit_block(BlockType::Paragraph, parent_id, None, math_text);
         let _ = self.emit_style(para_id, StyleModifier::MONO_STYLE, true);
         let _ = self.emit_style(para_id, StyleModifier::MONO_STYLE, false);
+    }
+
+    fn resolve_math_symbol(&self, cmd: &str) -> Option<&'static str> {
+        Self::substitute_math_cmd(cmd).or_else(|| self.registry.lookup_symbol(cmd))
     }
 }

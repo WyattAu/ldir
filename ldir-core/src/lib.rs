@@ -129,6 +129,9 @@ pub mod validator;
 /// G-IR well-formedness verifier (DEF-005).
 pub mod verifier;
 
+/// Rust-native test plugins for the Wasm plugin ABI.
+pub mod wasm_plugins;
+
 #[cfg(test)]
 mod tests {
     #[test]

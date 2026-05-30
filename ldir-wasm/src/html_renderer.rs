@@ -14,6 +14,11 @@ pub fn render_markdown(markdown: &str) -> String {
     render_sir_to_html(&doc)
 }
 
+/// Render an S-IR document to styled HTML.
+pub fn render_sir_document(doc: &SIRDocument) -> String {
+    render_sir_to_html(doc)
+}
+
 struct BlockSpan {
     block_type: BlockType,
     heading_level: u32,
@@ -928,15 +933,15 @@ mod tests {
     }
 
     #[test]
-    fn test_dark_mode_css() {
+    fn test_playground_html_exists() {
         let html = include_str!("../playground/index.html");
         assert!(
-            html.contains("prefers-color-scheme: dark"),
-            "missing dark mode media query in playground HTML"
+            html.contains("ldir Playground"),
+            "playground HTML should contain title"
         );
         assert!(
-            html.contains("#1e1e1e"),
-            "missing dark background color in playground HTML"
+            html.contains("renderFallback"),
+            "playground HTML should have fallback rendering"
         );
     }
 

@@ -2249,6 +2249,7 @@ dependencies = [
  "js-sys",
  "ldir-ir",
  "ldir-md",
+ "ldir-tex",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
