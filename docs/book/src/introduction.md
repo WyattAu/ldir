@@ -44,16 +44,15 @@ ldc input.tex -f epub -o output.epub
 
 ## Architecture
 
-LDIR uses a multi-stage compilation pipeline:
+LDIR uses a three-stage compilation pipeline:
 
 ```
-Input -> Parser -> GIR -> S-IR -> Layout -> G-IR -> Renderer -> Output
+Input -> [Parser] -> S-IR -> [Compiler] -> L-IR -> [Renderer] -> Output
 ```
 
-- **GIR** (Generic IR): Format-agnostic document tree
-- **S-IR** (Semantic IR): Typed, semantic intermediate representation
-- **L-IR** (Layout IR): Page-level layout with positioning
-- **G-IR** (Graphic IR): Low-level graphic primitives
+- **S-IR** (Semantic IR): Format-agnostic document tree with typed nodes
+- **L-IR** (Layout IR): Page-level layout with positioned glyphs and geometry
+- **G-IR** (Graphic IR): Low-level rendering commands (move, draw, set-font)
 
 ## CLI Reference
 

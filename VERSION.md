@@ -9,7 +9,7 @@
 ## Quality Metrics
 | Metric | Value |
 |--------|-------|
-| **Total tests** | **1,810** |
+| **Total tests** | **1,865** |
 | Test failures | 0 |
 | Clippy errors | 0 (`-D warnings`) |
 | Clippy warnings | 0 (test + lib) |
