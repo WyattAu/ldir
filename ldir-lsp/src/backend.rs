@@ -50,6 +50,7 @@ impl LanguageServer for Backend {
                 document_symbol_provider: Some(OneOf::Left(true)),
                 completion_provider: Some(CompletionOptions::default()),
                 rename_provider: Some(OneOf::Left(true)),
+                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -378,6 +379,59 @@ impl LanguageServer for Backend {
             },
             placeholder: key,
         }))
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let uri = params.text_document.uri;
+        let mut actions: Vec<CodeActionOrCommand> = Vec::new();
+
+        for diagnostic in &params.context.diagnostics {
+            let (title, new_text) = if diagnostic.message.contains("Unclosed link") {
+                ("Insert closing parenthesis", ")")
+            } else if diagnostic.message.contains("Unclosed brace") {
+                ("Insert closing brace", "}")
+            } else {
+                continue;
+            };
+
+            let end = diagnostic.range.end;
+            let text_edit = TextEdit {
+                range: Range {
+                    start: Position {
+                        line: end.line,
+                        character: end.character,
+                    },
+                    end: Position {
+                        line: end.line,
+                        character: end.character,
+                    },
+                },
+                new_text: new_text.to_string(),
+            };
+
+            let mut changes = HashMap::new();
+            changes.insert(uri.clone(), vec![text_edit]);
+
+            actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                title: title.to_string(),
+                kind: Some(CodeActionKind::QUICKFIX),
+                diagnostics: Some(vec![diagnostic.clone()]),
+                edit: Some(WorkspaceEdit {
+                    changes: Some(changes),
+                    ..Default::default()
+                }),
+                is_preferred: Some(true),
+                command: None,
+                disabled: None,
+                data: None,
+            }));
+        }
+
+        if actions.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(actions))
+        }
     }
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
