@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CALT","KERN","LIGA","LNUM","ONUM","TNUM"],"fn":["shape_harfbuzz"],"struct":["Feature"]};
+window.SIDEBAR_ITEMS = {"constant":["CALT","DLIG","HLIG","KERN","LIGA","LNUM","ONUM","SALT","SS01","SS02","SS03","SS04","SS05","SS06","SS07","SS08","SS09","SS10","SS11","SS12","SS13","SS14","SS15","SS16","SS17","SS18","SS19","SS20","TNUM","ZERO"],"fn":["shape_harfbuzz"],"struct":["Feature"]};
