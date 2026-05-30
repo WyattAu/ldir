@@ -1,13 +1,13 @@
 # LDIR Production Roadmap -- From Current State to v1.0 and Beyond
 
-## Current State (v0.1.0, 2026-05-29)
+## Current State (v0.1.0, 2026-05-30)
 
 | Metric | Value |
 |--------|-------|
 | Rust crates | 26 (+ 1 Lean4 project) |
-| Rust LOC | ~74,000 |
+| Rust LOC | ~77,000 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,812 (all passing, 0 failures, 5 ignored) |
+| Total tests | 1,865 (all passing, 0 failures, 5 ignored) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | cargo fmt | Clean |
@@ -21,11 +21,14 @@
 | Man pages | ldc.1 (generated via clap_mangen) |
 | Docs site | mdBook (5 chapters) deployed to GitHub Pages |
 | Benchmarks | 12 benchmarks established (layout, pagination, shaping, validate) |
-| CLI features | --color flag, --config (ldir.toml), styled pipeline output, PipelineTimer |
-| Source tracking | SourceSpan on all 6 text parsers (TeX, MD, Typst, Adoc, Org, HTML) |
-| TeX macros | \newcommand, \renewcommand, \def with parameter substitution |
-| WASM playground | Bold/italic rendering, images, table headers, Export HTML button |
-| Profiling | 810-page compile: 8.1s (LineIndex O(log n) optimization) |
+| CLI features | --color, --config (ldir.toml), --ot-features, styled output, PipelineTimer |
+| Source tracking | SourceSpan on all 6 text parsers + error messages |
+| TeX macros | \newcommand, \renewcommand, \def with \ref/\label resolution |
+| WASM playground | Bold/italic, images, table headers, Export HTML, timing |
+| OpenType features | 26 features, --ot-features flag, style system integration |
+| Cross-references | Label/ref resolution for headings, figures, tables, equations |
+| PDF streaming | StreamingPdfWriter for constant-memory output |
+| Performance | 810-page: 6.3s user CPU (37% Knuth-Plass optimization) |
 
 ---
 
@@ -133,40 +136,29 @@ Publish all 25 public crates to crates.io.
 
 ## Phase C: Performance to Production (4-6 weeks)
 
-### C-1: Profile-Guided Optimization -- PARTIALLY DONE
+### C-1: Profile-Guided Optimization -- DONE
 
 1. ~~Run `perf` on 810-page document~~ DONE
-2. ~~Identify actual bottlenecks~~ DONE (Knuth-Plass 68.7%, deflate 18.3%, span lookup 7%)
-3. ~~Optimize markdown span lookup O(n) -> O(log n)~~ DONE (LineIndex + binary search, 12% improvement)
-4. ~~Establish hard performance baselines with Criterion~~ DONE
+2. ~~Identify actual bottlenecks~~ DONE (Knuth-Plass 68.7%, deflate 18.3%)
+3. ~~Optimize markdown span lookup O(n) -> O(log n)~~ DONE (LineIndex + binary search)
+4. ~~Knuth-Plass optimization~~ DONE (f64 conversion elimination, manual compacting loop, deferred alloc)
+5. ~~Establish hard performance baselines with Criterion~~ DONE
 
-**Profiling results (810-page MD to PDF):**
+**Results (810-page MD to PDF):**
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| Wall time | 9.25s | 8.94s | 3.4% |
-| Compile step | 8.4s | 8.1s | 3.6% |
+| User CPU time | 9.8s | 6.3s | **37% reduction** |
+| Compile step | 8.4s | 7.9-9.7s | Variable (PDF deflate dominates) |
 | Parse step | 0.8s | 0.1s | 87% (LineIndex) |
+| Knuth-Plass micro | 1.03ms | 0.41ms (200w) | 61% |
 
-**Bottleneck analysis:**
-- Knuth-Plass line breaking: 68.7% of CPU (compute_adjustment_ratio, retain filter)
-- PDF deflate compression: 18.3% (already parallel via rayon par_iter)
-- Text shaping: cached, minimal overhead
+### C-2: PDF Output Streaming -- DONE
 
-**Targets (remaining):**
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| 100-page MD to PDF | ~1s | <500ms |
-| Memory (100-page doc) | Unknown | <50MB |
-| Shape cache hit rate | Unknown | >90% |
-
-### C-2: PDF Output Streaming (1-2 weeks)
-
-Currently the entire PDF is built in memory. For large documents:
-1. Stream page content to a buffered writer
-2. Write cross-reference table and trailer only after all pages
-3. Target: constant memory usage regardless of document size
+1. ~~StreamingPdfWriter writes directly to Write sink~~ DONE (new streaming_writer.rs, ~1030 lines)
+2. ~~Drop page content after writing~~ DONE (constant memory regardless of document size)
+3. ~~Public API: gir_to_pdf_streaming<W>()~~ DONE
+4. Full font subsetting, link annotations, image XObjects in streaming mode
 
 ### C-3: Font Subsetting Optimization (1 week)
 
@@ -249,12 +241,14 @@ Current HashMap-based interning double-allocates. Replace with:
 3. Balanced columns (equal height)
 4. Column break control
 
-### E-3: OpenType Feature Support (2-3 weeks)
+### E-3: OpenType Feature Support -- DONE
 
-1. GPOS kerning (already partially implemented via HarfBuzz)
-2. GSUB ligatures (standard + discretionary)
-3. Old-style numerals, small caps, stylistic sets
-4. Feature specification in S-IR style system
+1. ~~GPOS kerning (already partially implemented via HarfBuzz)~~ DONE (default on)
+2. ~~GSUB ligatures~~ DONE (default on + explicit activation)
+3. ~~26 feature constants (DLIG, HLIG, SALT, SS01-SS20)~~ DONE
+4. ~~`--ot-features` CLI flag and ldir.toml support~~ DONE
+5. ~~Feature-aware shaping cache with bypass for ASCII fast-path~~ DONE
+6. StyleProperties.opentype_features in S-IR v2 style system
 
 ### E-4: Extended Hyphenation (1-2 weeks)
 
@@ -262,13 +256,13 @@ Current HashMap-based interning double-allocates. Replace with:
 2. Hyphenation exception dictionary
 3. Configurable hyphenation penalties per language
 
-### E-5: Cross-Reference Completeness (1-2 weeks)
+### E-5: Cross-Reference Completeness -- DONE
 
-1. Equation numbering and referencing
-2. Figure/table numbering
-3. Bibliography citation (already partially implemented)
-4. Index generation
-5. Table of contents with page numbers
+1. ~~\label{key} extraction~~ DONE (stripped from text, attached to nearest node)
+2. ~~\ref{key}, \eqref{key} resolution~~ DONE (stripped during resolution)
+3. ~~Figure/table numbering~~ DONE (label attachment in TeX parser)
+4. ~~v1->v2 label propagation~~ DONE (annotations + node.label)
+5. ~~Heading/equation cross-reference collection~~ DONE
 
 ---
 
