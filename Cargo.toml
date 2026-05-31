@@ -117,7 +117,7 @@ toml = "0.8"
 # Serialization
 serde = { version = "1", features = ["derive"] }
 clap_complete = "4"
-clap_mangen = "0.2"
+clap_mangen = "0.3"
 indicatif = "0.17"
 
 # Concurrency
