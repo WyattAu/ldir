@@ -445,3 +445,83 @@ fn test_golden_latex_document() {
     let pages = pdf_page_count(&pdf);
     assert!(pages >= 1, "latex document should have at least 1 page");
 }
+
+// ---------------------------------------------------------------------------
+// 21-23. Output format integration tests (ODT, Pandoc, Jupyter)
+// ---------------------------------------------------------------------------
+
+fn compile_to_format(input: &str, ext: &str, format: &str) -> Result<Vec<u8>, String> {
+    let dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let input_path = dir.path().join(format!("test.{ext}"));
+    let output_path = dir.path().join(format!("output.{}", format));
+    std::fs::write(&input_path, input).map_err(|e| e.to_string())?;
+
+    let bin = ldc_bin();
+    if !bin.exists() {
+        return Err(format!(
+            "ldc binary not found at {:?}; run `cargo build -p ldc` first",
+            bin
+        ));
+    }
+
+    let status = std::process::Command::new(&bin)
+        .arg(&input_path)
+        .arg("-f")
+        .arg(format)
+        .arg("-o")
+        .arg(&output_path)
+        .arg("--font-path")
+        .arg("/tmp")
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !status.status.success() {
+        let stderr = String::from_utf8_lossy(&status.stderr);
+        return Err(format!("ldc failed:\n{}", stderr));
+    }
+
+    std::fs::read(&output_path).map_err(|e| e.to_string())
+}
+
+#[test]
+fn test_markdown_to_odt() {
+    let input = "# Title\n\nA paragraph with **bold** text.\n\n## Section\n\nMore content.";
+    let odt = compile_to_format(input, "md", "odt").unwrap();
+    // ODT files are ZIP archives starting with PK signature
+    assert!(
+        odt.starts_with(b"PK"),
+        "ODT output must be a valid ZIP archive"
+    );
+    assert!(
+        odt.len() > 200,
+        "ODT output should contain content (>200 bytes)"
+    );
+}
+
+#[test]
+fn test_markdown_to_pandoc() {
+    let input = "# Title\n\nA paragraph.\n\n## Section\n\nMore content.";
+    let pandoc = compile_to_format(input, "md", "pandoc").unwrap();
+    let json_str = String::from_utf8(pandoc).expect("pandoc output should be valid UTF-8");
+    assert!(
+        json_str.contains("Title"),
+        "pandoc AST should contain document title"
+    );
+    // Should be valid JSON
+    let _: serde_json::Value =
+        serde_json::from_str(&json_str).expect("pandoc output should be valid JSON");
+}
+
+#[test]
+fn test_markdown_to_jupyter() {
+    let input = "# Notebook\n\nFirst cell content.\n\n## Analysis\n\nSecond cell content.";
+    let ipynb = compile_to_format(input, "md", "ipynb").unwrap();
+    let json_str = String::from_utf8(ipynb).expect("ipynb output should be valid UTF-8");
+    // Jupyter notebooks have a specific structure
+    assert!(
+        json_str.contains("cells") || json_str.contains("nbformat"),
+        "ipynb output should contain Jupyter notebook structure"
+    );
+    let _: serde_json::Value =
+        serde_json::from_str(&json_str).expect("ipynb output should be valid JSON");
+}
