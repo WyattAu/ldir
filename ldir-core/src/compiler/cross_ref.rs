@@ -1,6 +1,6 @@
 //! Cross-reference resolution: label registry, lookup, and bibliography linking.
 //!
-//! Maintains a [`LabelRegistry`] for tracking section/equation/figure labels
+//! Maintains a [`crate::cross_ref::LabelRegistry`] for tracking section/equation/figure labels
 //! and resolving forward references during S-IR compilation.
 
 use indexmap::IndexMap;

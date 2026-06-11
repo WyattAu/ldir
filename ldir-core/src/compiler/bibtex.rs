@@ -1,6 +1,6 @@
 //! BibTeX bibliography parser and IEEE/APA/Chicago/MLA citation formatter.
 //!
-//! Parses `.bib` files into structured [`BibEntry`] values and formats
+//! Parses `.bib` files into structured [`crate::compiler::bibtex::BibEntry`] values and formats
 //! in-text citations and bibliography entries according to IEEE, APA,
 //! Chicago (author-date), and MLA style conventions, with optional year
 //! disambiguation for entries sharing the same author and year.

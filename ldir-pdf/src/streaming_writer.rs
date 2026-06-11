@@ -1,6 +1,6 @@
 //! Streaming PDF writer that outputs directly to a Write sink.
 //!
-//! Unlike `pdf_writer::Pdf` (which buffers everything in a single Vec<u8>),
+//! Unlike `pdf_writer::Pdf` (which buffers everything in a single `Vec<u8>`),
 //! this writes PDF objects sequentially and drops page data as it goes,
 //! reducing peak memory usage for large documents.
 

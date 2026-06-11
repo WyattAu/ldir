@@ -1,6 +1,6 @@
 //! Bibliography resolver: loads .bib files and resolves citations to formatted strings.
 //!
-//! Provides [`BibliographyResolver`] which bridges the BibTeX parser with
+//! Provides [`crate::compiler::bibliography::BibliographyResolver`] which bridges the BibTeX parser with
 //! citation formatters, supporting IEEE, APA, Chicago, and MLA styles.
 
 #![deny(unsafe_code)]

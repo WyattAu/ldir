@@ -1,7 +1,7 @@
 //! Typed arena allocator and string arena for compilation hot paths.
 //!
 //! Provides O(1) bump allocation. No individual deallocation;
-//! drop the arena (or call [`clear`]) to free all memory at once.
+//! drop the arena (or call [`crate::arena::Arena::clear`]) to free all memory at once.
 //!
 //! # Design
 //!
@@ -12,7 +12,7 @@
 /// A typed bump allocator that stores `T` values in fixed-size chunks.
 ///
 /// Allocation is O(1) amortized. No individual deallocation.
-/// Drop the arena (or call [`clear`]) to free everything.
+/// Drop the arena (or call [`Self::clear`]) to free everything.
 ///
 /// Returns indices for allocated items. Access via [`get`][`Arena::get`]
 /// or [`get_mut`][`Arena::get_mut`].

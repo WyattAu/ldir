@@ -1,8 +1,8 @@
 //! Page and document template system for headers, footers, and document layouts.
 //!
 //! Provides:
-//! - [`PageTemplate`] — per-page header/footer template expansion (legacy, retained)
-//! - [`DocumentTemplate`] — full document template with styles, page layout, and preamble
+//! - [`crate::compiler::templates::PageTemplate`] — per-page header/footer template expansion (legacy, retained)
+//! - [`crate::compiler::templates::DocumentTemplate`] — full document template with styles, page layout, and preamble
 //! - TOML-based template serialization and built-in template presets
 
 #![deny(unsafe_code)]
