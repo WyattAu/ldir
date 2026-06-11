@@ -1,25 +1,25 @@
 # LDIR Production Roadmap -- From Current State to v1.0 and Beyond
 
-## Current State (v0.1.0, 2026-05-30)
+## Current State (v4.0.0, 2026-06-11)
 
 | Metric | Value |
 |--------|-------|
-| Rust crates | 26 (+ 1 Lean4 project) |
-| Rust LOC | ~77,000 |
+| Rust crates | 29 (+ 1 Lean4 project) |
+| Rust LOC | ~82,000 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,865 (all passing, 0 failures, 5 ignored) |
+| Total tests | 2,127 (all passing, 0 failures) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | cargo fmt | Clean |
 | Production unwrap/expect | 3 (2 rkyv INVARIANT-guarded, 1 len()-guarded in linker) |
 | Unsafe blocks | 24 (22 blocks + 2 fn: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
-| Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
+| Output formats | 11 (PDF, HTML, EPUB, TXT, DOCX, ODT, Pandoc AST, Jupyter, GIR, SIR2, LDIR) |
 | MSRV | 1.88 (edition 2024) |
 | CI | All 10 jobs green (Ubuntu, macOS, Windows, MSRV, WASM, Feature Gates, Bench, Lean4, Completions, PDF/A) |
 | Shell completions | Bash, Zsh, Fish, PowerShell (generated via clap_complete) |
 | Man pages | ldc.1 (generated via clap_mangen) |
-| Docs site | mdBook (5 chapters) deployed to GitHub Pages |
+| Docs site | mdBook (7 chapters) deployed to GitHub Pages |
 | Benchmarks | 12 benchmarks established (layout, pagination, shaping, validate) |
 | CLI features | --color, --config (ldir.toml), --ot-features, styled output, PipelineTimer |
 | Source tracking | SourceSpan on all 6 text parsers + error messages |
@@ -28,7 +28,11 @@
 | OpenType features | 26 features, --ot-features flag, style system integration |
 | Cross-references | Label/ref resolution for headings, figures, tables, equations |
 | PDF streaming | StreamingPdfWriter for constant-memory output |
-| Performance | 810-page: 6.3s user CPU (37% Knuth-Plass optimization) |
+| Performance | 475-page: 0.8s compile CPU, ~2s wall time (release); font I/O dominates |
+| MLA citations | DONE (BibliographyResolver with IEEE, APA, Chicago, MLA) |
+| LSP features | Folding ranges, semantic tokens, dual HTML+PDF preview |
+| GPU rendering | Vello pipeline + LRU glyph outline cache (8192 entries) |
+| Font scan skip | --font-path bypasses system font scan (1058 fonts, 6s I/O saved) |
 
 ---
 
@@ -216,7 +220,7 @@ Parallel paragraph pre-computation (rayon) regressed 9.25s -> 12s. Infrastructur
 ### D-4: Documentation Site (~~1-2 weeks~~ partially done)
 
 1. ~~Enable GitHub Pages in repo settings~~ TODO (requires UI action)
-2. ~~Convert docs/*.md to HTML (use mdBook or simple static site)~~ DONE (mdBook with 5 chapters)
+2. ~~Convert docs/*.md to HTML (use mdBook or simple static site)~~ DONE (mdBook with 7 chapters)
 3. ~~Deploy user guide, getting started, plugins reference alongside cargo doc~~ DONE
 4. ~~Add search functionality~~ DONE (workspace symbol provider)
 5. Add version selector for docs
@@ -319,7 +323,7 @@ Parallel paragraph pre-computation (rayon) regressed 9.25s -> 12s. Infrastructur
 ### G-3: Bibliography Engine (2-3 weeks) -- DONE
 
 1. ~~Full BibTeX/BibLaTeX parser~~ DONE (ldir-core/src/compiler/bibtex.rs)
-2. ~~IEEE, APA, Chicago, MLA citation styles~~ DONE (IEEE, APA, Chicago implemented; MLA deferred)
+2. ~~IEEE, APA, Chicago, MLA citation styles~~ DONE (IEEE, APA, Chicago, MLA implemented; BibliographyResolver)
 3. ~~Citation key resolution and disambiguation~~ DONE (year suffix a/b/c for same-author collisions)
 4. ~~Bibliography database management~~ DONE (parse_bib, format_*_bibliography functions)
 
@@ -407,10 +411,12 @@ Parallel paragraph pre-computation (rayon) regressed 9.25s -> 12s. Infrastructur
 
 ---
 
-## Newly Completed (This Session)
+## Newly Completed (Recent Sessions)
 
 ### Format Completeness
 - ODT output backend (ISO 26300 compliant ZIP, content.xml, styles.xml)
+- Pandoc AST output backend
+- Jupyter notebook output backend
 - HTML output with 5 CSS themes, TOC generation, heading anchors
 - Streaming PDF link annotations and image XObjects
 
@@ -422,16 +428,36 @@ Parallel paragraph pre-computation (rayon) regressed 9.25s -> 12s. Infrastructur
 ### Performance
 - Glyph ID remapping for compact CJK font subsets
 - Arena allocator (Arena<T>, StringArena) for compiler hot paths
-- LRU glyph outline cache for shaping pipeline
+- LRU glyph outline cache for GPU rendering pipeline (8192 entries, RefCell<HashMap>)
 - Manual GPOS kern + GSUB liga table parsing (WASM-compatible)
+- Font scan optimization: skip system font scan when --font-path specified
+- Performance profiling: 475-page doc = 0.8s compile CPU, ~2s wall time
+
+### LSP
+- Folding ranges support
+- Semantic tokens support
+- Dual HTML+PDF preview (HTML always works, PDF best-effort)
+- PreviewStatus notification with htmlPath + pdfPath
+
+### Citations
+- MLA citation style implemented
+- BibliographyResolver with 4 styles: IEEE, APA, Chicago, MLA
+
+### GPU Rendering
+- Vello compute shader pipeline (gpu feature flag)
+- GpuState with wgpu device + Vello renderer
+- LRU glyph outline cache (FontEntry.glyph_cache with RefCell for interior mutability)
+- render_glyph_outline_cached() avoids per-glyph ttf_parser::Face::parse
 
 ### Ecosystem
 - VS Code extension: syntax highlighting, Ldir Light theme, document/workspace symbol search
 - WASM playground with split-pane editor/preview, URL hash sharing
 - CONTRIBUTING.md, issue/PR templates
 - Comprehensive README with badges, CLI reference, architecture
+- #[doc(alias)] on 7 key public types
 
 ### Quality
 - veraPDF PDF/A-2b conformance CI job
 - Cross-platform determinism verification CI job
-- 2,055 tests, 0 clippy warnings
+- publish-dry-run CI job in release.yml
+- 2,127 tests, 0 clippy warnings, cargo fmt clean

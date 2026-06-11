@@ -1,20 +1,24 @@
 # LDIR Production Roadmap
 
-## Current State (v3.16.0)
+## Current State (v4.0.0)
 
 | Metric | Value |
 |--------|-------|
-| Rust crates | 26 (+ 1 Lean4 project) |
-| Rust LOC | ~72,400 |
+| Rust crates | 29 (+ 1 Lean4 project) |
+| Rust LOC | ~82,000 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,865 (all passing locally) |
+| Total tests | 2,127 (all passing) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (2 rkyv INVARIANT-guarded, 1 len()-guarded) |
 | Unsafe blocks | 24 (22 blocks + 2 fn: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
-| Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
+| Output formats | 11 (PDF, HTML, EPUB, TXT, DOCX, ODT, Pandoc AST, Jupyter, GIR, SIR2, LDIR) |
 | MSRV | 1.88 (edition 2024) |
+| MLA citations | DONE (BibliographyResolver with 4 styles: IEEE, APA, Chicago, MLA) |
+| LSP features | Folding ranges, semantic tokens, dual HTML+PDF preview |
+| GPU rendering | Vello pipeline + LRU glyph outline cache (8192 entries) |
+| Performance | 475-page doc: 0.8s compile CPU, ~2s wall time (release) |
 
 ---
 
@@ -151,7 +155,7 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 
 | Metric | Current | Target | Priority |
 |--------|---------|--------|----------|
-| 100-page MD to PDF | ~5s (estimated) | <2s | High |
+| 100-page MD to PDF | ~2s (measured: 475-page = 0.8s CPU) | <1s | High |
 | Memory (100-page doc) | Unknown | <50MB | Medium |
 | Incremental recompile (1-word change) | ~50ms (estimated) | <10ms | Medium |
 | Shape cache hit rate | Unknown | >90% | Low |
@@ -159,12 +163,12 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 
 ### 4.2 Optimization Priorities
 
-1. **Profile first**: Use `perf` and `tracing-chrome` to identify actual bottlenecks (not assumed)
-2. **PDF output**: Stream-based writing for large documents (currently builds entire PDF in memory)
+1. **Profile first**: Use `perf` and `tracing-chrome` to identify actual bottlenecks (not assumed) -- DONE (475-page profiled: 0.8s compile CPU, font I/O dominates wall time)
+2. **PDF output**: Stream-based writing for large documents (currently builds entire PDF in memory) -- DONE (StreamingPdfWriter)
 3. ~~**Font subsetting**: Optimize subset algorithm for large CJK fonts~~ DONE (glyph ID remapping)
 4. **Font subsetting C-3 (DONE)**: Compound glyph resolution, GSUB/GPOS/VORG tables included in subset
-5. **HarfBuzz shaping**: Cache glyph outlines beyond just advances
-5. **Parallel compilation**: Rayon-based parallel page compilation
+5. **HarfBuzz shaping**: Cache glyph outlines beyond just advances -- DONE (LRU glyph outline cache in ldir-vello)
+5. **Parallel compilation**: Rayon-based parallel page compilation -- ATTEMPTED, reverted (CompileContext is monolithic)
 
 ### 4.3 Memory Optimization -- PARTIALLY DONE
 
@@ -184,13 +188,15 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 
 ### 5.1 Prerequisites
 
-- [x] Stable public API for all 25 crates
+- [x] Stable public API for all 29 crates
 - [x] Ensure all public types implement `Debug`, `Clone` where appropriate -- DONE (32 types across 20 crates)
 - [x] Ensure `cargo doc --workspace --no-deps` produces zero warnings -- DONE
 - [ ] All crates pass `cargo publish --dry-run` (ldir-ir and ldir-test-helpers pass; remaining blocked on ldir-ir not yet published)
 - [x] API documentation on docs.rs (docs.yml CI job)
 - [x] All crates have proper metadata (repository, license, description, keywords, categories)
 - [x] README.md with badges, installation, quickstart, crate table, CI, configuration docs
+- [x] `#[doc(alias)]` on 7 key public types (NodeType, Node, Fp266, SIRModuleV2, LIRDocument, GIRDocument, CompileContext)
+- [x] publish-dry-run CI job in release.yml
 
 ### 5.1a String Interner Fix
 
@@ -199,17 +205,18 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 ### 5.2 Publication Order
 
 1. `ldir-ir` (foundation, no native deps)
-2. `ldir-core` (depends on ldir-ir, harfbuzz-sys)
-3. `ldir-md`, `ldir-tex`, `ldir-typst` (input parsers)
-4. `ldir-pdf` (output backend)
-5. `ldir-html`, `ldir-txt`, `ldir-epub`, `ldir-docx` (output backends)
-6. `ldir-html-reader`, `ldir-docx-reader` (input readers)
-7. `ldir-adoc`, `ldir-org` (input parsers)
-8. `ldir-dis`, `ldir-as`, `ldir-diff`, `ldir-validate`, `ldir-opt`, `ldir-link` (tools)
-9. `ldir-lsp` (language server)
-10. `ldir-wasm` (WASM bridge)
+2. `ldir-test-helpers` (test utility)
+3. `ldir-core` (depends on ldir-ir, harfbuzz-sys)
+4. `ldir-md`, `ldir-tex`, `ldir-typst` (input parsers)
+5. `ldir-html-reader`, `ldir-docx-reader` (input readers)
+6. `ldir-adoc`, `ldir-org` (input parsers)
+7. `ldir-pdf` (output backend)
+8. `ldir-html`, `ldir-txt`, `ldir-epub`, `ldir-docx`, `ldir-odt`, `ldir-pandoc`, `ldir-jupyter` (output backends)
+9. `ldir-dis`, `ldir-as`, `ldir-diff`, `ldir-validate`, `ldir-opt`, `ldir-link` (tools)
+10. `ldir-lsp` (language server)
 11. `ldir-vello` (GPU renderer)
-12. `ldc` (CLI compiler)
+12. `ldir-wasm` (WASM bridge)
+13. `ldc` (CLI compiler)
 
 ### 5.3 Version Strategy
 
@@ -219,7 +226,7 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 
 ### Success Criteria
 
-- All 25 crates published to crates.io
+- All 29 crates published to crates.io
 - `cargo install ldc` works from crates.io
 - docs.rs builds without warnings
 
@@ -237,7 +244,9 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 ### 6.2 Language Server
 
 - ~~Full LSP compliance: hover, goto definition, references, rename, completion~~ DONE
-- ~~Real-time preview via incremental compilation~~ DONE
+- ~~Real-time preview via incremental compilation~~ DONE (dual HTML+PDF preview)
+- ~~Folding ranges~~ DONE
+- ~~Semantic tokens~~ DONE
 - Multi-format support in single workspace
 - VS Code extension with compile-on-save and PDF preview
 
@@ -301,15 +310,19 @@ The HashMap-based string interner double-allocated strings. Fixed by switching t
 ### 8.2 Advanced Typesetting
 
 - ~~TeX macro expansion (`\newcommand`, `\def`)~~ DONE (amsmath + graphicx + MacroRegistry)
+- ~~Bibliography engine~~ DONE (IEEE, APA, Chicago, MLA styles; BibliographyResolver)
 - Multi-column layout with column spanning -- **DONE (E-2)**: MultiColumnOptions, reflow_multicolumn(), balanced mode
 - ~~OpenType feature support (ligatures, old-style numerals, small caps)~~ DONE
 - Extended hyphenation dictionaries -- **DONE (E-4)**: HyphenationLang enum, DE/FR/ES/PT support, per-language affixes
 
 ### 8.3 Format Completeness
 
-- DOCX output: Full OOXML compliance -- **DONE (G-2)**: numbering, styles, heading differentiation, doc properties, new node handlers
+- DOCX output: Full OOXML compliance -- **DONE (G-2)**: numbering, styles, heading differentiation, doc properties, new node handlers, tracked changes
 - EPUB3: Navigation document, accessibility metadata -- **DONE (G-2)**: accessibility metadata, nested TOC, landmarks, dc:date, spine toc
 - ~~HTML output: Configurable CSS templates~~ DONE (5 themes)
+- ~~ODT output~~ DONE (ISO 26300 compliant)
+- ~~Pandoc AST output~~ DONE
+- ~~Jupyter notebook output~~ DONE
 
 ### 8.4 VS Code Extension
 

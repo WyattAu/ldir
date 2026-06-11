@@ -23,6 +23,7 @@ use vello::{
 };
 
 use crate::gir_to_scene::{FontMap, gir_doc_to_scenes, gir_to_scene};
+use crate::viewport::Viewport;
 
 /// Wrapper around Vello scene construction and GPU rendering.
 ///
@@ -36,6 +37,7 @@ use crate::gir_to_scene::{FontMap, gir_doc_to_scenes, gir_to_scene};
 pub struct VelloRenderer {
     scenes: Vec<Scene>,
     font_map: FontMap,
+    viewport: Viewport,
     device_label: String,
     #[cfg(feature = "gpu")]
     gpu: Option<GpuState>,
@@ -122,6 +124,7 @@ impl VelloRenderer {
         Ok(Self {
             scenes: Vec::new(),
             font_map: FontMap::new(),
+            viewport: Viewport::default(),
             device_label: if cfg!(feature = "gpu") {
                 #[cfg(feature = "gpu")]
                 {
@@ -162,6 +165,7 @@ impl VelloRenderer {
         Self {
             scenes,
             font_map,
+            viewport: Viewport::default(),
             device_label: "headless".to_string(),
             #[cfg(feature = "gpu")]
             gpu: None,
@@ -216,6 +220,21 @@ impl VelloRenderer {
         &mut self.font_map
     }
 
+    /// Get a reference to the viewport.
+    pub fn viewport(&self) -> &Viewport {
+        &self.viewport
+    }
+
+    /// Get a mutable reference to the viewport.
+    pub fn viewport_mut(&mut self) -> &mut Viewport {
+        &mut self.viewport
+    }
+
+    /// Set the viewport to a new value.
+    pub fn set_viewport(&mut self, viewport: Viewport) {
+        self.viewport = viewport;
+    }
+
     /// Render a G-IR document to an RGBA pixel buffer.
     ///
     /// When GPU rendering is available, uses Vello's compute shader pipeline.
@@ -237,6 +256,9 @@ impl VelloRenderer {
 
     /// Render a stored scene (by page index) to an RGBA pixel buffer.
     ///
+    /// Applies the current viewport transform (pan/zoom) to the scene
+    /// before rendering.
+    ///
     /// In headless mode, returns a white pixel buffer.
     pub fn render_scene(&self, page: usize, width: u32, height: u32) -> Result<Vec<u8>> {
         let err = LdirError {
@@ -246,7 +268,34 @@ impl VelloRenderer {
         };
         let scene = self.get_scene(page).ok_or(err)?;
 
-        self.render_scene_impl(scene, width, height)
+        // Apply viewport transform (pan + zoom) by creating a transformed scene.
+        let transformed = self.apply_viewport(scene, width, height);
+        self.render_scene_impl(&transformed, width, height)
+    }
+
+    /// Apply the viewport pan/zoom transform to a scene.
+    ///
+    /// Creates a new scene with the viewport's affine transform applied.
+    /// The transform maps from G-IR 26.6 fixed-point coordinates to screen
+    /// pixel coordinates, accounting for pan offset and zoom factor.
+    fn apply_viewport(&self, scene: &Scene, _width: u32, _height: u32) -> Scene {
+        use vello::peniko::kurbo::Affine;
+
+        let vp = &self.viewport;
+        let pan_x = vp.x.to_f64();
+        let pan_y = vp.y.to_f64();
+        let zoom = vp.zoom;
+
+        // If viewport is at default (identity), skip transform for performance.
+        if (pan_x - 0.0).abs() < 0.01 && (pan_y - 0.0).abs() < 0.01 && (zoom - 1.0).abs() < 0.001 {
+            return scene.clone();
+        }
+
+        // Apply: translate by negative pan (move content), then scale by zoom.
+        let transform = Affine::translate((-pan_x, -pan_y)) * Affine::scale(zoom);
+        let mut transformed = Scene::new();
+        transformed.append(scene, Some(transform));
+        transformed
     }
 
     /// Internal rendering implementation.
@@ -615,6 +664,58 @@ mod tests {
         let mut pixels = vec![0u8; 4];
         fill_white(&mut pixels, 1, 1);
         assert_eq!(pixels, [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn test_viewport_default() {
+        let renderer = VelloRenderer::default();
+        let vp = renderer.viewport();
+        assert_eq!(vp.zoom, 1.0);
+        assert_eq!(vp.x, ldir_core::fp266::Fp266::ZERO);
+        assert_eq!(vp.y, ldir_core::fp266::Fp266::ZERO);
+    }
+
+    #[test]
+    fn test_viewport_mut() {
+        let mut renderer = VelloRenderer::default();
+        renderer.viewport_mut().zoom(2.0);
+        assert_eq!(renderer.viewport().zoom, 2.0);
+    }
+
+    #[test]
+    fn test_set_viewport() {
+        let mut renderer = VelloRenderer::default();
+        use crate::viewport::Viewport;
+        use ldir_core::fp266::Fp266;
+        let vp = Viewport::new(
+            Fp266::from_int(10),
+            Fp266::from_int(20),
+            Fp266::from_int(612),
+            Fp266::from_int(792),
+        );
+        renderer.set_viewport(vp);
+        assert_eq!(renderer.viewport().x, Fp266::from_int(10));
+    }
+
+    #[test]
+    fn test_render_scene_with_viewport() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let doc = make_test_doc();
+        let mut renderer = VelloRenderer::from_gir(&doc, &[]);
+        // Zoom in 2x -- should still render without errors
+        renderer.viewport_mut().zoom(2.0);
+        let pixels = renderer.render_scene(0, 100, 100)?;
+        assert_eq!(pixels.len(), 100 * 100 * 4);
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_scene_with_pan() -> std::result::Result<(), Box<dyn std::error::Error>> {
+        let doc = make_test_doc();
+        let mut renderer = VelloRenderer::from_gir(&doc, &[]);
+        renderer.viewport_mut().pan_f64(50.0, 100.0);
+        let pixels = renderer.render_scene(0, 100, 100)?;
+        assert_eq!(pixels.len(), 100 * 100 * 4);
+        Ok(())
     }
 
     #[cfg(feature = "gpu")]

@@ -1,25 +1,29 @@
 # LDIR Technical Roadmap
 
-## Current State (v3.16.0, Era S)
+## Current State (v4.0.0, Era S)
 
 | Metric | Value |
 |--------|-------|
-| Rust crates | 26 |
-| Rust LOC | ~72,400 |
+| Rust crates | 29 (+ 1 Lean4 project) |
+| Rust LOC | ~82,000 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 1,865 (all passing, 5 ignored) |
+| Total tests | 2,127 (all passing) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded, 1 len()-guarded) |
 | Unsafe blocks | 24 (22 blocks + 2 fn: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls) |
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
-| Output formats | 8 (PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR) |
+| Output formats | 11 (PDF, HTML, EPUB, TXT, DOCX, ODT, Pandoc AST, Jupyter, GIR, SIR2, LDIR) |
 | Multi-column layout | DONE (MultiColumnOptions, reflow_multicolumn, balanced mode) |
 | Multilingual hyphenation | DONE (EN/DE/FR/ES/PT, HyphenationLang, per-language affixes) |
-| Font subsetting | Compound glyph resolution + GSUB/GPOS/VORG (glyph ID remapping TODO) |
+| Font subsetting | DONE (compound glyph resolution + GSUB/GPOS/VORG + glyph ID remapping) |
 | VS Code extension | LSP integration done (preview notifications, config, language def) |
-| DOCX output | Numbering, styles, heading differentiation, doc properties, node handlers |
-| EPUB3 | Accessibility metadata, nested TOC, landmarks, dc:date, spine toc |
+| DOCX output | DONE (numbering, styles, heading differentiation, doc properties, tracked changes) |
+| EPUB3 | DONE (accessibility metadata, nested TOC, landmarks, dc:date, spine toc) |
+| MLA citations | DONE (BibliographyResolver with IEEE, APA, Chicago, MLA) |
+| LSP features | DONE (folding ranges, semantic tokens, dual HTML+PDF preview) |
+| GPU rendering | Vello pipeline + LRU glyph outline cache (8192 entries) |
+| Performance | 475-page doc: 0.8s compile CPU, ~2s wall time (release) |
 
 ---
 
@@ -140,7 +144,7 @@ Matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). MSRV check job 
 
 ## Phase Y: GPU Rendering (8-12 weeks)
 
-### Y-1: Vello compute shader pipeline (8-12 weeks) [DONE] (core)
+### Y-1: Vello compute shader pipeline (8-12 weeks) [DONE] (core + glyph cache)
 
 **Delivered:** GPU rendering pipeline in `ldir-vello` behind `gpu` feature flag.
 - `GpuState` wraps `wgpu::Device` + `wgpu::Queue` + `vello::Renderer`
@@ -151,8 +155,11 @@ Matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). MSRV check job 
 - Added `pollster` dependency for async-to-sync GPU initialization
 - 65 tests pass (GPU feature), 64 tests pass (software default)
 - Clippy clean (`-D warnings`) in both feature modes
+- LRU glyph outline cache (8192 entries, RefCell<HashMap>) in FontEntry
+- render_glyph_outline_cached() avoids per-glyph ttf_parser::Face::parse
+- Viewport module with pan/zoom and coordinate transforms (26.6 fixed-point)
 
-**Remaining:** Glyph caching on GPU (texture atlas), viewport transform integration, benchmark at 144Hz (REQ-6.1.2: <6.9ms frame budget).
+**Remaining:** Viewport transform integration into render pipeline, benchmark at 144Hz (REQ-6.1.2: <6.9ms frame budget).
 
 ---
 

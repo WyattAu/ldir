@@ -235,6 +235,10 @@ fn render_glyph_outline_cached(
 ///
 /// Returns `true` if the glyph was successfully rendered, `false` if
 /// it should fall back to a placeholder rectangle.
+///
+/// Non-cached version used only in tests. Production code uses
+/// [`render_glyph_outline_cached`] which caches BezPath outlines.
+#[cfg(test)]
 fn render_glyph_outline(
     scene: &mut Scene,
     transform: Affine,
