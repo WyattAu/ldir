@@ -6,7 +6,9 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
 use crate::diagnostics;
+use crate::folding;
 use crate::preview::PreviewManager;
+use crate::semantic_tokens;
 use crate::symbols;
 
 #[derive(Debug)]
@@ -51,6 +53,16 @@ impl LanguageServer for Backend {
                 completion_provider: Some(CompletionOptions::default()),
                 rename_provider: Some(OneOf::Left(true)),
                 code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+                folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
+                semantic_tokens_provider: Some(
+                    SemanticTokensServerCapabilities::SemanticTokensOptions(
+                        SemanticTokensOptions {
+                            legend: semantic_tokens::semantic_token_legend(),
+                            full: Some(SemanticTokensFullOptions::Bool(true)),
+                            ..Default::default()
+                        },
+                    ),
+                ),
                 ..Default::default()
             },
             ..Default::default()
@@ -334,6 +346,32 @@ impl LanguageServer for Backend {
         };
         let syms = symbols::extract_symbols(&state.text, uri);
         Ok(Some(DocumentSymbolResponse::Nested(syms)))
+    }
+
+    async fn folding_range(&self, params: FoldingRangeParams) -> Result<Option<Vec<FoldingRange>>> {
+        let docs = self.documents.read().await;
+        let uri = &params.text_document.uri;
+        let Some(state) = docs.get(&uri.to_string()) else {
+            return Ok(None);
+        };
+        let ranges = folding::compute_folding_ranges(&state.text);
+        Ok(Some(ranges))
+    }
+
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> Result<Option<SemanticTokensResult>> {
+        let docs = self.documents.read().await;
+        let uri = &params.text_document.uri;
+        let Some(state) = docs.get(&uri.to_string()) else {
+            return Ok(None);
+        };
+        let tokens = semantic_tokens::compute_semantic_tokens(&state.text);
+        Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
+            result_id: None,
+            data: tokens,
+        })))
     }
 
     async fn prepare_rename(

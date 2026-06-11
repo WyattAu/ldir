@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutorial -- ldir Documentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+    <h1><a href="index.html">ldir</a></h1>
+    <div class="header-right">
+        <select id="version-select" class="version-select" aria-label="Documentation version"></select>
+        <a href="https://github.com/WyattAu/ldir" class="header-link">GitHub</a>
+    </div>
+</header>
+<div class="site-layout">
+<nav class="sidebar">
+    <div class="nav-section">Getting Started</div>
+    <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Quick Start</a></li>
+        <li><a href="tutorial.html">Tutorial</a></li>
+    </ul>
+    <div class="nav-section">Reference</div>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a></li>
+        <li><a href="formats.html">Formats</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="comparison.html">Comparison</a></li>
+    </ul>
+    <div class="nav-section">Internals</div>
+    <ul>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="crates.html">Crate Index</a></li>
+    </ul>
+</nav>
+<main class="content">
+    <h1>Tutorial <span class="version-badge">v0.1.0</span></h1>
+
+    <p>
+        This tutorial walks you through common ldir tasks from a blank file
+        to a multi-section document with math, tables, cross-references, and
+        citations. Each section is self-contained -- copy the examples into a
+        <code>.md</code> file and compile them.
+    </p>
+
+    <h2>Your First Document</h2>
+
+    <p>Create a file called <code>hello.md</code>:</p>
+
+<pre><code># Hello, ldir
+
+This is my first document compiled with ldir.
+
+- It supports **bold**, *italic*, and `inline code`.
+- Lists and headings work exactly as in standard Markdown.
+
+That is all there is to it.
+Run the compiler and open the resulting PDF.</code></pre>
+
+    <p>Compile to PDF:</p>
+
+<pre><code>ldc hello.md -o hello.pdf</code></pre>
+
+    <p>The output is a typeset PDF with default A4 page size, 12pt body text,
+    and hyphenation enabled.</p>
+
+    <h2>Adding Math</h2>
+
+    <p>ldir renders LaTeX math expressions in Markdown. Use dollar signs for
+    inline math and double dollar signs for display equations.</p>
+
+<pre><code># Mathematics in ldir
+
+The quadratic formula solves $ax^2 + bx + c = 0$:
+
+$$
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+$$
+
+Euler's identity: $e^{i\pi} + 1 = 0$.
+
+A matrix:
+
+$$
+A = \begin{pmatrix} 1 &amp; 2 \\ 3 &amp; 4 \end{pmatrix}
+$$</code></pre>
+
+    <p>Compile:</p>
+
+<pre><code>ldc math.md -o math.pdf</code></p>
+
+    <p>Supported math environments: <code>$...$</code> (inline),
+    <code>$$...$$</code> (display), and <code>\begin{align}...\end{align}</code>
+    for numbered multi-line equations.</p>
+
+    <h2>Creating Tables</h2>
+
+    <p>Standard Markdown table syntax is supported:</p>
+
+<pre><code># Sales Report
+
+| Quarter | Revenue | Growth |
+|---------|---------|--------|
+| Q1      | $1.2M   | 5%     |
+| Q2      | $1.5M   | 25%    |
+| Q3      | $1.8M   | 20%    |
+| Q4      | $2.1M   | 17%    |
+
+| :---           | ---:  | :---: |
+| Left-aligned   | Right | Center |
+| data           | 100   | ok    |</code></pre>
+
+    <p>Pipe tables and simple grid tables are both supported. Column
+    alignment is controlled by the separator row (<code>:---</code>,
+    <code>---:</code>, <code>:---:</code>).</p>
+
+    <h2>Cross-References</h2>
+
+    <p>Use <code>\label{}</code> and <code>\ref{}</code> to create
+    cross-references between sections, figures, and tables.</p>
+
+<pre><code># Introduction \label{sec:intro}
+
+This is the introduction. See Section \ref{sec:methods} for
+the methodology.
+
+## Methods \label{sec:methods}
+
+We used the approach described in Section \ref{sec:intro}.
+
+## Results
+
+As shown in Table \ref{tab:results}:
+
+| Metric | Value |
+|--------|-------|
+| Accuracy | 97.3% |
+| Recall | 95.1% |
+\label{tab:results}</code></pre>
+
+    <p>References are resolved during compilation and rendered as numbered
+    links. The <code>\label</code> can appear on a heading line or
+    immediately after a table.</p>
+
+    <h2>Citations and Bibliography</h2>
+
+    <p>ldir reads BibTeX <code>.bib</code> files and renders citations
+    using IEEE, APA, or Chicago styles.</p>
+
+    <p>Create <code>refs.bib</code>:</p>
+
+<pre><code>@article{knuth1984,
+  author  = {Knuth, Donald E.},
+  title   = {Literate Programming},
+  journal = {The Computer Journal},
+  year    = {1984},
+  volume  = {27},
+  number  = {2},
+  pages   = {97--111},
+}
+
+@book{lamport1994,
+  author    = {Lamport, Leslie},
+  title     = {{\LaTeX}: A Document Preparation System},
+  publisher = {Addison-Wesley},
+  year      = {1994},
+  edition   = {2},
+}</code></pre>
+
+    <p>Create <code>paper.md</code>:</p>
+
+<pre><code># Related Work
+
+The concept of literate programming was introduced by
+Knuth \cite{knuth1984}. For document preparation,
+\cite{lamport1994} describes the widely-used LaTeX system.
+
+## References
+
+\bibliography{refs}
+\bibliographystyle{ieee}</code></pre>
+
+    <p>Compile with the bibliography:</p>
+
+<pre><code>ldc paper.md -o paper.pdf</code></pre>
+
+    <p>Available styles: <code>ieee</code>, <code>apa</code>,
+    <code>chicago</code>. Year disambiguation is handled automatically
+    when multiple works by the same author share a year.</p>
+
+    <h2>Configuration</h2>
+
+    <p>Project-level settings are stored in <code>ldir.toml</code> in the
+    same directory as your source file.</p>
+
+<pre><code>[document]
+title = "My Document"
+author = "Jane Doe"
+date = "2026-05-31"
+paper-size = "a4"
+margin-top = "2.5cm"
+margin-bottom = "2.5cm"
+margin-inner = "3cm"
+margin-outer = "2cm"
+
+[typography]
+font-body = "Latin Modern Roman"
+font-heading = "Latin Modern Sans"
+font-mono = "Latin Modern Mono"
+font-size = "12pt"
+line-height = 1.5
+
+[output]
+format = "pdf"
+pdf-a = "2b"
+hyphenation = "en"</code></pre>
+
+    <p>When <code>ldir.toml</code> is present, <code>ldc</code> reads it
+    automatically. CLI flags override file settings.</p>
+
+    <h2>Output Formats</h2>
+
+    <p>ldir supports multiple output formats. The <code>-o</code> flag
+    determines the format based on the file extension:</p>
+
+<pre><code># PDF (default)
+ldc input.md -o output.pdf
+
+# HTML
+ldc input.md -o output.html
+
+# EPUB
+ldc input.md -o output.epub
+
+# DOCX (Word)
+ldc input.md -o output.docx
+
+# ODT (LibreOffice)
+ldc input.md -o output.odt
+
+# Plain text
+ldc input.md -o output.txt</code></pre>
+
+    <p>All formats share the same compilation pipeline -- Markdown, LaTeX,
+    Typst, or HTML input is parsed into S-IR, compiled to L-IR, and then
+    rendered to the target format. This means a single source file can
+    produce consistent output in any supported format.</p>
+
+    <h2>Next Steps</h2>
+
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a> -- full flag documentation</li>
+        <li><a href="formats.html">Formats</a> -- all supported input and output formats</li>
+        <li><a href="examples.html">Examples</a> -- complete example documents</li>
+        <li><a href="comparison.html">Comparison</a> -- ldir vs. other tools</li>
+    </ul>
+</main>
+</div>
+<footer class="site-footer">
+    <p>ldir -- deterministic document typesetting</p>
+</footer>
+<script src="js/version.js"></script>
+</body>
+</html>

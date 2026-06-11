@@ -374,6 +374,38 @@ impl TextRenderer {
             NodeType::Comment { author, content } => {
                 out.push_str(&format!(" [{}: {}]", author, content));
             }
+
+            NodeType::TrackedInsert {
+                author,
+                date,
+                revision_id,
+            } => {
+                out.push_str(&format!(
+                    " [tracked insert: rev {}, {} {}]",
+                    revision_id, author, date
+                ));
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_node(out, module, child, depth);
+                    }
+                }
+            }
+
+            NodeType::TrackedDelete {
+                author,
+                date,
+                revision_id,
+            } => {
+                out.push_str(&format!(
+                    " [tracked delete: rev {}, {} {}]",
+                    revision_id, author, date
+                ));
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_node(out, module, child, depth);
+                    }
+                }
+            }
         }
     }
 

@@ -502,6 +502,42 @@ impl DocxBuilder {
                 out.push_str("</w:t></w:r>");
             }
 
+            NodeType::TrackedInsert {
+                author,
+                date,
+                revision_id,
+            } => {
+                out.push_str(&format!(
+                    "<w:ins w:id=\"{}\" w:author=\"{}\" w:date=\"{}\">",
+                    revision_id,
+                    escape_xml(author),
+                    date
+                ));
+                let text = module.body.collect_text(node.id);
+                out.push_str("<w:r><w:t>");
+                out.push_str(&escape_xml(&text));
+                out.push_str("</w:t></w:r>");
+                out.push_str("</w:ins>");
+            }
+
+            NodeType::TrackedDelete {
+                author,
+                date,
+                revision_id,
+            } => {
+                out.push_str(&format!(
+                    "<w:del w:id=\"{}\" w:author=\"{}\" w:date=\"{}\">",
+                    revision_id,
+                    escape_xml(author),
+                    date
+                ));
+                let text = module.body.collect_text(node.id);
+                out.push_str("<w:r><w:delText>");
+                out.push_str(&escape_xml(&text));
+                out.push_str("</w:delText></w:r>");
+                out.push_str("</w:del>");
+            }
+
             _ => {
                 for &child_id in &node.child_ids {
                     if let Some(child) = module.body.get(child_id) {

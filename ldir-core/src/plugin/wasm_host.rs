@@ -79,6 +79,91 @@ impl Default for WasmHostConfig {
     }
 }
 
+use crate::plugin::PluginError;
+use crate::wasm_plugins::manifest::ResourceLimits;
+
+/// Enforces resource limits on Wasm plugin execution.
+///
+/// Configures fuel, memory, time, and output size limits derived from
+/// a plugin manifest's `ResourceLimits`. Wasmtime's fuel metering provides
+/// instruction-count limiting; wall-clock time is checked after execution.
+#[derive(Debug, Clone)]
+pub struct ResourceLimitEnforcer {
+    max_fuel: u64,
+    max_memory_bytes: u64,
+    max_time_ms: u64,
+    max_output_bytes: u64,
+}
+
+impl ResourceLimitEnforcer {
+    pub fn new(limits: &ResourceLimits) -> Self {
+        Self {
+            max_fuel: limits.max_fuel,
+            max_memory_bytes: (limits.max_memory_mb as u64) * 1024 * 1024,
+            max_time_ms: limits.max_time_ms as u64,
+            max_output_bytes: (limits.max_output_kb as u64) * 1024,
+        }
+    }
+
+    /// Create a wasmtime Config with resource limits applied.
+    pub fn create_engine_config(&self) -> wasmtime::Config {
+        let mut config = wasmtime::Config::new();
+        config.consume_fuel(true);
+        config
+    }
+
+    /// Inject fuel into a wasmtime Store.
+    pub fn configure_store<T>(&self, store: &mut wasmtime::Store<T>) {
+        store.add_fuel(self.max_fuel).unwrap_or(());
+    }
+
+    /// Check if output exceeds the configured size limit.
+    pub fn check_output_size(&self, output: &[u8]) -> Result<(), PluginError> {
+        if output.len() > self.max_output_bytes as usize {
+            return Err(PluginError::OutputTooLarge {
+                requested: output.len(),
+                limit: self.max_output_bytes as usize,
+            });
+        }
+        Ok(())
+    }
+
+    /// Execute a closure with wall-clock timeout enforcement.
+    pub fn execute_with_limits<F, R>(&self, f: F) -> Result<R, PluginError>
+    where
+        F: FnOnce() -> R,
+    {
+        let start = std::time::Instant::now();
+        let result = f();
+        let elapsed = start.elapsed();
+
+        if elapsed.as_millis() > self.max_time_ms {
+            return Err(PluginError::Timeout {
+                limit_ms: self.max_time_ms,
+                actual_ms: elapsed.as_millis(),
+            });
+        }
+
+        Ok(result)
+    }
+
+    pub fn max_fuel(&self) -> u64 {
+        self.max_fuel
+    }
+
+    pub fn max_memory_bytes(&self) -> u64 {
+        self.max_memory_bytes
+    }
+
+    pub fn max_time_ms(&self) -> u64 {
+        self.max_time_ms
+    }
+
+    pub fn max_output_bytes(&self) -> u64 {
+        self.max_output_bytes
+    }
+}
+
 /// A loaded Wasm plugin ready for execution.
 #[allow(dead_code)]
 pub struct WasmPlugin {
@@ -293,5 +378,102 @@ mod tests {
         // Can't test with real Wasm without `wat` crate in non-test deps,
         // but we can test the constant
         assert_eq!(ABI_VERSION, 1);
+    }
+
+    #[test]
+    fn test_resource_limits_output_too_large() {
+        let limits = ResourceLimits {
+            max_output_kb: 1,
+            ..Default::default()
+        };
+        let enforcer = ResourceLimitEnforcer::new(&limits);
+        let large_output = vec![0u8; 2048];
+        assert!(enforcer.check_output_size(&large_output).is_err());
+    }
+
+    #[test]
+    fn test_resource_limits_output_ok() {
+        let limits = ResourceLimits {
+            max_output_kb: 10,
+            ..Default::default()
+        };
+        let enforcer = ResourceLimitEnforcer::new(&limits);
+        let output = vec![0u8; 1024];
+        assert!(enforcer.check_output_size(&output).is_ok());
+    }
+
+    #[test]
+    fn test_resource_limits_enforcer_defaults() {
+        let limits = ResourceLimits::default();
+        let enforcer = ResourceLimitEnforcer::new(&limits);
+        assert_eq!(enforcer.max_fuel(), 100_000);
+        assert_eq!(enforcer.max_memory_bytes(), 64 * 1024 * 1024);
+        assert_eq!(enforcer.max_time_ms(), 1000);
+        assert_eq!(enforcer.max_output_bytes(), 1024 * 1024);
+    }
+
+    #[test]
+    fn test_resource_limits_execute_ok() {
+        let limits = ResourceLimits {
+            max_time_ms: 5000,
+            ..Default::default()
+        };
+        let enforcer = ResourceLimitEnforcer::new(&limits);
+        let result = enforcer.execute_with_limits(|| 42);
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_resource_limits_execute_timeout() {
+        let limits = ResourceLimits {
+            max_time_ms: 0,
+            ..Default::default()
+        };
+        let enforcer = ResourceLimitEnforcer::new(&limits);
+        let result: Result<(), PluginError> = enforcer
+            .execute_with_limits(|| std::thread::sleep(std::time::Duration::from_millis(1)));
+        assert!(result.is_err());
+        if let Err(PluginError::Timeout { actual_ms, .. }) = result {
+            assert!(actual_ms > 0);
+        } else {
+            panic!("expected Timeout error");
+        }
+    }
+
+    #[test]
+    fn test_resource_limits_output_at_boundary() {
+        let limits = ResourceLimits {
+            max_output_kb: 1,
+            ..Default::default()
+        };
+        let enforcer = ResourceLimitEnforcer::new(&limits);
+        let exact_output = vec![0u8; 1024];
+        assert!(enforcer.check_output_size(&exact_output).is_ok());
+
+        let over_output = vec![0u8; 1025];
+        assert!(enforcer.check_output_size(&over_output).is_err());
+    }
+
+    #[test]
+    fn test_resource_limits_error_display() {
+        let err = PluginError::OutputTooLarge {
+            requested: 2048,
+            limit: 1024,
+        };
+        assert!(err.to_string().contains("2048"));
+        assert!(err.to_string().contains("1024"));
+
+        let err = PluginError::Timeout {
+            limit_ms: 1000,
+            actual_ms: 2000,
+        };
+        assert!(err.to_string().contains("2000ms"));
+        assert!(err.to_string().contains("1000ms"));
+
+        let err = PluginError::OutOfFuel(100_000);
+        assert!(err.to_string().contains("100000"));
+
+        let err = PluginError::MemoryExceeded;
+        assert!(err.to_string().contains("memory limit exceeded"));
     }
 }

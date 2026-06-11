@@ -120,6 +120,18 @@ pub enum NodeType {
         name: String,
     },
 
+    // === Tracked changes ===
+    TrackedInsert {
+        author: String,
+        date: String,
+        revision_id: u32,
+    },
+    TrackedDelete {
+        author: String,
+        date: String,
+        revision_id: u32,
+    },
+
     // === Container ===
     Group, // anonymous grouping node
 }

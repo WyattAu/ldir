@@ -9,6 +9,32 @@ pub enum EpubError {
     BuildError(String),
 }
 
+/// EPUB 3 nav landmark type for accessibility navigation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NavLandmarkType {
+    Cover,
+    Toc,
+    BodyMatter,
+}
+
+impl NavLandmarkType {
+    pub fn as_epub_type(&self) -> &'static str {
+        match self {
+            Self::Cover => "cover",
+            Self::Toc => "toc",
+            Self::BodyMatter => "bodymatter",
+        }
+    }
+}
+
+/// A user-defined landmark entry for the EPUB 3 landmarks nav.
+#[derive(Debug, Clone)]
+pub struct LandmarkEntry {
+    pub href: String,
+    pub title: String,
+    pub kind: NavLandmarkType,
+}
+
 #[derive(Debug, Clone)]
 pub struct EpubOptions {
     pub include_toc: bool,
@@ -46,6 +72,7 @@ pub struct MediaOverlay {
 pub struct EpubBuilder {
     options: EpubOptions,
     overlays: Vec<MediaOverlay>,
+    landmarks: Vec<LandmarkEntry>,
     narrator: Option<String>,
     total_duration: Option<Duration>,
 }
@@ -65,6 +92,7 @@ impl EpubBuilder {
         Self {
             options,
             overlays: Vec::new(),
+            landmarks: Vec::new(),
             narrator: None,
             total_duration: None,
         }
@@ -89,6 +117,26 @@ impl EpubBuilder {
     /// Set the total duration of all media overlays.
     pub fn set_total_duration(&mut self, duration: Duration) {
         self.total_duration = Some(duration);
+    }
+
+    /// Add a custom landmark to the EPUB 3 landmarks nav for accessibility.
+    pub fn add_landmark(
+        &mut self,
+        href: &str,
+        title: &str,
+        kind: NavLandmarkType,
+    ) -> Result<(), EpubError> {
+        if href.is_empty() {
+            return Err(EpubError::BuildError(
+                "landmark href must not be empty".into(),
+            ));
+        }
+        self.landmarks.push(LandmarkEntry {
+            href: href.to_string(),
+            title: title.to_string(),
+            kind,
+        });
+        Ok(())
     }
 
     #[must_use = "building EPUB can fail; check the result"]
@@ -119,9 +167,9 @@ impl EpubBuilder {
             &self.narrator,
             &self.total_duration,
         );
-        let toc_xhtml = format_nav_xhtml(title, module);
+        let toc_xhtml = format_nav_xhtml(title, module, &self.landmarks);
         let container_xml = format_container_xml();
-        let toc_ncx = format_toc_ncx(title, &uid);
+        let toc_ncx = generate_ncx(title, &uid, module);
 
         let mut zip = SimpleZip::new();
         let mut mimetype_bytes = b"application/epub+zip".to_vec();
@@ -265,8 +313,9 @@ fn format_opf(
     )
 }
 
-fn format_nav_xhtml(title: &str, module: &SIRModuleV2) -> String {
+fn format_nav_xhtml(title: &str, module: &SIRModuleV2, landmarks: &[LandmarkEntry]) -> String {
     let toc_items = build_nested_toc(module);
+    let landmark_items = format_landmark_items(landmarks);
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
@@ -284,14 +333,28 @@ fn format_nav_xhtml(title: &str, module: &SIRModuleV2) -> String {
 <nav epub:type="landmarks" id="landmarks">
   <h2>Guide</h2>
   <ol>
-    <li><a epub:type="cover" href="chapter1.xhtml">Cover</a></li>
-    <li><a epub:type="toc" href="toc.xhtml">Table of Contents</a></li>
-  </ol>
+{landmark_items}  </ol>
 </nav>
 </body>
 </html>"#,
         title = escape_xml(title)
     )
+}
+
+fn format_landmark_items(landmarks: &[LandmarkEntry]) -> String {
+    if landmarks.is_empty() {
+        return String::new();
+    }
+    let mut items = String::new();
+    for lm in landmarks {
+        items.push_str(&format!(
+            "    <li><a epub:type=\"{}\" href=\"{}\">{}</a></li>\n",
+            lm.kind.as_epub_type(),
+            escape_xml(&lm.href),
+            escape_xml(&lm.title),
+        ));
+    }
+    items
 }
 
 struct TocEntry {
@@ -346,23 +409,67 @@ fn format_nested_entries(entries: &[TocEntry], min_level: u8) -> String {
     result
 }
 
-fn format_toc_ncx(title: &str, uid: &str) -> String {
+fn generate_ncx(title: &str, uid: &str, module: &SIRModuleV2) -> String {
+    let mut nav_points = String::new();
+    let mut play_order: u32 = 1;
+
+    let mut entries: Vec<TocEntry> = Vec::new();
+    for node in module.headings() {
+        if let Some(_level) = node.heading_level() {
+            let text = module.body.collect_text(node.id);
+            let fallback_id = format!("heading-{}", node.id);
+            let id = node.label.as_deref().unwrap_or(&fallback_id);
+            entries.push(TocEntry {
+                id: id.to_string(),
+                text,
+                level: _level,
+            });
+        }
+    }
+
+    for entry in &entries {
+        nav_points.push_str(&format!(
+            "  <navPoint id=\"navpoint-{play_order}\" playOrder=\"{play_order}\">\n",
+            play_order = play_order
+        ));
+        nav_points.push_str(&format!(
+            "    <navLabel><text>{}</text></navLabel>\n",
+            escape_xml(&entry.text)
+        ));
+        nav_points.push_str(&format!(
+            "    <content src=\"chapter1.xhtml#{}\"/>\n",
+            entry.id
+        ));
+        nav_points.push_str("  </navPoint>\n");
+        play_order += 1;
+    }
+
+    if nav_points.is_empty() {
+        nav_points = format!(
+            "  <navPoint id=\"navpoint-1\" playOrder=\"1\">\n    <navLabel><text>{}</text></navLabel>\n    <content src=\"chapter1.xhtml\"/>\n  </navPoint>\n",
+            escape_xml(title)
+        );
+    }
+
+    let depth = entries.iter().map(|e| e.level as u32).max().unwrap_or(1);
+
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
 <head>
 <meta name="dtb:uid" content="{uid}"/>
+<meta name="dtb:depth" content="{depth}"/>
+<meta name="dtb:totalPageCount" content="0"/>
+<meta name="dtb:maxPageNumber" content="0"/>
 </head>
 <docTitle><text>{title}</text></docTitle>
 <navMap>
-<navPoint id="nav-1" playOrder="1">
-<navLabel><text>{title}</text></navLabel>
-<content src="chapter1.xhtml"/>
-</navPoint>
-</navMap>
+{nav_points}</navMap>
 </ncx>"#,
         title = escape_xml(title),
-        uid = uid
+        uid = uid,
+        depth = depth,
+        nav_points = nav_points,
     )
 }
 
@@ -722,8 +829,11 @@ mod tests {
 
     #[test]
     fn test_epub_has_landmarks_nav() -> Result<(), Box<dyn std::error::Error>> {
+        let mut builder = EpubBuilder::new();
+        builder.add_landmark("chapter1.xhtml", "Cover", NavLandmarkType::Cover)?;
+        builder.add_landmark("toc.xhtml", "Table of Contents", NavLandmarkType::Toc)?;
         let m = make_simple_module();
-        let epub = EpubBuilder::new().build(&m)?;
+        let epub = builder.build(&m)?;
         let text = String::from_utf8_lossy(&epub);
         assert!(text.contains("epub:type=\"landmarks\""));
         assert!(text.contains("epub:type=\"cover\""));
@@ -858,5 +968,58 @@ mod tests {
     fn test_smil_timecode_rounding() {
         assert_eq!(format_smil_timecode(Some(5.9999)), "00:00:06.000");
         assert_eq!(format_smil_timecode(Some(5.4999)), "00:00:05.500");
+    }
+
+    #[test]
+    fn test_landmark_generation() -> Result<(), Box<dyn std::error::Error>> {
+        let mut builder = EpubBuilder::new();
+        builder.add_landmark("chapter1.xhtml", "Cover", NavLandmarkType::Cover)?;
+        builder.add_landmark("toc.xhtml", "TOC", NavLandmarkType::Toc)?;
+        builder.add_landmark("chapter1.xhtml", "Body", NavLandmarkType::BodyMatter)?;
+        let m = make_simple_module();
+        let epub = builder.build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("epub:type=\"cover\""));
+        assert!(text.contains("epub:type=\"toc\""));
+        assert!(text.contains("epub:type=\"bodymatter\""));
+        assert!(text.contains("href=\"chapter1.xhtml\">Cover"));
+        assert!(text.contains("href=\"toc.xhtml\">TOC"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_add_landmark_rejects_empty_href() {
+        let mut builder = EpubBuilder::new();
+        let result = builder.add_landmark("", "Title", NavLandmarkType::Cover);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_ncx_structure() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let epub = EpubBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\""));
+        assert!(text.contains("version=\"2005-1\""));
+        assert!(text.contains("dtb:uid"));
+        assert!(text.contains("dtb:depth"));
+        assert!(text.contains("dtb:totalPageCount"));
+        assert!(text.contains("dtb:maxPageNumber"));
+        assert!(text.contains("<docTitle>"));
+        assert!(text.contains("<navMap>"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_ncx_nav_points() -> Result<(), Box<dyn std::error::Error>> {
+        let m = make_simple_module();
+        let epub = EpubBuilder::new().build(&m)?;
+        let text = String::from_utf8_lossy(&epub);
+        assert!(text.contains("<navPoint id=\"navpoint-"));
+        assert!(text.contains("playOrder=\""));
+        assert!(text.contains("<navLabel>"));
+        assert!(text.contains("<content src=\"chapter1.xhtml"));
+        assert!(text.contains("</navMap>"));
+        Ok(())
     }
 }

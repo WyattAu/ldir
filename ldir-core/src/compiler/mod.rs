@@ -15,10 +15,12 @@
 //! - **POST-COMP-003**: Stack balanced per page
 //! - **INV-COMP-001**: Bit-identical output (deterministic)
 
-/// BibTeX bibliography parser and IEEE/APA citation formatter.
+/// Bibliography resolver: loads .bib files and resolves citations.
+pub mod bibliography;
+/// BibTeX bibliography parser and IEEE/APA/Chicago/MLA citation formatter.
 ///
 /// Parses `.bib` files into structured entries and formats citations
-/// according to IEEE and APA style rules.
+/// according to IEEE, APA, Chicago, and MLA style rules.
 pub mod bibtex;
 pub mod context;
 /// Cross-reference resolution: label registration, lookup, and bibliography linking.

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparison -- ldir Documentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+    <h1><a href="index.html">ldir</a></h1>
+    <div class="header-right">
+        <select id="version-select" class="version-select" aria-label="Documentation version"></select>
+        <a href="https://github.com/WyattAu/ldir" class="header-link">GitHub</a>
+    </div>
+</header>
+<div class="site-layout">
+<nav class="sidebar">
+    <div class="nav-section">Getting Started</div>
+    <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Quick Start</a></li>
+        <li><a href="tutorial.html">Tutorial</a></li>
+    </ul>
+    <div class="nav-section">Reference</div>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a></li>
+        <li><a href="formats.html">Formats</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="comparison.html">Comparison</a></li>
+    </ul>
+    <div class="nav-section">Internals</div>
+    <ul>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="crates.html">Crate Index</a></li>
+    </ul>
+</nav>
+<main class="content">
+    <h1>Comparison <span class="version-badge">v0.1.0</span></h1>
+
+    <p>
+        This page compares ldir to other document preparation tools across
+        a set of factual, measurable categories. Values reflect publicly
+        available documentation as of the current release.
+    </p>
+
+    <h2>Feature Comparison</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Feature</th>
+                <th>ldir</th>
+                <th>LaTeX / PDFLaTeX</th>
+                <th>Typst</th>
+                <th>Pandoc</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Input formats</td>
+                <td>9</td>
+                <td>1 (TeX)</td>
+                <td>1 (Typst)</td>
+                <td>20+</td>
+            </tr>
+            <tr>
+                <td>Output formats</td>
+                <td>12</td>
+                <td>1 (PDF)</td>
+                <td>1 (PDF)</td>
+                <td>30+</td>
+            </tr>
+            <tr>
+                <td>IR pipeline</td>
+                <td>3-layer (S-IR, L-IR, G-IR)</td>
+                <td>None</td>
+                <td>None</td>
+                <td>AST only</td>
+            </tr>
+            <tr>
+                <td>Formal verification</td>
+                <td>Lean 4</td>
+                <td>None</td>
+                <td>None</td>
+                <td>None</td>
+            </tr>
+            <tr>
+                <td>Language</td>
+                <td>Rust</td>
+                <td>TeX</td>
+                <td>Rust</td>
+                <td>Haskell</td>
+            </tr>
+            <tr>
+                <td>Compilation speed</td>
+                <td>Fast</td>
+                <td>Slow</td>
+                <td>Fast</td>
+                <td>Medium</td>
+            </tr>
+            <tr>
+                <td>WASM support</td>
+                <td>Yes</td>
+                <td>No</td>
+                <td>Yes</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td>Incremental compilation</td>
+                <td>Yes</td>
+                <td>No</td>
+                <td>Yes</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td>Macro system</td>
+                <td>TeX subset</td>
+                <td>Full</td>
+                <td>Custom</td>
+                <td>Pandoc filters</td>
+            </tr>
+            <tr>
+                <td>Plugin system</td>
+                <td>WASM</td>
+                <td>Lua (LuaLaTeX)</td>
+                <td>None</td>
+                <td>Lua filters</td>
+            </tr>
+            <tr>
+                <td>Open source license</td>
+                <td>MIT / Apache-2.0</td>
+                <td>LPPL</td>
+                <td>Apache-2.0</td>
+                <td>GPL-2.0</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Input Format Support</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Format</th>
+                <th>ldir</th>
+                <th>LaTeX</th>
+                <th>Typst</th>
+                <th>Pandoc</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Markdown</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>LaTeX / TeX</td><td>Yes</td><td>Yes</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Typst</td><td>Yes</td><td>No</td><td>Yes</td><td>No</td></tr>
+            <tr><td>HTML</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Asciidoc</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Org-mode</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>DOCX</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>reStructuredText</td><td>No</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>EPUB</td><td>No</td><td>No</td><td>No</td><td>Yes</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Output Format Support</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Format</th>
+                <th>ldir</th>
+                <th>LaTeX</th>
+                <th>Typst</th>
+                <th>Pandoc</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>PDF</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes (via LaTeX/WeasyPrint)</td></tr>
+            <tr><td>HTML</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>EPUB</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>DOCX</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>ODT</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Plain text</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Notes</h2>
+
+    <ul>
+        <li>
+            <strong>Input/output format counts</strong> refer to natively
+            supported formats built into the tool, not formats achievable
+            through third-party extensions or shell pipelines.
+        </li>
+        <li>
+            <strong>Compilation speed</strong> is a qualitative
+            characterization based on typical single-document builds.
+            Actual performance depends on document size, complexity, and
+            available hardware.
+        </li>
+        <li>
+            <strong>Macro system</strong> refers to the user-facing
+            extensibility mechanism for text transformation during
+            compilation.
+        </li>
+        <li>
+            <strong>Plugin system</strong> refers to the mechanism for
+            loading and executing sandboxed external code to extend input
+            parsing, output generation, or compilation behavior.
+        </li>
+        <li>
+            <strong>IR pipeline</strong> indicates whether the tool uses
+            an intermediate representation layer between parsing and
+            rendering. ldir's three-layer pipeline (semantic, layout,
+            rendering) enables independent optimization and verification
+            at each stage.
+        </li>
+        <li>
+            <strong>Formal verification</strong> indicates that correctness
+            properties of the IR are proven using a proof assistant
+            (Lean 4 for ldir). This does not imply that the entire tool
+            chain is formally verified.
+        </li>
+    </ul>
+</main>
+</div>
+<footer class="site-footer">
+    <p>ldir -- deterministic document typesetting</p>
+</footer>
+<script src="js/version.js"></script>
+</body>
+</html>

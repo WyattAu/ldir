@@ -620,4 +620,97 @@ mod tests {
         let doc = parse_tex(r"\graphicspath{{images}{figures}}");
         assert!(doc.len() >= 1, "should parse without error");
     }
+
+    #[test]
+    fn test_enumerate_basic() {
+        let doc = parse_tex(r"\begin{enumerate}\item first\item second\item third\end{enumerate}");
+        assert!(find_block_type(&doc, BlockType::List));
+        assert!(find_content(&doc, "first"));
+        assert!(find_content(&doc, "second"));
+        assert!(find_content(&doc, "third"));
+        let mut found_ordered = false;
+        for instr in doc.iter() {
+            if instr.opcode() == SIROpcode::PushBlock {
+                if let Some(payload) = doc.payload().get(instr.payload_offset(), 5) {
+                    if payload[0] == BlockType::List as u8
+                        && payload.len() >= 5
+                        && u32::from_le_bytes([payload[1], payload[2], payload[3], payload[4]]) == 1
+                    {
+                        found_ordered = true;
+                    }
+                }
+            }
+        }
+        assert!(
+            found_ordered,
+            "enumerate should have ordered flag in payload"
+        );
+    }
+
+    #[test]
+    fn test_enumerate_nested() {
+        let doc = parse_tex(
+            r"\begin{enumerate}\item outer one\begin{itemize}\item inner a\item inner b\end{itemize}\item outer two\end{enumerate}",
+        );
+        assert!(find_block_type(&doc, BlockType::List));
+        assert!(find_content(&doc, "outer one"));
+        assert!(find_content(&doc, "inner a"));
+        assert!(find_content(&doc, "inner b"));
+        assert!(find_content(&doc, "outer two"));
+    }
+
+    #[test]
+    fn test_description() {
+        let doc = parse_tex(
+            r"\begin{description}\item[Term A] Definition A.\item[Term B] Definition B.\end{description}",
+        );
+        assert!(find_block_type(&doc, BlockType::List));
+        assert!(find_content(&doc, "Term A"));
+        assert!(find_content(&doc, "Definition A"));
+        assert!(find_content(&doc, "Term B"));
+        assert!(find_content(&doc, "Definition B"));
+        let mut found_description = false;
+        for instr in doc.iter() {
+            if instr.opcode() == SIROpcode::PushBlock {
+                if let Some(payload) = doc.payload().get(instr.payload_offset(), 5) {
+                    if payload[0] == BlockType::List as u8
+                        && payload.len() >= 5
+                        && u32::from_le_bytes([payload[1], payload[2], payload[3], payload[4]]) == 2
+                    {
+                        found_description = true;
+                    }
+                }
+            }
+        }
+        assert!(
+            found_description,
+            "description should have description flag in payload"
+        );
+    }
+
+    #[test]
+    fn test_description_item() {
+        let doc = parse_tex(
+            r"\begin{description}\item[API] Application Programming Interface.\end{description}",
+        );
+        assert!(find_content(&doc, "[API]"));
+        assert!(find_content(&doc, "Application Programming Interface"));
+    }
+
+    #[test]
+    fn test_figure_float() {
+        let doc = parse_tex(r"\begin{figure}[h]\centering\includegraphics{img.png}\end{figure}");
+        assert!(find_block_type(&doc, BlockType::Figure));
+        assert!(find_content(&doc, "placement:h"));
+    }
+
+    #[test]
+    fn test_caption_in_figure() {
+        let doc = parse_tex(
+            r"\begin{figure}[h]\centering\includegraphics{img.png}\caption{Sample figure}\label{fig:sample}\end{figure}",
+        );
+        assert!(find_block_type(&doc, BlockType::Figure));
+        assert!(find_content(&doc, "Sample figure"));
+        assert!(find_content(&doc, "\\label{fig:sample}"));
+    }
 }

@@ -19,6 +19,12 @@ pub mod preview;
 /// CRDT-based collaborative editing support.
 pub mod crdt;
 
+/// Folding range computation for collapsible document regions.
+pub mod folding;
+
+/// Semantic token computation for syntax highlighting.
+pub mod semantic_tokens;
+
 /// Document symbol extraction from headings and environments.
 pub mod symbols;
 

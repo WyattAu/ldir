@@ -1,8 +1,8 @@
-//! BibTeX bibliography parser and IEEE/APA/Chicago citation formatter.
+//! BibTeX bibliography parser and IEEE/APA/Chicago/MLA citation formatter.
 //!
 //! Parses `.bib` files into structured [`BibEntry`] values and formats
 //! in-text citations and bibliography entries according to IEEE, APA,
-//! and Chicago (author-date) style conventions, with optional year
+//! Chicago (author-date), and MLA style conventions, with optional year
 //! disambiguation for entries sharing the same author and year.
 
 #![deny(unsafe_code)]
@@ -444,6 +444,127 @@ pub fn format_citation_chicago(entry: &BibEntry) -> String {
     }
 }
 
+fn format_mla_author_single(name: &str) -> String {
+    let trimmed = name.trim();
+    let parts: Vec<&str> = trimmed.split_whitespace().collect();
+    if parts.len() <= 1 {
+        return trimmed.to_string();
+    }
+    let last = parts[parts.len() - 1];
+    let first_middle = &parts[..parts.len() - 1].join(" ");
+    format!("{}, {}", last, first_middle)
+}
+
+fn format_mla_authors(author_str: &str) -> String {
+    let authors: Vec<&str> = author_str
+        .split(" and ")
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if authors.is_empty() {
+        return "Unknown".to_string();
+    }
+
+    let first_formatted = format_mla_author_single(authors[0]);
+
+    if authors.len() == 1 {
+        first_formatted
+    } else if authors.len() == 2 {
+        format!("{}, and {}", first_formatted, authors[1].trim())
+    } else {
+        format!("{}, et al.", first_formatted)
+    }
+}
+
+pub fn format_citation_mla(entry: &BibEntry) -> String {
+    let author_raw = entry
+        .fields
+        .get("author")
+        .map(|s| s.as_str())
+        .unwrap_or("Unknown");
+    let author = format_mla_authors(author_raw);
+    let title = entry
+        .fields
+        .get("title")
+        .map(|s| s.as_str())
+        .unwrap_or("Untitled");
+    let year = entry
+        .fields
+        .get("year")
+        .map(|s| s.as_str())
+        .unwrap_or("n.d.");
+
+    match entry.entry_type.as_str() {
+        "article" => {
+            let journal = entry
+                .fields
+                .get("journal")
+                .map(|s| s.as_str())
+                .unwrap_or("");
+            let volume = entry.fields.get("volume").map(|s| s.as_str()).unwrap_or("");
+            let number = entry.fields.get("number").map(|s| s.as_str()).unwrap_or("");
+            let pages = entry.fields.get("pages").map(|s| s.as_str()).unwrap_or("");
+            let pages_dash = pages.replace("--", "-");
+            if !journal.is_empty() && !volume.is_empty() && !pages.is_empty() {
+                let vol_part = if !number.is_empty() {
+                    format!("vol. {}, no. {},", volume, number)
+                } else {
+                    format!("vol. {},", volume)
+                };
+                let pp_part = format!("pp. {}.", pages_dash);
+                format!(
+                    "{}. \"{}.\" *{},* {}, {}, {}.",
+                    author, title, journal, vol_part, year, pp_part
+                )
+            } else if !journal.is_empty() && !volume.is_empty() {
+                format!(
+                    "{}. \"{}.\" *{},* vol. {}, {}.",
+                    author, title, journal, volume, year
+                )
+            } else if !journal.is_empty() {
+                format!("{}. \"{}.\" *{},* {}.", author, title, journal, year)
+            } else {
+                format!("{}. \"{}.\" {}.", author, title, year)
+            }
+        }
+        "book" => {
+            let publisher = entry
+                .fields
+                .get("publisher")
+                .map(|s| s.as_str())
+                .unwrap_or("");
+            if !publisher.is_empty() {
+                format!("{}. *{}*. {}, {}.", author, title, publisher, year)
+            } else {
+                format!("{}. *{}*. {}.", author, title, year)
+            }
+        }
+        "inproceedings" | "conference" => {
+            let booktitle = entry
+                .fields
+                .get("booktitle")
+                .map(|s| s.as_str())
+                .unwrap_or("");
+            let pages = entry.fields.get("pages").map(|s| s.as_str()).unwrap_or("");
+            let pages_dash = pages.replace("--", "-");
+            if !booktitle.is_empty() && !pages.is_empty() {
+                format!(
+                    "{}. \"{}.\" *{},* {}, pp. {}.",
+                    author, title, booktitle, year, pages_dash
+                )
+            } else if !booktitle.is_empty() {
+                format!("{}. \"{}.\" *{},* {}.", author, title, booktitle, year)
+            } else {
+                format!("{}. \"{}.\" {}.", author, title, year)
+            }
+        }
+        _ => {
+            format!("{}. \"{}.\" {}.", author, title, year)
+        }
+    }
+}
+
 pub fn disambiguate_year(entries: &[(String, String, String)]) -> HashMap<String, String> {
     let mut author_year_groups: HashMap<(String, String), Vec<&str>> = HashMap::new();
     for (key, author, year) in entries {
@@ -493,6 +614,7 @@ pub fn format_citation_with_disambiguation(
         "ieee" => format_citation_ieee(&entry_with_disambig),
         "apa" => format_citation_apa(&entry_with_disambig),
         "chicago" => format_citation_chicago(&entry_with_disambig),
+        "mla" => format_citation_mla(&entry_with_disambig),
         _ => format_citation_ieee(&entry_with_disambig),
     }
 }
@@ -818,5 +940,90 @@ mod tests {
         let formatted = format_citation_with_disambiguation("unknown", entry, &map);
         assert!(formatted.contains("A. Author"));
         assert!(formatted.contains("2020"));
+    }
+
+    #[test]
+    fn test_format_citation_mla_article() {
+        let entries = parse_bib(SIMPLE_BIB).expect("parse should succeed");
+        let entry = entries.get("knuth1984").expect("entry should exist");
+        let formatted = format_citation_mla(entry);
+        assert!(formatted.contains("Knuth, Donald"));
+        assert!(formatted.contains("Literate Programming"));
+        assert!(formatted.contains("The Computer Journal"));
+        assert!(formatted.contains("vol. 27"));
+        assert!(formatted.contains("1984"));
+    }
+
+    #[test]
+    fn test_format_citation_mla_book() {
+        let entries = parse_bib(SIMPLE_BIB).expect("parse should succeed");
+        let entry = entries.get("lamport1994").expect("entry should exist");
+        let formatted = format_citation_mla(entry);
+        assert!(formatted.contains("Lamport, Leslie"));
+        assert!(formatted.contains("Addison-Wesley"));
+        assert!(formatted.contains("1994"));
+        assert!(formatted.starts_with("Lamport, Leslie"));
+    }
+
+    #[test]
+    fn test_format_citation_mla_inproceedings() {
+        let entries = parse_bib(SIMPLE_BIB).expect("parse should succeed");
+        let entry = entries.get("dijkstra1968").expect("entry should exist");
+        let formatted = format_citation_mla(entry);
+        assert!(formatted.contains("Dijkstra, Edsger"));
+        assert!(formatted.contains("Go To Statement Considered Harmful"));
+        assert!(formatted.contains("Proc. IFIP Congress"));
+        assert!(formatted.contains("1968"));
+    }
+
+    #[test]
+    fn test_format_citation_mla_misc() {
+        let entries = parse_bib(SIMPLE_BIB).expect("parse should succeed");
+        let entry = entries.get("rust2024").expect("entry should exist");
+        let formatted = format_citation_mla(entry);
+        assert!(formatted.contains("The Rust Programming Language"));
+        assert!(formatted.contains("2024"));
+    }
+
+    #[test]
+    fn test_format_mla_authors_single() {
+        assert_eq!(format_mla_authors("Jane Doe"), "Doe, Jane");
+    }
+
+    #[test]
+    fn test_format_mla_authors_two() {
+        assert_eq!(
+            format_mla_authors("Jane Doe and John Smith"),
+            "Doe, Jane, and John Smith"
+        );
+    }
+
+    #[test]
+    fn test_format_mla_authors_three_et_al() {
+        let formatted = format_mla_authors("Jane Doe and John Smith and Bob Lee");
+        assert!(formatted.contains("Doe, Jane"));
+        assert!(formatted.contains("et al."));
+        assert!(!formatted.contains("John Smith"));
+    }
+
+    #[test]
+    fn test_format_mla_article_pages_dash() {
+        let bib = r#"@article{mla_dash, author = {Jane Doe}, title = {A Study}, journal = {J. Test}, volume = {5}, number = {3}, pages = {10--20}, year = {2023}}"#;
+        let parsed = parse_bib(bib).expect("parse should succeed");
+        let entry = parsed.get("mla_dash").expect("entry should exist");
+        let formatted = format_citation_mla(entry);
+        assert!(formatted.contains("pp. 10-20"));
+        assert!(formatted.contains("no. 3"));
+    }
+
+    #[test]
+    fn test_format_with_disambiguation_mla() {
+        let bib = r#"@article{smith2024a, author = {Jane Smith}, title = {First Paper}, journal = {J. Examples}, volume = {1}, pages = {1--10}, year = {2024}}"#;
+        let parsed = parse_bib(bib).expect("parse should succeed");
+        let entry = parsed.get("smith2024a").expect("entry should exist");
+        let map = HashMap::new();
+        let formatted = format_citation_with_disambiguation("mla", entry, &map);
+        assert!(formatted.contains("Smith, Jane"));
+        assert!(formatted.contains("2024"));
     }
 }

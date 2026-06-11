@@ -1198,7 +1198,9 @@ impl<'a> LirCompiler<'a> {
             NodeType::Reference { .. }
             | NodeType::Label { .. }
             | NodeType::Endnote { .. }
-            | NodeType::Comment { .. } => Ok(Vec::new()),
+            | NodeType::Comment { .. }
+            | NodeType::TrackedInsert { .. }
+            | NodeType::TrackedDelete { .. } => Ok(Vec::new()),
         }
     }
 

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Examples -- ldir Documentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+    <h1><a href="index.html">ldir</a></h1>
+    <div class="header-right">
+        <select id="version-select" class="version-select" aria-label="Documentation version"></select>
+        <a href="https://github.com/WyattAu/ldir" class="header-link">GitHub</a>
+    </div>
+</header>
+<div class="site-layout">
+<nav class="sidebar">
+    <div class="nav-section">Getting Started</div>
+    <ul>
+        <li><a href="index.html">Overview</a></li>
+        <li><a href="getting-started.html">Quick Start</a></li>
+        <li><a href="tutorial.html">Tutorial</a></li>
+    </ul>
+    <div class="nav-section">Reference</div>
+    <ul>
+        <li><a href="cli-reference.html">CLI Reference</a></li>
+        <li><a href="formats.html">Formats</a></li>
+        <li><a href="examples.html">Examples</a></li>
+        <li><a href="comparison.html">Comparison</a></li>
+    </ul>
+    <div class="nav-section">Internals</div>
+    <ul>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="crates.html">Crate Index</a></li>
+    </ul>
+</nav>
+<main class="content">
+    <h1>Examples <span class="version-badge">v0.1.0</span></h1>
+
+    <p>
+        Complete example documents showing common use cases. Each example
+        includes the full source and a note on compilation.
+    </p>
+
+    <h2>Academic Paper</h2>
+
+    <p>A two-column academic paper with abstract, sections, equations,
+    figures, tables, and bibliography.</p>
+
+<pre><code># Efficient Graph Traversal \label{sec:title}
+
+**Author Name**
+Department of Computer Science, University
+
+---
+## Abstract
+
+We present an algorithm for traversing large directed graphs
+with $O(V + E)$ time complexity. Experimental evaluation on
+graphs with up to $10^6$ vertices confirms the theoretical
+bounds and shows a 2.3x improvement over the prior approach
+\cite{dijkstra1959}.
+
+## 1. Introduction \label{sec:intro}
+
+Graph traversal is a fundamental operation in computer
+science. Common algorithms include breadth-first search (BFS)
+and depth-first search (DFS), both operating in $O(V + E)$
+time. Our method combines these approaches for improved
+cache locality.
+
+See Section \ref{sec:method} for the algorithm and
+Table \ref{tab:results} for benchmarks.
+
+## 2. Method \label{sec:method}
+
+The cost function is defined as:
+
+$$
+f(n) = g(n) + h(n)
+$$
+
+where $g(n)$ is the cost from the start node and $h(n)$ is
+the heuristic estimate to the goal.
+
+## 3. Results \label{sec:results}
+
+| Graph | Vertices | Edges | Time (ms) |
+|-------|----------|-------|-----------|
+| G1    | 1,000    | 5,000 | 0.8       |
+| G2    | 10,000   | 50,000| 6.2       |
+| G3    | 100,000  | 500,000| 58.1      |
+| G4    | 1,000,000| 5,000,000| 612.4  |
+\label{tab:results}
+
+## References
+
+\bibliography{refs}
+\bibliographystyle{ieee}</code></pre>
+
+    <p>Compile with:</p>
+
+<pre><code>ldc paper.md -o paper.pdf</code></pre>
+
+    <h2>Blog Post</h2>
+
+    <p>A simple blog post with headings, inline formatting, code blocks,
+    and images.</p>
+
+<pre><code># Getting Started with ldir
+
+Welcome to this walkthrough of ldir, a document compiler that
+turns Markdown (and other formats) into polished PDFs.
+
+## Why an IR?
+
+Most document tools parse and render in a single pass.
+ldir instead builds a three-layer intermediate representation:
+
+1. **S-IR** -- semantic structure (headings, paragraphs, math)
+2. **L-IR** -- layout (page breaks, column flows, hyphenation)
+3. **G-IR** -- rendering (glyph positions, draw commands)
+
+This separation means you can optimize and verify each stage
+independently.
+
+## Quick Example
+
+```markdown
+# Hello
+This becomes a PDF with one command.
+```
+
+```bash
+ldc hello.md -o hello.pdf
+```
+
+That is it. No template files, no configuration needed.
+
+## What About Math?
+
+Inline math works with single dollar signs: $E = mc^2$.
+
+Display math:
+
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
+
+## Links
+
+- [Tutorial](tutorial.html)
+- [CLI Reference](cli-reference.html)</code></pre>
+
+    <p>Compile with:</p>
+
+<pre><code>ldc blog.md -o blog.html</code></pre>
+
+    <h2>Formal Letter</h2>
+
+    <p>A business letter with address blocks, date, and signature.</p>
+
+<pre><code>Jane Smith
+123 Main Street
+Anytown, ST 12345
+
+---
+
+May 31, 2026
+
+John Doe
+Director of Engineering
+Acme Corporation
+456 Oak Avenue
+Big City, ST 67890
+
+Dear Mr. Doe,
+
+I am writing to follow up on our conversation at the
+conference last week regarding potential collaboration on
+the document rendering project.
+
+Our team has completed the initial benchmarking and would
+like to share the results. The key findings are:
+
+- Compilation speed improved by 3.2x over the baseline.
+- Memory usage decreased by 18% after the layout cache changes.
+- PDF/A-2b compliance was verified with veraPDF.
+
+I would be happy to schedule a meeting at your convenience.
+Please let me know your availability for the coming week.
+
+Sincerely,
+Jane Smith</code></pre>
+
+    <p>Compile with:</p>
+
+<pre><code>ldc letter.md -o letter.pdf</code></pre>
+
+    <h2>Technical Report with Code</h2>
+
+    <p>A technical report with syntax-highlighted code blocks and
+    output examples.</p>
+
+<pre><code># Performance Analysis of Line Breaking
+
+## 1. Overview
+
+This report measures the Knuth-Plass line-breaking algorithm
+as implemented in the ldir layout engine.
+
+## 2. Methodology
+
+We measured line-breaking time on paragraphs of varying
+length, running 1,000 iterations per data point.
+
+```rust
+use ldir_core::layout::linebreak::KnuthPlass;
+
+fn measure(text: &amp;str, width: f32) -&gt; Duration {
+    let kp = KnuthPlass::new(width);
+    let start = Instant::now();
+    for _ in 0..1000 {
+        kp.break_lines(text);
+    }
+    start.elapsed()
+}
+```
+
+## 3. Results
+
+| Paragraph length | Time per call |
+|-----------------|---------------|
+| 100 words       | 12 us         |
+| 500 words       | 58 us         |
+| 1,000 words     | 124 us        |
+| 5,000 words     | 610 us        |
+
+## 4. Conclusion
+
+The algorithm scales linearly with paragraph length,
+confirming the expected $O(n)$ behavior.</code></pre>
+
+    <p>Compile with:</p>
+
+<pre><code>ldc report.md -o report.pdf</code></pre>
+</main>
+</div>
+<footer class="site-footer">
+    <p>ldir -- deterministic document typesetting</p>
+</footer>
+<script src="js/version.js"></script>
+</body>
+</html>

@@ -17,6 +17,13 @@ pub struct TeXParser<'a> {
     registry: macros::MacroRegistry,
 }
 
+#[derive(Clone, Copy)]
+enum ListKind {
+    Unordered,
+    Ordered,
+    Description,
+}
+
 impl<'a> TeXParser<'a> {
     pub fn new(tokens: &'a [SpannedToken]) -> Self {
         Self {
@@ -102,6 +109,16 @@ impl<'a> TeXParser<'a> {
                         return;
                     }
                     break;
+                }
+                Token::ControlSequence(name)
+                    if matches!(name.as_str(), "setcounter" | "renewcommand" | "newcommand") =>
+                {
+                    self.advance();
+                    self.skip_group();
+                    if let Some(Token::BracketOpen) = self.peek() {
+                        self.skip_brackets();
+                    }
+                    self.skip_group();
                 }
                 Token::Comment(_) => {
                     self.advance();
@@ -259,6 +276,19 @@ impl<'a> TeXParser<'a> {
                         self.advance();
                         self.skip_group();
                         self.parse_optional();
+                    }
+                    "setcounter" => {
+                        self.flush_paragraph(&mut text_buffer, parent_id);
+                        self.advance();
+                        self.skip_group();
+                        self.skip_group();
+                    }
+                    "renewcommand" | "newcommand" => {
+                        self.flush_paragraph(&mut text_buffer, parent_id);
+                        self.advance();
+                        self.skip_group();
+                        self.parse_optional();
+                        self.skip_group();
                     }
                     "includegraphics" => {
                         self.flush_paragraph(&mut text_buffer, parent_id);
@@ -684,8 +714,14 @@ impl<'a> TeXParser<'a> {
 
     fn parse_environment(&mut self, name: &str, parent_id: u32) {
         match name {
-            "itemize" | "enumerate" => {
-                self.parse_list_env(parent_id);
+            "itemize" => {
+                self.parse_list_env(parent_id, ListKind::Unordered);
+            }
+            "enumerate" => {
+                self.parse_list_env(parent_id, ListKind::Ordered);
+            }
+            "description" => {
+                self.parse_list_env(parent_id, ListKind::Description);
             }
             "quote" | "abstract" => {
                 let content = self.collect_env_content(name);
@@ -773,13 +809,18 @@ impl<'a> TeXParser<'a> {
         self.skip_group(); // {env_name}
     }
 
-    fn parse_list_env(&mut self, parent_id: u32) {
-        self.parse_list_env_inner(parent_id, 0);
+    fn parse_list_env(&mut self, parent_id: u32, kind: ListKind) {
+        self.parse_list_env_inner(parent_id, kind, 0);
     }
 
-    fn parse_list_env_inner(&mut self, parent_id: u32, depth: usize) {
-        let list_id = self.emit_block(BlockType::List, parent_id, None, "");
-        let items = self.collect_list_items(depth);
+    fn parse_list_env_inner(&mut self, parent_id: u32, kind: ListKind, depth: usize) {
+        let extra = match kind {
+            ListKind::Unordered => None,
+            ListKind::Ordered => Some(&[1u32][..]),
+            ListKind::Description => Some(&[2u32][..]),
+        };
+        let list_id = self.emit_block(BlockType::List, parent_id, extra, "");
+        let items = self.collect_list_items(depth, kind);
         let content = items.join("\n");
         if !content.is_empty() {
             let content_id = self.next_entity_id();
@@ -790,18 +831,23 @@ impl<'a> TeXParser<'a> {
         }
     }
 
-    fn collect_list_items(&mut self, depth: usize) -> Vec<String> {
+    fn collect_list_items(&mut self, depth: usize, kind: ListKind) -> Vec<String> {
         let mut item_buffer = String::new();
         let mut items: Vec<String> = Vec::new();
 
         while let Some(tok) = self.peek().cloned() {
             match &tok {
                 Token::ControlSequence(name) if name == "end" => {
-                    if self.is_end_env("itemize") || self.is_end_env("enumerate") {
+                    let env_for_kind = match kind {
+                        ListKind::Unordered => "itemize",
+                        ListKind::Ordered => "enumerate",
+                        ListKind::Description => "description",
+                    };
+                    if self.is_end_env(env_for_kind) {
                         if !item_buffer.trim().is_empty() {
                             items.push(Self::indent_text(item_buffer.trim(), depth));
                         }
-                        self.consume_end_env("itemize");
+                        self.consume_end_env(env_for_kind);
                         return items;
                     }
                     item_buffer.push_str(&format!("\\{name}"));
@@ -814,18 +860,35 @@ impl<'a> TeXParser<'a> {
                     }
                     self.advance();
                     if let Some(&Token::BracketOpen) = self.peek() {
-                        self.parse_optional();
+                        let opt = self.parse_optional();
+                        if matches!(kind, ListKind::Description) {
+                            if let Some(term) = opt {
+                                item_buffer.push('[');
+                                item_buffer.push_str(&term);
+                                item_buffer.push_str("] ");
+                            }
+                        } else {
+                            let _ = opt; // discard optional for non-description lists
+                        }
                     }
                 }
                 Token::ControlSequence(name) if name == "begin" => {
-                    if self.is_begin_env("itemize") || self.is_begin_env("enumerate") {
+                    if self.is_begin_env("itemize")
+                        || self.is_begin_env("enumerate")
+                        || self.is_begin_env("description")
+                    {
                         if !item_buffer.trim().is_empty() {
                             items.push(Self::indent_text(item_buffer.trim(), depth));
                             item_buffer.clear();
                         }
                         self.advance();
-                        let _env = self.parse_group_content();
-                        let nested = self.collect_list_items(depth + 1);
+                        let nested_env = self.parse_group_content();
+                        let nested_kind = match nested_env.as_str() {
+                            "enumerate" => ListKind::Ordered,
+                            "description" => ListKind::Description,
+                            _ => ListKind::Unordered,
+                        };
+                        let nested = self.collect_list_items(depth + 1, nested_kind);
                         items.extend(nested);
                     } else {
                         item_buffer.push_str(&format!("\\{name}"));
@@ -869,7 +932,15 @@ impl<'a> TeXParser<'a> {
     }
 
     fn parse_figure_env(&mut self, parent_id: u32) {
+        let placement = self.parse_optional();
         let fig_id = self.emit_block(BlockType::Figure, parent_id, None, "");
+        if let Some(spec) = &placement {
+            let content_id = self.next_entity_id();
+            self.push_instr_with_payload(
+                SIRInstruction::new(SIROpcode::SetContent, content_id, fig_id, 0),
+                format!("placement:{}", spec).as_bytes(),
+            );
+        }
 
         while let Some(tok) = self.peek().cloned() {
             match &tok {

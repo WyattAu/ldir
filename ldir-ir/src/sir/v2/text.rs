@@ -442,6 +442,28 @@ fn node_tag(node: &crate::sir::v2::nodes::Node) -> (&'static str, String) {
         crate::sir::v2::nodes::NodeType::Label { name } => {
             ("label", format!("{{ name={:?} }}", name))
         }
+        crate::sir::v2::nodes::NodeType::TrackedInsert {
+            author,
+            date,
+            revision_id,
+        } => (
+            "tracked_insert",
+            format!(
+                "{{ author={:?} date={:?} rev={} }}",
+                author, date, revision_id
+            ),
+        ),
+        crate::sir::v2::nodes::NodeType::TrackedDelete {
+            author,
+            date,
+            revision_id,
+        } => (
+            "tracked_delete",
+            format!(
+                "{{ author={:?} date={:?} rev={} }}",
+                author, date, revision_id
+            ),
+        ),
     }
 }
 

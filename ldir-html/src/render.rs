@@ -765,6 +765,48 @@ impl HtmlRenderer {
                 html.push_str(&format!("<span id=\"{}\"></span>", escape_html(name)));
             }
             NodeType::Endnote { .. } | NodeType::Comment { .. } => {}
+
+            NodeType::TrackedInsert {
+                author,
+                date,
+                revision_id,
+            } => {
+                html.push_str(&pad);
+                html.push_str("<ins class=\"tracked\">");
+                html.push_str(&format!(
+                    "<span class=\"tracked-meta\">rev {}, {}, {}</span>",
+                    revision_id,
+                    escape_html(author),
+                    escape_html(date)
+                ));
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_node(html, module, child, ind);
+                    }
+                }
+                html.push_str("</ins>\n");
+            }
+
+            NodeType::TrackedDelete {
+                author,
+                date,
+                revision_id,
+            } => {
+                html.push_str(&pad);
+                html.push_str("<del class=\"tracked\">");
+                html.push_str(&format!(
+                    "<span class=\"tracked-meta\">rev {}, {}, {}</span>",
+                    revision_id,
+                    escape_html(author),
+                    escape_html(date)
+                ));
+                for &child_id in &node.child_ids {
+                    if let Some(child) = module.body.get(child_id) {
+                        self.render_node(html, module, child, ind);
+                    }
+                }
+                html.push_str("</del>\n");
+            }
         }
     }
 

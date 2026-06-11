@@ -6,6 +6,9 @@
 mod builder;
 
 pub use builder::EpubBuilder;
+pub use builder::EpubError;
 pub use builder::EpubOptions;
+pub use builder::LandmarkEntry;
 pub use builder::MediaOverlay;
+pub use builder::NavLandmarkType;
 pub use builder::OverlayParam;

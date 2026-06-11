@@ -763,6 +763,22 @@ fn compile_v2_node(
             emit_v2_text_inline(&resolved, page, ctx, gir_doc);
         }
         NodeType::Label { .. } | NodeType::Endnote { .. } | NodeType::Comment { .. } => {}
+        NodeType::TrackedInsert { .. } | NodeType::TrackedDelete { .. } => {
+            compile_children_with_refs(
+                node_id,
+                module,
+                page,
+                ctx,
+                gir_doc,
+                labels,
+                refs_map,
+                eq_counter,
+                section_counters,
+                section_number,
+                footnotes,
+                figure_counter,
+            )?;
+        }
     }
 
     Ok(())

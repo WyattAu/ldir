@@ -81,6 +81,14 @@ pub enum PluginError {
     UnsupportedFormat(String),
     /// An I/O error occurred.
     IoError(String),
+    /// Plugin output exceeds the configured size limit.
+    OutputTooLarge { requested: usize, limit: usize },
+    /// Plugin execution exceeded the configured time limit.
+    Timeout { limit_ms: u64, actual_ms: u64 },
+    /// Plugin exhausted its fuel (instruction count) limit.
+    OutOfFuel(u64),
+    /// Plugin exceeded its memory allocation limit.
+    MemoryExceeded,
 }
 
 impl std::fmt::Display for PluginError {
@@ -90,6 +98,23 @@ impl std::fmt::Display for PluginError {
             Self::GenerateFailed(msg) => write!(f, "generation failed: {msg}"),
             Self::UnsupportedFormat(fmt) => write!(f, "unsupported format: {fmt}"),
             Self::IoError(msg) => write!(f, "I/O error: {msg}"),
+            Self::OutputTooLarge { requested, limit } => {
+                write!(
+                    f,
+                    "output too large: {requested} bytes exceeds limit of {limit} bytes"
+                )
+            }
+            Self::Timeout {
+                limit_ms,
+                actual_ms,
+            } => {
+                write!(
+                    f,
+                    "execution timeout: {actual_ms}ms exceeds limit of {limit_ms}ms"
+                )
+            }
+            Self::OutOfFuel(limit) => write!(f, "out of fuel: plugin exhausted {limit} fuel units"),
+            Self::MemoryExceeded => write!(f, "memory limit exceeded"),
         }
     }
 }
