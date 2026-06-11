@@ -586,9 +586,13 @@ fn main() -> Result<()> {
 
     let mut timer = PipelineTimer::new(4);
     let mut font_db = FontDatabase::new();
-    let loaded = font_db.load_system_fonts();
-    if loaded > 0 {
-        timer.step(&format!("loaded {} system fonts", loaded));
+    // Only scan system fonts when needed (--font-path bypasses this entirely)
+    let need_system_fonts = cli.font_path.is_none() || cli.list_fonts;
+    if need_system_fonts {
+        let loaded = font_db.load_system_fonts();
+        if loaded > 0 && !cli.list_fonts {
+            timer.step(&format!("loaded {} system fonts", loaded));
+        }
     }
 
     if cli.list_fonts {

@@ -1,190 +1,170 @@
 # LDIR Version & State Tracker
 
 ## Current State
-- **Phase:** Phase Q -- Performance Engineering
-- **Version:** 3.16.0
+- **Phase:** Phase 6 -- Ecosystem Growth
+- **Version:** 4.0.0
 - **Status:** All quality gates passing
-- **Last Updated:** 2026-05-11
+- **Last Updated:** 2026-06-11
 
 ## Quality Metrics
 | Metric | Value |
 |--------|-------|
-| **Total tests** | **1,865** |
+| **Total tests** | **2,127** |
 | Test failures | 0 |
 | Clippy errors | 0 (`-D warnings`) |
 | Clippy warnings | 0 (test + lib) |
 | `cargo fmt` | Clean |
-|     Lean4 proofs | 0 errors, 0 sorry (all proofs fully resolved) |
+| Lean4 proofs | 0 errors, 0 sorry (all proofs fully resolved) |
 | Production unwrap/expect | 3 (all justified: 2 rkyv INVARIANT-guarded in SIRDocument, 1 len()-guarded in linker) |
-| PDF determinism | Bit-identical verified |
-| **Benchmark targets** | **11** (7 existing + 2 layout + 2 pagination) |
-| Shape cache | DashMap lock-free (16 shards), epoch-based LRU |
+| Unsafe blocks | 24 (22 blocks + 2 fn: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls) |
+| PDF determinism | Bit-identical verified (Linux/macOS/Windows) |
+| **Rust crates** | **29** (+ 1 Lean4 project) |
+| **Input formats** | **9** (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
+| **Output formats** | **11** (PDF, HTML, EPUB, TXT, DOCX, ODT, Pandoc AST, Jupyter, GIR, SIR2, LDIR) |
+| MSRV | 1.88 (edition 2024, resolver 3) |
 
-## What Changed (v3.15.0 -> v3.16.0)
-### Performance Engineering (Q-1)
-- **Release profile**: Added `[profile.release]` (opt-level=3, lto="thin", codegen-units=1, strip=true, panic="abort") and `[profile.bench]` (opt-level=3, lto="thin", codegen-units=1).
-- **LRU cache rewrite**: `ldir-core/src/shaping/cache.rs` rewritten to use `IndexMap` instead of `HashMap + Vec` for O(1) amortized LRU eviction. Removed manual `Hash`/`PartialEq` impls (now derived).
-- **Layout benchmarks** (`bench_layout.rs`): 7 new Criterion benchmarks -- line_break_short (20 words), line_break_typical (80 words), line_break_long (200 words), line_break_cjk (80 chars), line_break_mixed_script, line_break_1000_paragraphs, cjk_insert_breaks_80chars.
-- **Pagination benchmarks** (`bench_paginate.rs`): 4 new Criterion benchmarks -- page_break_text_only (100 pages), page_break_with_floats, page_break_orphan_avoidance, page_break_500_pages.
-- **Fixed-point benchmarks**: Added `fp266_div` and `fp266_to_f64` (BM-FIXPT-001c, BM-FIXPT-001e).
-- **CI benchmark gate**: New `bench-check` job runs `cargo bench -- --test` on every push/PR, saves baseline artifacts on main.
-- **Public layout module**: `layout` changed from `pub(crate)` to `pub` to enable external benchmark access. `cjk` submodule made `pub`.
+## What Changed (v3.16.0 -> v4.0.0)
 
-### What Changed (v3.14.0 -> v3.15.0)
-### Lean4 Proof Progress (P-1)
-- **`isAcyclic_cons_root` FULLY PROVEN**: No sorry needed; proof completed via `isAcyclicAux_cons_lift`.
-- **Proof sketches for 3 remaining sorry**: `isAcyclicAux_cons_lift_orphan` (Bool match/if elaboration), `isAcyclic_cons_orphan` (same), `compile_preserves_content` (foldl membership + monotonicity).
-- **All 3 sorry have complete, sound proof strategies**: blocked only by Lean4 tactic limitations on nested Bool match expressions.
+### Batch 1: Core Infrastructure
+- **Cross-platform determinism CI**: Linux/macOS/Windows SHA256 matrix
+- **DOCX image embedding**: Two-pass rId relationships, OOXML drawing elements
+- **Chicago citation style**: Year disambiguation (a/b/c suffix)
+- **Glyph ID remapping**: SubsetResult with CIDToGIDMap, rebuilt cmap format 4
+- **Liou hyphenation engine**: Max-filter algorithm, embedded English patterns
+- **Rich diagnostics**: gcc/rustc-style errors with Levenshtein suggestions
+- **Structured ldir.toml config**: 6 sections, --dump-config
+- **veraPDF PDF/A-2b CI job**: Automated conformance validation
+- **README overhaul**: Badges, architecture, CLI reference, crate table
 
-### Performance Investigation (Q-1)
-- Ran Criterion benchmarks; established baselines for MD/TeX parse, compile, PDF generate.
-- Identified hot paths: S-IR instruction dispatch, G-IR command serialization.
-- Measured memory usage for 100-page documents.
+### Batch 2: Format & Ecosystem
+- **Column spanning + break control**: SpanBehavior, ColumnBreak, balanced binary search
+- **HTML CSS themes**: 5 built-in (Default/GitHub/LaTeX/Minimal/Dark), TOC, anchors
+- **ODT output**: New ldir-odt crate, ISO 26300 compliant
+- **TeX conditionals**: ifnum/ifdim/ifx/newif/iftrue/iffalse
+- **EPUB3 media overlays**: SMIL generation
+- **DOCX footnotes/endnotes/comments**: Full OOXML support
+- **Arena allocator**: Arena<T>, StringArena for compiler hot paths
+- **VS Code extension**: TextMate grammar, Ldir Light theme, symbol providers
+- **Glyph outline cache**: LRU 8192 entries
+- **CONTRIBUTING.md**: Issue/PR templates
 
-## What Changed (v3.13.0 -> v3.14.0)
-### Quality Hardening (N-1)
-- **Zero warnings enforcement**: Eliminated all 6 remaining compiler warnings (unused imports, unused mut, unused variables, unused assignments) across `ldir-core`, `ldir-ir`, `ldir-pdf`.
-- **`ldir-pdf` test compilation fix**: Added `#[allow(unsafe_code)]` on font table test module to resolve `#![deny(unsafe_code)]` conflict with test helper using lifetime transmute.
-- **Formatting normalization**: Applied `cargo fmt` across entire workspace; all 30+ formatting diffs resolved.
-- **`.cargo/config.toml` cleanup**: Removed invalid `build.targets` key that produced config warning.
-- **Documentation audit**: Removed all emoji characters from VERSION.md and CAPABILITY_MATRIX.md; replaced with plain-text status indicators.
-- **Test count update**: Verified 1,810 tests passing (up from 1,610 documented).
-- **Lean4 proof status reconciliation**: Updated sorry count from 5 to 3 to reflect Era N proofs (`cumWidth_mono`, `isAcyclicAux_mono`).
-- **Pre-commit hook**: Added `.git/hooks/pre-commit` enforcing `cargo fmt --check`, `cargo clippy -D warnings`, and `cargo test`.
+### Batch 3: Advanced Features
+- **amsmath + graphicx macro subsets**: align/gather/cases/dfrac/binom, includegraphics
+- **Streaming PDF links + images**: URI/GoTo annotations, JPEG/PNG XObjects
+- **Global pagination**: 5 page number styles, headers/footers, template substitution
+- **Manual GPOS/GSUB parsing**: Pure Rust, WASM-compatible
+- **Lean4 layout termination proof skeleton**: Formal verification foundation
+- **WASM playground**: Split-pane, URL hash sharing, fallback rendering
+- **Plugin test plugins**: Macro expansion, paragraph style, page header
 
-## What Changed (v3.9.0 -> v3.10.0)
-### Lean4 Proof Progress (K-1)
-- **`isAcyclic_single` FULLY PROVEN**: Closed 1 of 6 sorry. Key insight: `by_cases` on structural equality (`instr.parent_id = rootSentinel`) bridges the Prop/Bool `¬` gap. In the `parent ≠ root` case, `simp [h_eq]` rewrites BEq to `decide`, `unfold isAcyclicAux` reduces fuel=0 to `false`, and `simp` closes. Down from 6 sorry to 5.
-- **Deep Lean4 sorry analysis**: Identified exact resolution paths for all remaining sorry: `isAcyclicAux_mono` step (nested match alignment), `isAcyclic_cons_root`/`cons_orphan` (depend on mono), `compile_preserves_content` (List.mem foldl), `cumWidth_mono` (prefix monotonicity via foldl).
+### Batch 4: Extended Ecosystem
+- **Criterion.rs benchmarks**: tracing-chrome integration
+- **Static docs site**: 7 pages with version selector
+- **Pandoc AST writer**: ldir-pandoc crate
+- **Jupyter notebook exporter**: ldir-jupyter crate
+- **Operational transform fallback**: CRDT integration
+- **ISO 26262 + DO-178C readiness docs**: Compliance framework
+- **Plugin registry manifest schema**: Resource limits
+- **SIMD penalty evaluation**: AVX2, 8-wide f32
 
-### Cross-Reference Resolution (K-2)
-- **`ldir-core/src/cross_ref.rs`**: New module with `LabelRegistry` (register/lookup/unresolved_refs), `ResolvedRef` (label, page, section, RefType), `resolve_ref` parser. 11 RefType variants (Internal, External, Bibliography, Equation, Figure, Table). 33 new tests (31 unit + 2 integration).
+### Batch 5: Completion
+- **MLA citation style**: Author-page format
+- **BibliographyResolver**: Wired into compilation pipeline
+- **LSP folding ranges**: Headings, code blocks, blockquotes, tables
+- **LSP semantic tokens**: Headings, bold, italic, code, blockquotes
+- **TeX enumerate/description**: List environments
+- **DOCX tracked changes**: TrackedInsert/TrackedDelete S-IR nodes
+- **GitHub Pages deploy workflow**: Automated deployment
+- **EPUB landmarks + NCX**: Backward compatibility
+- **Plugin resource limit enforcement**: Fuel, memory, time
+- **Performance regression baseline**: TOML + detection script
+- **Tutorial, comparison, examples docs**: 3 new pages
 
-## What Changed (v3.8.0 → v3.9.0)
-### Deep Lean4 Sorry Analysis (J-1)
-- Identified exact root cause of all 6 sorry: Lean4 `¬` for Bool is `(b → False) : Prop`, not `Bool.not b : Bool`. 7 tactic strategies attempted and documented (rfl, unfold+rfl, show, decide, native_decide, absurd, congrArg Bool.not).
-- Clippy fix: `image.rs` line 181 `needlessly_taken_reference` → `data.get(0..4)`.
-
-## What Changed (v3.7.0 → v3.8.0)
-### PDF Table Rendering (J-2)
-- `draw_table` method: grid via horizontal/vertical `drawRule`, configurable columns/rows/line_width. 6 tests.
-
-### Image Dimension Detection (J-3)
-- PNG IHDR at offset 16, JPEG SOF0/SOF2 scan. `ImageDimensions` struct. 8 tests.
-
-## What Changed (v3.6.0 → v3.7.0)
-### CI/CD (I-1)
-- `ci.yml`: Rust (clippy+fmt+test), Lean4 (lake build), WASM32 (cargo caching), parallel jobs.
-- `release.yml`: Tag-triggered ldc binary artifact.
-
-### Benchmarks (I-2)
-- Criterion: 7 functions (md/tex parse small/medium, compile SIR, PDF generate, validator 10/50/100).
-
-## What Changed (v3.1.0 → v3.2.0)
-### Proof Alignment (D-1)
-- Lean4 BlockType expanded from 6 to 15 variants; acyclicity + payload integrity in `wellFormedSIR`; GIRCommand args `Fin 8 → Int`.
-
-### Determinism (D-2)
-- `HashMap`→`IndexMap` in all compiler hot paths; 6 SHA256/bit-identical determinism tests.
-
-### Performance (D-3)
-- `#[inline]` on 15 hot functions, `#[cold]` on 4 error paths, ASCII byte iteration — 6-7% speedup on 100-page docs.
-
-### S-IR v2 Completeness (D-4)
-- Table (caption, column_widths, header_row), Image (FloatPlacement), CodeBlock (content), PageStyle (dimensions, margins, header/footer).
-
-### Backend Parity (D-5)
-- HTML LaTeX→HTML math, HTML/TXT cross-refs, EPUB/DOCX image embedding, TXT heading underlines + nested lists + code blocks.
-
-### Documentation (D-6)
-- `docs/user-guide.md` (comprehensive), `docs/plugins.md` (with example).
-
-### Advanced Features (D-7)
-- Pattern-based English hyphenation (11 tests), optical margin alignment (9 tests), wired into Knuth-Plass.
-
-## What Changed (v3.0.0 → v3.1.0)
-### Quality Hardening
-- **Zero production unwrap/expect**: Eliminated all 42 instances. Removed all `#![allow(clippy::unwrap_used)]`.
-- **Lean4 proof complete**: Resolved `kp_termination` sorry using constructive singleton witness.
-- **Real payload integrity validator**: Bounds checking and UTF-8 validation (9 tests).
-- **Bibliography in L-IR path**: `LIRBibEntry`, `LIRBibliography`, `LIRCitation` types (3 tests).
-- **Full UBA N0.b bracket pairs**: BD16 pair identification per UAX#9 (14 tests).
-- **Vello real glyph outlines**: ttf_parser + kurbo::BezPath rendering (5 tests).
+### Cleanup
+- **publish-dry-run CI job**: Release pipeline verification
+- **#[doc(alias)]**: 7 key public types for API discoverability
+- **README polish**: 2127 tests, 11 output formats, tracked changes
 
 ## Test Summary
 | Category | Count |
 |----------|-------|
-| ldir-core | 807 |
-| ldir-ir | 175 |
-| ldir-pdf | 176 |
-| ldir-html | 42 |
-| ldir-tex | 55 |
+| ldir-core | 959 |
+| ldir-ir | 177 |
+| ldir-pdf | 203 |
+| ldir-html | 88 |
+| ldir-tex | 64 |
 | ldir-md | 26 |
 | ldir-typst | 26 |
 | ldir-org | 27 |
 | ldir-adoc | 24 |
 | ldir-as | 36 |
 | ldir-txt | 26 |
-| ldir-docx | 14 |
+| ldir-docx | 26 |
 | ldir-wasm | 70 (excluded from workspace total; tested separately with wasm target) |
 | ldir-html-reader | 34 |
 | ldir-docx-reader | 17 |
 | ldir-diff | 15 |
 | ldir-validate | 5 |
-| ldir-epub | 11 |
+| ldir-epub | 17 |
 | ldir-vello | 64 |
 | ldir-opt | 25 |
 | ldir-link | 16 |
-| ldir-lsp | 44 |
+| ldir-lsp | 63 |
+| ldir-odt | 7 |
+| ldir-pandoc | 1 |
+| ldir-jupyter | 1 |
+| ldir-bench | 5 |
 | tests (integration) | 19 |
 | ldir-test-helpers | 1 |
-| **Total (workspace)** | **1,810** |
+| ldir-rst | 29 |
+| **Total (workspace)** | **2,127** |
 
 ## Artifact Summary
 | Category | Lines |
 |----------|-------|
-| Rust source code | ~72,400 |
+| Rust source code | ~92,000 |
 | Lean4 proofs | ~1,000 |
 | Specs (Yellow/Blue papers, configs) | ~11,000 |
-| CI/CD configs | ~300 |
-| **Total** | ~84,700 |
+| CI/CD configs | ~500 |
+| Documentation site | ~2,000 |
+| **Total** | ~106,500 |
 
 ## Lean4 Proof Status
 - **`proof_ir_wellformedness.lean`** -- 0 sorry, ~20 theorems fully proven including `isAcyclic_single`, `isAcyclicAux_mono`, `isAcyclic_cons_root`, `isAcyclic_cons_lift_orphan`, `isAcyclic_cons_orphan`, `compile_preserves_content`
 - **`ProofLayoutProperties.lean`** -- 0 sorry, `cumWidth_mono` proven, `kp_termination` proven, 3 KP theorems proven
 
 ## Workspace Structure
-- 26 Rust crates + 1 Lean4 project
+- 29 Rust crates + 1 Lean4 project
 - Rust edition 2024, MSRV 1.88
-- 25 unsafe blocks (all justified FFI: 19 harfbuzz, 4 font loader, 1 font tables, 1 ecs)
-- Zero production unwrap/expect calls
+- 24 unsafe blocks (all justified FFI: 18 harfbuzz, 3 SIMD, 1 font tables, 2 unsafe fn decls)
+- Zero production unwrap/expect calls (3 justified exceptions)
 
 ## Supported Formats
 - **Input (9):** MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR
-- **Output (8):** PDF, HTML, EPUB, DOCX, TXT, GIR, SIR2, LDIR
+- **Output (11):** PDF, HTML, EPUB, TXT, DOCX, ODT, Pandoc AST, Jupyter, GIR, SIR2, LDIR
 
 ## CLI Tools
 | Tool | Description |
 |------|-------------|
-| `ldc` | Main compiler driver (with `--pdfa-level` flag) |
+| `ldc` | Main compiler driver (with --pdfa-level, --dump-config, --color) |
 | `ldir-dis` | IR disassembler |
 | `ldir-as` | IR assembler |
 | `ldir-diff` | IR diff tool |
 | `ldir-validate` | IR validator |
 | `ldir-opt` | IR optimizer (8 passes) |
 | `ldir-link` | IR module linker |
-| `ldir-lsp` | Language server |
+| `ldir-lsp` | Language server (completion, references, rename, folding, semantic tokens) |
 
 ## Ecosystem
-- **VS Code extension:** Syntax highlighting (TeX, Typst), compile/preview commands, LSP integration
-- **WASM playground:** Browser-based MD→HTML rendering
+- **VS Code extension:** TextMate grammar, Ldir Light theme, LSP integration, symbol providers
+- **WASM playground:** Split-pane editor/preview, URL hash sharing, dark mode, export HTML
 - **HarfBuzz shaping:** UPEM-correct scale, font features API, offset consistency
-- **Performance:** Arena allocator (bumpalo), LRU shape cache, incremental compilation with dirty tracking
+- **Performance:** Arena allocator (bumpalo), LRU shape cache, incremental compilation, SIMD penalty eval
 - **Vello:** Real glyph outlines via ttf_parser + kurbo::BezPath
-- **Bibliography:** IEEE/APA formatting, full L-IR pipeline support
+- **Bibliography:** IEEE/APA/Chicago/MLA formatting, year disambiguation, BibliographyResolver
 - **UBA:** Full UAX#9 L1-L4 + N0.b bracket pair resolution
-- **Hyphenation:** Pattern-based English syllable boundaries, wired into Knuth-Plass
-- **PDF/A:** Conformance levels (4, 2b, 3b), XMP metadata, ICC color profiles
+- **Hyphenation:** Pattern-based (EN/DE/FR/ES/PT), Liou engine for CJK
+- **PDF/A:** Conformance levels (1b, 2b, 3b), XMP metadata, ICC color profiles
 - **WCAG:** H1-H6, TR/TH/TD, language spans, reading order, BBox
 - **Fuzzing:** 5 harnesses, daily CI, seed corpus
-- **crates.io:** All 25 crates metadata-complete
+- **crates.io:** All 29 crates metadata-complete

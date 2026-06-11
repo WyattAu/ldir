@@ -30,6 +30,9 @@ pub struct PreviewStatusParams {
     /// Path to the generated PDF, if available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pdf_path: Option<String>,
+    /// Path to the generated HTML preview, if available.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub html_path: Option<String>,
 }
 
 /// LSP notification for preview status updates.
@@ -210,6 +213,7 @@ impl PreviewManager {
                     uri: uri.clone(),
                     status: "compiling".to_string(),
                     pdf_path: None,
+                    html_path: None,
                 })
                 .await;
 
@@ -227,13 +231,14 @@ impl PreviewManager {
             .await;
 
             match result {
-                Ok(Ok(pdf_path)) => {
-                    tracing::info!("preview PDF written: {}", pdf_path.display());
+                Ok(Ok(res)) => {
+                    tracing::info!("preview PDF written: {}", res.pdf_path.display());
                     let _ = client
                         .send_notification::<PreviewStatus>(PreviewStatusParams {
                             uri,
                             status: "ready".to_string(),
-                            pdf_path: Some(pdf_path.to_string_lossy().to_string()),
+                            pdf_path: Some(res.pdf_path.to_string_lossy().to_string()),
+                            html_path: Some(res.html_path.to_string_lossy().to_string()),
                         })
                         .await;
                 }
@@ -244,6 +249,7 @@ impl PreviewManager {
                             uri,
                             status: format!("error: {}", err),
                             pdf_path: None,
+                            html_path: None,
                         })
                         .await;
                 }
@@ -254,6 +260,7 @@ impl PreviewManager {
                             uri,
                             status: "error: compile task panicked".to_string(),
                             pdf_path: None,
+                            html_path: None,
                         })
                         .await;
                 }
@@ -277,16 +284,24 @@ fn parse_to_sir(text: &str, extension: &str) -> Result<SIRModuleV2, String> {
     }
 }
 
+/// Result of a preview compilation.
+#[derive(Debug)]
+struct CompileResult {
+    pdf_path: PathBuf,
+    html_path: PathBuf,
+}
+
 fn compile_to_pdf(
     text: &str,
     extension: &str,
     uri: &str,
     output_dir: &Path,
     incremental: &std::sync::Mutex<Option<IncrementalState>>,
-) -> Result<PathBuf, String> {
+) -> Result<CompileResult, String> {
     let module = parse_to_sir(text, extension)?;
     let new_module = Arc::new(module);
 
+    // Try incremental recompilation first
     {
         let mut state_guard = incremental
             .lock()
@@ -297,7 +312,11 @@ fn compile_to_pdf(
             match state.layout.recompile_lir(&state.lir, &ctx) {
                 Ok(new_lir) => {
                     if Arc::ptr_eq(&new_lir, &state.lir) {
-                        return Ok(state.pdf_path.clone());
+                        let html_path = derive_html_path(uri, output_dir)?;
+                        return Ok(CompileResult {
+                            pdf_path: state.pdf_path.clone(),
+                            html_path,
+                        });
                     }
                     state.lir = new_lir;
                 }
@@ -311,19 +330,32 @@ fn compile_to_pdf(
         }
     }
 
-    let mut ctx = ldir_core::compiler::context::CompileContext::new();
-    let gir_doc = ldir_core::compiler::v2_compile::compile_v2_document(&new_module, &mut ctx)
-        .map_err(|e| format!("compile error: {e}"))?;
+    // Full compilation: always generate HTML (no font deps)
+    let html = compile_to_html(&new_module)?;
 
-    let pdf_bytes = ldir_pdf::converter::gir_to_pdf(&gir_doc);
-
-    let pdf_path = derive_pdf_path(uri, output_dir)?;
-    if let Some(parent) = pdf_path.parent() {
+    let html_path = derive_html_path(uri, output_dir)?;
+    if let Some(parent) = html_path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("failed to create directory: {e}"))?;
     }
+    std::fs::write(&html_path, &html).map_err(|e| format!("failed to write HTML: {e}"))?;
 
-    std::fs::write(&pdf_path, &pdf_bytes).map_err(|e| format!("failed to write PDF: {e}"))?;
+    // Also attempt PDF if fonts are available
+    let pdf_path = derive_pdf_path(uri, output_dir)?;
+    let mut compile_ctx = ldir_core::compiler::context::CompileContext::new();
+    match ldir_core::compiler::v2_compile::compile_v2_document(&new_module, &mut compile_ctx) {
+        Ok(gir_doc) => {
+            let pdf_bytes = ldir_pdf::converter::gir_to_pdf(&gir_doc);
+            if let Some(parent) = pdf_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            let _ = std::fs::write(&pdf_path, &pdf_bytes);
+        }
+        Err(_) => {
+            // PDF generation failed (likely no fonts); HTML preview still works
+        }
+    }
 
+    // Store incremental state for next edit
     let ctx_lir = ldir_core::compiler::context::CompileContext::new();
     let lir = ldir_core::compile_sir_to_lir(&new_module, &ctx_lir)
         .map(Arc::new)
@@ -338,7 +370,29 @@ fn compile_to_pdf(
         pdf_path: pdf_path.clone(),
     });
 
-    Ok(pdf_path)
+    Ok(CompileResult {
+        pdf_path,
+        html_path,
+    })
+}
+
+/// Compile S-IR module to HTML (always works, no font deps).
+fn compile_to_html(module: &SIRModuleV2) -> Result<String, String> {
+    let mut renderer = ldir_html::HtmlRenderer::new();
+    Ok(renderer.render(module))
+}
+
+fn derive_html_path(uri: &str, output_dir: &Path) -> Result<PathBuf, String> {
+    let url = url::Url::parse(uri).map_err(|e| format!("invalid URI: {e}"))?;
+    let path = url
+        .to_file_path()
+        .map_err(|_| "URI is not a file path".to_string())?;
+    let stem = path
+        .file_stem()
+        .ok_or("cannot determine file stem")?
+        .to_string_lossy()
+        .to_string();
+    Ok(output_dir.join(format!("{stem}.html")))
 }
 
 fn derive_pdf_path(uri: &str, output_dir: &Path) -> Result<PathBuf, String> {
@@ -416,11 +470,13 @@ mod tests {
             uri: "file:///test/doc.md".to_string(),
             status: "ready".to_string(),
             pdf_path: Some("/tmp/doc.pdf".to_string()),
+            html_path: Some("/tmp/doc.html".to_string()),
         };
         let json = serde_json::to_string(&params).unwrap();
         assert!(json.contains(r#""status":"ready""#));
         assert!(json.contains(r#""uri":"file:///test/doc.md""#));
         assert!(json.contains(r#""pdfPath":"/tmp/doc.pdf""#));
+        assert!(json.contains(r#""htmlPath":"/tmp/doc.html""#));
     }
 
     #[test]
@@ -448,9 +504,11 @@ mod tests {
             uri: "file:///test/doc.md".to_string(),
             status: "error: compile failed".to_string(),
             pdf_path: None,
+            html_path: None,
         };
         let json = serde_json::to_string(&params).unwrap();
         assert!(json.contains(r#""status":"error: compile failed""#));
         assert!(!json.contains("pdfPath"));
+        assert!(!json.contains("htmlPath"));
     }
 }

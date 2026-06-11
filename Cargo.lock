@@ -2159,6 +2159,7 @@ name = "ldir-lsp"
 version = "0.1.0"
 dependencies = [
  "ldir-core",
+ "ldir-html",
  "ldir-ir",
  "ldir-md",
  "ldir-pdf",

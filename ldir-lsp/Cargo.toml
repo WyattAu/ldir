@@ -16,6 +16,7 @@ path = "src/main.rs"
 
 [dependencies]
 ldir-core = { workspace = true }
+ldir-html = { workspace = true }
 ldir-ir = { workspace = true }
 ldir-md = { workspace = true }
 ldir-pdf = { workspace = true }
