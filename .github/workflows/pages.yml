@@ -6,6 +6,7 @@ on:
     paths:
       - 'ldir-wasm/playground/**'
       - '.github/workflows/pages.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,10 +27,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Build site
+        run: |
+          mkdir -p _site
+          # Copy static docs site
+          cp -r docs/*.html docs/css docs/js _site/ 2>/dev/null || true
+          # Copy WASM playground on top
+          cp -r ldir-wasm/playground/* _site/ 2>/dev/null || true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ldir-wasm/playground/
+          path: _site/
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
