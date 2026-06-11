@@ -35,7 +35,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -72,7 +72,7 @@ jobs:
           cargo bench -p ldir-core -p ldir-bench -- --save-baseline scheduled 2>&1 | tee bench-output.txt
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bench-scheduled-${{ github.sha }}
           path: |
