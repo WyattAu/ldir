@@ -448,7 +448,7 @@ jobs:
           else
             LDC="./target/release/ldc"
           fi
-          "$LDC" /tmp/det-test.md --pdfa-level off -o /tmp/det-test.pdf
+          "$LDC" /tmp/det-test.md -o /tmp/det-test.pdf
           sha256sum /tmp/det-test.pdf > /tmp/hash.txt
           echo "Hash: $(awk '{print $1}' /tmp/hash.txt)"
 

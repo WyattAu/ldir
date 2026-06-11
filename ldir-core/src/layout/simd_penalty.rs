@@ -12,6 +12,7 @@ pub struct SimdConfig {
     pub use_simd: bool,
 }
 
+#[allow(clippy::derivable_impls)] // cfg(target_arch) makes derive impossible
 impl Default for SimdConfig {
     fn default() -> Self {
         Self {
