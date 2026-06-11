@@ -37,7 +37,7 @@
 | Concurrency | ThreadSanitizer | LLVM 18+ | nightly | TSan |
 | Memory | Valgrind (memcheck) | 3.22+ | stable | — |
 | Coverage | cargo-tarpaulin | 0.31+ | stable | — |
-| WASM | wasmtime | 28+ | stable | — |
+| WASM | wasmtime | 38+ | stable | — |
 
 ---
 
