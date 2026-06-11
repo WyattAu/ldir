@@ -4,6 +4,7 @@
 //! for GPU rendering. Coordinates are converted from 26.6 fixed-point
 //! to f64 scene coordinates (divide by 64.0).
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -12,6 +13,9 @@ use ttf_parser::OutlineBuilder;
 use vello::peniko::kurbo::{Affine, BezPath, Rect, RoundedRect};
 use vello::peniko::{Blob, Color, Fill, Font};
 use vello::{Glyph, Scene};
+
+/// Maximum number of glyph outlines to cache per font.
+const GLYPH_CACHE_CAPACITY: usize = 8192;
 
 /// Scale factor for converting 26.6 fixed-point to scene units.
 const FP266_SCALE: f64 = 64.0;
@@ -23,7 +27,7 @@ pub struct FontMap {
 }
 
 /// A single font entry in the font map.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct FontEntry {
     /// Vello font handle (wraps font data + collection index).
     pub font: Font,
@@ -31,6 +35,64 @@ pub struct FontEntry {
     pub scale: f32,
     /// Raw font data bytes for outline extraction via ttf_parser.
     data: Arc<Vec<u8>>,
+    /// Cached glyph outlines: glyph_id -> BezPath (interior mutability for caching).
+    glyph_cache: RefCell<HashMap<u16, Option<BezPath>>>,
+}
+
+impl FontEntry {
+    /// Get or compute the glyph outline for the given glyph ID.
+    ///
+    /// Returns None if the glyph has no outline (.notdef or empty).
+    /// Caches results for subsequent lookups.
+    fn get_glyph_outline(&self, glyph_id: u32) -> Option<BezPath> {
+        let gid = glyph_id as u16;
+        {
+            let cache = self.glyph_cache.borrow();
+            if let Some(cached) = cache.get(&gid) {
+                return cached.clone();
+            }
+        }
+
+        let outline = self.compute_glyph_outline(gid);
+        let mut cache = self.glyph_cache.borrow_mut();
+        // Evict entries if cache is full
+        if cache.len() >= GLYPH_CACHE_CAPACITY {
+            let keys: Vec<u16> = cache
+                .keys()
+                .take(GLYPH_CACHE_CAPACITY / 4)
+                .copied()
+                .collect();
+            for k in keys {
+                cache.remove(&k);
+            }
+        }
+        cache.insert(gid, outline.clone());
+        outline
+    }
+
+    fn compute_glyph_outline(&self, gid: u16) -> Option<BezPath> {
+        let face = ttf_parser::Face::parse(&self.data, 0).ok()?;
+        let upem = face.units_per_em();
+        if upem == 0 {
+            return None;
+        }
+        let glyph_id = ttf_parser::GlyphId(gid);
+        let mut builder = GlyphOutlineBuilder(BezPath::new());
+        face.outline_glyph(glyph_id, &mut builder)?;
+        let path = builder.0;
+        if path.is_empty() { None } else { Some(path) }
+    }
+}
+
+impl Clone for FontEntry {
+    fn clone(&self) -> Self {
+        Self {
+            font: self.font.clone(),
+            scale: self.scale,
+            data: Arc::clone(&self.data),
+            glyph_cache: RefCell::new(self.glyph_cache.borrow().clone()),
+        }
+    }
 }
 
 impl FontMap {
@@ -57,6 +119,7 @@ impl FontMap {
                     font,
                     scale,
                     data: Arc::clone(data),
+                    glyph_cache: RefCell::new(HashMap::new()),
                 },
             );
         }
@@ -65,7 +128,15 @@ impl FontMap {
 
     /// Insert a font into the map.
     pub fn insert(&mut self, id: usize, font: Font, scale: f32, data: Arc<Vec<u8>>) {
-        self.fonts.insert(id, FontEntry { font, scale, data });
+        self.fonts.insert(
+            id,
+            FontEntry {
+                font,
+                scale,
+                data,
+                glyph_cache: RefCell::new(HashMap::new()),
+            },
+        );
     }
 
     /// Look up a font entry by ID.
@@ -125,7 +196,39 @@ impl OutlineBuilder for GlyphOutlineBuilder {
     }
 }
 
-/// Render a single glyph as a filled outline path.
+/// Render a single glyph as a filled outline path using cached outlines.
+///
+/// Uses the font entry's glyph cache to avoid re-parsing font data per glyph.
+/// Falls back to a placeholder rectangle if the glyph cannot be rendered.
+fn render_glyph_outline_cached(
+    scene: &mut Scene,
+    transform: Affine,
+    entry: &FontEntry,
+    glyph_id: u32,
+    x: f64,
+    y: f64,
+) -> bool {
+    if glyph_id == 0 {
+        return false;
+    }
+
+    let Some(path) = entry.get_glyph_outline(glyph_id) else {
+        return false;
+    };
+
+    let upem = ttf_parser::Face::parse(&entry.data, 0)
+        .map(|f| f.units_per_em())
+        .unwrap_or(1000);
+    let scale_factor = entry.scale as f64 / upem as f64;
+    let glyph_transform = transform
+        * Affine::translate((x, y))
+        * Affine::scale_non_uniform(scale_factor, -scale_factor);
+
+    scene.fill(Fill::NonZero, glyph_transform, Color::BLACK, None, &path);
+    true
+}
+
+/// Render a single glyph as a filled outline path (uncached, for single-use).
 ///
 /// Uses `ttf_parser` to extract the glyph outline from raw font data,
 /// converts it to a kurbo `BezPath`, and fills it into the scene.
@@ -187,9 +290,8 @@ pub fn gir_page_to_scene(page: &ldir_ir::gir::GIRPage) -> Scene {
 
 /// Convert a single G-IR page to a Vello scene with font data.
 ///
-/// When fonts are provided, `PutGlyph` commands use Vello's
-/// `draw_glyphs` API for real glyph outline rendering. Glyphs are
-/// batched into runs per font.
+/// When fonts are provided, `PutGlyph` commands use cached glyph outline
+/// rendering for performance. Glyphs are batched into runs per font.
 pub fn gir_page_to_scene_with_fonts(page: &ldir_ir::gir::GIRPage, fonts: &FontMap) -> Scene {
     gir_page_to_scene_inner(page, Some(fonts))
 }
@@ -223,15 +325,7 @@ fn gir_page_to_scene_inner(page: &ldir_ir::gir::GIRPage, fonts: Option<&FontMap>
             if let Some(entry) = fonts.get(font_id as usize) {
                 for glyph in glyphs.drain(..) {
                     let gx = x_start + glyph.x as f64;
-                    if !render_glyph_outline(
-                        scene,
-                        transform,
-                        &entry.data,
-                        glyph.id,
-                        entry.scale,
-                        gx,
-                        y,
-                    ) {
+                    if !render_glyph_outline_cached(scene, transform, entry, glyph.id, gx, y) {
                         let tx = transform * Affine::translate((gx, y));
                         let rect = RoundedRect::new(0.0, 0.0, 10.0, 12.0, 0.0);
                         scene.fill(Fill::NonZero, tx, Color::BLACK, None, &rect);
