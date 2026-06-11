@@ -83,7 +83,7 @@
 ### Cleanup
 - **publish-dry-run CI job**: Release pipeline verification
 - **#[doc(alias)]**: 7 key public types for API discoverability
-- **README polish**: 2127 tests, 11 output formats, tracked changes
+- **README polish**: 2143 tests, 11 output formats, tracked changes
 
 ## Test Summary
 | Category | Count |
@@ -117,7 +117,7 @@
 | tests (integration) | 19 |
 | ldir-test-helpers | 1 |
 | ldir-rst | 29 |
-| **Total (workspace)** | **2,127** |
+| **Total (workspace)** | **2,143** |
 
 ## Artifact Summary
 | Category | Lines |

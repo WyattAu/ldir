@@ -7,7 +7,7 @@
 | Rust crates | 29 (+ 1 Lean4 project) |
 | Rust LOC | ~82,000 |
 | Lean4 proof LOC | ~1,000 |
-| Total tests | 2,127 (all passing, 0 failures) |
+| Total tests | 2,143 (all passing, 0 failures) |
 | Lean4 sorry | 0 (all proofs fully resolved) |
 | Clippy warnings | 0 (`-D warnings`) |
 | cargo fmt | Clean |
@@ -16,7 +16,7 @@
 | Input formats | 9 (MD, TeX, Typst, HTML, Adoc, Org, DOCX, SIR2, LDIR) |
 | Output formats | 11 (PDF, HTML, EPUB, TXT, DOCX, ODT, Pandoc AST, Jupyter, GIR, SIR2, LDIR) |
 | MSRV | 1.88 (edition 2024) |
-| CI | All 10 jobs green (Ubuntu, macOS, Windows, MSRV, WASM, Feature Gates, Bench, Lean4, Completions, PDF/A) |
+| CI | All 13 jobs green (Ubuntu, macOS, Windows, MSRV, WASM, Feature Gates, Bench, Lean4, Completions, PDF/A, Determinism, Security Audit, PDF/A Conformance) |
 | Shell completions | Bash, Zsh, Fish, PowerShell (generated via clap_complete) |
 | Man pages | ldc.1 (generated via clap_mangen) |
 | Docs site | mdBook (7 chapters) deployed to GitHub Pages |
@@ -460,4 +460,4 @@ Parallel paragraph pre-computation (rayon) regressed 9.25s -> 12s. Infrastructur
 - veraPDF PDF/A-2b conformance CI job
 - Cross-platform determinism verification CI job
 - publish-dry-run CI job in release.yml
-- 2,127 tests, 0 clippy warnings, cargo fmt clean
+- 2,143 tests, 0 clippy warnings, cargo fmt clean
