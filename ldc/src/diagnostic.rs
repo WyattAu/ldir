@@ -422,6 +422,27 @@ mod tests {
         result
     }
 
+    /// Strip ANSI escape sequences for test assertions (avoids race on global
+    /// COLOR_ENABLED across parallel test threads).
+    fn strip_ansi(s: &str) -> String {
+        let mut out = String::with_capacity(s.len());
+        let mut chars = s.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c == '\x1b' && chars.peek() == Some(&'[') {
+                chars.next(); // consume '['
+                while let Some(&nc) = chars.peek() {
+                    chars.next();
+                    if nc.is_ascii_alphabetic() {
+                        break;
+                    }
+                }
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    }
+
     #[test]
     fn test_diagnostic_formatting() {
         COLOR_ENABLED.store(false, Ordering::Relaxed);
@@ -437,7 +458,7 @@ mod tests {
             .help("Supported formats: pdf, html, epub, docx");
 
         emit_to(&mut buf, &diag).unwrap();
-        let output = String::from_utf8(buf).unwrap();
+        let output = strip_ansi(&String::from_utf8(buf).unwrap());
         assert!(output.contains("error[E0001]: unknown input format 'doc'"));
         assert!(output.contains("--> /path/to/input.md: 12:5"));
         assert!(output.contains("ldc --format doc input.md"));

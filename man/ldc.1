@@ -4,11 +4,11 @@
 .SH NAME
 ldc \- LDIR compiler CLI: compile documents to PDF and other formats
 .SH SYNOPSIS
-\fBldc\fR [\fB\-o\fR|\fB\-\-output\fR] [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-font\fR] [\fB\-\-font\-mono\fR] [\fB\-\-font\-path\fR] [\fB\-\-list\-fonts\fR] [\fB\-\-title\fR] [\fB\-\-author\fR] [\fB\-\-subject\fR] [\fB\-\-margin\fR] [\fB\-\-page\-size\fR] [\fB\-\-page\-width\fR] [\fB\-\-page\-height\fR] [\fB\-\-header\-left\fR] [\fB\-\-header\-center\fR] [\fB\-\-header\-right\fR] [\fB\-\-footer\-left\fR] [\fB\-\-footer\-center\fR] [\fB\-\-footer\-right\fR] [\fB\-\-no\-header\-rule\fR] [\fB\-\-no\-footer\-rule\fR] [\fB\-\-drop\-caps\fR] [\fB\-\-bibliography\fR] [\fB\-\-lir\fR] [\fB\-\-pdfa\-level\fR] [\fB\-\-color\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIINPUTS\fR] 
+\fBldc\fR [\fB\-o\fR|\fB\-\-output\fR] [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-font\fR] [\fB\-\-font\-mono\fR] [\fB\-\-font\-path\fR] [\fB\-\-list\-fonts\fR] [\fB\-\-title\fR] [\fB\-\-author\fR] [\fB\-\-subject\fR] [\fB\-\-margin\fR] [\fB\-\-page\-size\fR] [\fB\-\-page\-width\fR] [\fB\-\-page\-height\fR] [\fB\-\-header\-left\fR] [\fB\-\-header\-center\fR] [\fB\-\-header\-right\fR] [\fB\-\-footer\-left\fR] [\fB\-\-footer\-center\fR] [\fB\-\-footer\-right\fR] [\fB\-\-no\-header\-rule\fR] [\fB\-\-no\-footer\-rule\fR] [\fB\-\-drop\-caps\fR] [\fB\-\-bibliography\fR] [\fB\-\-lir\fR] [\fB\-\-pdfa\-level\fR] [\fB\-\-color\fR] [\fB\-\-ot\-features\fR] [\fB\-\-config\fR] [\fB\-\-no\-config\fR] [\fB\-\-dump\-config\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fIINPUTS\fR] 
 .SH DESCRIPTION
 LDIR Compiler — compile documents to PDF and other formats.
 .PP
-Input formats: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx (auto\-detected) Output formats: .pdf, .html, .epub, .txt, .docx, .sir2, .ldir (\-\-format or auto\-detected)
+Input formats: .md, .tex, .typ, .html, .htm, .adoc, .org, .docx (auto\-detected) Output formats: .pdf, .html, .epub, .txt, .docx, .odt, .sir2, .ldir (\-\-format or auto\-detected)
 .SH OPTIONS
 .TP
 \fB\-o\fR, \fB\-\-output\fR \fI<OUTPUT>\fR
@@ -36,9 +36,15 @@ txt
 .IP \(bu 2
 docx
 .IP \(bu 2
+odt
+.IP \(bu 2
 sir2
 .IP \(bu 2
 ldir
+.IP \(bu 2
+pandoc
+.IP \(bu 2
+ipynb
 .RE
 .TP
 \fB\-\-font\fR \fI<FONT_FAMILY>\fR
@@ -112,6 +118,18 @@ PDF/A conformance level ("4" for PDF/A\-4, "2b" for PDF/A\-2b)
 .TP
 \fB\-\-color\fR \fI<WHEN>\fR [default: auto]
 Color output. Options: auto, always, never. Default: auto
+.TP
+\fB\-\-ot\-features\fR \fI<FEATURES>\fR
+OpenType features (e.g., "kern,liga,dlig,hlig"). Prefix with \- to disable: "kern,\-liga". Default: HarfBuzz defaults
+.TP
+\fB\-\-config\fR \fI<PATH>\fR
+Path to configuration file. Default: ./ldir.toml
+.TP
+\fB\-\-no\-config\fR
+Skip loading any configuration file
+.TP
+\fB\-\-dump\-config\fR
+Print the effective (merged) configuration as TOML and exit
 .TP
 \fB\-h\fR, \fB\-\-help\fR
 Print help (see a summary with \*(Aq\-h\*(Aq)

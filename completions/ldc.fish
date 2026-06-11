@@ -6,8 +6,11 @@ html\t''
 epub\t''
 txt\t''
 docx\t''
+odt\t''
 sir2\t''
-ldir\t''"
+ldir\t''
+pandoc\t''
+ipynb\t''"
 complete -c ldc -l font -d 'Primary font family name (e.g., "DejaVu Sans", "Noto Serif"). Auto-detected from system fonts if not specified' -r
 complete -c ldc -l font-mono -d 'Monospace font family name (e.g., "DejaVu Sans Mono"). Auto-detected from system fonts if not specified' -r
 complete -c ldc -l font-path -d 'Path to primary font file (.ttf/.otf). Overrides --font when specified' -r -F
@@ -27,10 +30,14 @@ complete -c ldc -l footer-right -d 'Footer right template (default: %page)' -r
 complete -c ldc -l bibliography -d 'Path to BibTeX (.bib) file for citations' -r -F
 complete -c ldc -l pdfa-level -d 'PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b)' -r
 complete -c ldc -l color -d 'Color output. Options: auto, always, never. Default: auto' -r
+complete -c ldc -l ot-features -d 'OpenType features (e.g., "kern,liga,dlig,hlig"). Prefix with - to disable: "kern,-liga". Default: HarfBuzz defaults' -r
+complete -c ldc -l config -d 'Path to configuration file. Default: ./ldir.toml' -r -F
 complete -c ldc -l list-fonts -d 'List available system fonts and exit'
 complete -c ldc -l no-header-rule -d 'Disable header rule line'
 complete -c ldc -l no-footer-rule -d 'Disable footer rule line'
 complete -c ldc -l drop-caps -d 'Enable drop caps for the first paragraph after headings'
 complete -c ldc -l lir -d 'Use the L-IR layout pipeline (S-IR → L-IR → G-IR) instead of direct compilation'
+complete -c ldc -l no-config -d 'Skip loading any configuration file'
+complete -c ldc -l dump-config -d 'Print the effective (merged) configuration as TOML and exit'
 complete -c ldc -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c ldc -s V -l version -d 'Print version'

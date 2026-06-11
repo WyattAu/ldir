@@ -17,8 +17,8 @@ _ldc() {
     _arguments "${_arguments_options[@]}" : \
 '-o+[Output file path. Defaults to first input stem + extension based on format]:OUTPUT:_files' \
 '--output=[Output file path. Defaults to first input stem + extension based on format]:OUTPUT:_files' \
-'-f+[Output format]:FORMAT:(pdf gir sir html epub txt docx sir2 ldir)' \
-'--format=[Output format]:FORMAT:(pdf gir sir html epub txt docx sir2 ldir)' \
+'-f+[Output format]:FORMAT:(pdf gir sir html epub txt docx odt sir2 ldir pandoc ipynb)' \
+'--format=[Output format]:FORMAT:(pdf gir sir html epub txt docx odt sir2 ldir pandoc ipynb)' \
 '--font=[Primary font family name (e.g., "DejaVu Sans", "Noto Serif"). Auto-detected from system fonts if not specified]:FONT_FAMILY:_default' \
 '--font-mono=[Monospace font family name (e.g., "DejaVu Sans Mono"). Auto-detected from system fonts if not specified]:FONT_FAMILY:_default' \
 '--font-path=[Path to primary font file (.ttf/.otf). Overrides --font when specified]:PATH:_files' \
@@ -38,11 +38,15 @@ _ldc() {
 '--bibliography=[Path to BibTeX (.bib) file for citations]:PATH:_files' \
 '--pdfa-level=[PDF/A conformance level ("4" for PDF/A-4, "2b" for PDF/A-2b)]:LEVEL:_default' \
 '--color=[Color output. Options\: auto, always, never. Default\: auto]:WHEN:_default' \
+'--ot-features=[OpenType features (e.g., "kern,liga,dlig,hlig"). Prefix with - to disable\: "kern,-liga". Default\: HarfBuzz defaults]:FEATURES:_default' \
+'--config=[Path to configuration file. Default\: ./ldir.toml]:PATH:_files' \
 '--list-fonts[List available system fonts and exit]' \
 '--no-header-rule[Disable header rule line]' \
 '--no-footer-rule[Disable footer rule line]' \
 '--drop-caps[Enable drop caps for the first paragraph after headings]' \
 '--lir[Use the L-IR layout pipeline (S-IR → L-IR → G-IR) instead of direct compilation]' \
+'--no-config[Skip loading any configuration file]' \
+'--dump-config[Print the effective (merged) configuration as TOML and exit]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '-V[Print version]' \
