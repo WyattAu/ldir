@@ -172,7 +172,7 @@ Matrix builds for macOS (x86_64 + aarch64) and Windows (x86_64). MSRV check job 
 | V: Layout | 6-10 weeks | DONE |
 | W: WASM | 4-6 weeks | DONE (W-1 HarfBuzz deferred) |
 | X: Quality | ongoing | DONE |
-| Y: GPU | 8-12 weeks | IN PROGRESS (Y-1 core done; caching + viewport pending) |
+| Y: GPU | 8-12 weeks | DONE (Y-1 core + glyph cache + viewport transform) |
 
 **Critical path:** T -> U -> V -> Y (~20-31 weeks to GPU rendering)
 
