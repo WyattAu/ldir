@@ -155,11 +155,11 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 
 | Metric | Current | Target | Priority |
 |--------|---------|--------|----------|
-| 100-page MD to PDF | ~2s (measured: 475-page = 0.8s CPU) | <1s | High |
-| Memory (100-page doc) | Unknown | <50MB | Medium |
-| Incremental recompile (1-word change) | ~50ms (estimated) | <10ms | Medium |
+| 100-page MD to PDF | ~1.7s wall (1.0s CPU) | <1s | High |
+| Memory (100-page doc) | ~20-30MB heap est. (96MB mapped incl. shared libs) | <50MB | Medium |
+| Per-page CPU | ~1.4ms | <1ms | High |
 | Shape cache hit rate | Unknown | >90% | Low |
-| Startup time (ldc) | Unknown | <100ms | Low |
+| Startup time (ldc) | ~0.3s | <100ms | Low |
 
 ### 4.2 Optimization Priorities
 
