@@ -1,10 +1,10 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::status::{styled, Color, COLOR_ENABLED};
+use crate::status::{COLOR_ENABLED, Color, styled};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
+#[allow(dead_code)] // Warning, Help, Note reserved for future diagnostics
 pub enum DiagnosticKind {
     Error,
     Warning,
@@ -39,7 +39,7 @@ pub struct Diagnostic {
     pub file: Option<PathBuf>,
     pub line: Option<u32>,
     pub column: Option<u32>,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // reserved for future warning diagnostics
     pub source_line: Option<String>,
     pub suggestion: Option<String>,
     pub help: Option<String>,
@@ -60,7 +60,7 @@ impl Diagnostic {
         }
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // reserved for future warning diagnostics
     pub fn warning(message: impl Into<String>) -> Self {
         Self {
             kind: DiagnosticKind::Warning,
@@ -85,19 +85,19 @@ impl Diagnostic {
         self
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // reserved for future per-line diagnostics
     pub fn line(mut self, line: u32) -> Self {
         self.line = Some(line);
         self
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // reserved for future per-column diagnostics
     pub fn column(mut self, col: u32) -> Self {
         self.column = Some(col);
         self
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code)] // reserved for future source-line diagnostics
     pub fn source_line(mut self, line: impl Into<String>) -> Self {
         self.source_line = Some(line.into());
         self
@@ -142,8 +142,8 @@ pub fn emit_to(w: &mut dyn Write, diag: &Diagnostic) -> std::io::Result<()> {
         if diag.column.is_some() || diag.suggestion.is_some() {
             let col = diag.column.unwrap_or(1);
             let gutter = " ".repeat(width + 3);
-            let underline = " ".repeat((col - 1) as usize)
-                + if diag.suggestion.is_some() { "^" } else { "-" };
+            let underline =
+                " ".repeat((col - 1) as usize) + if diag.suggestion.is_some() { "^" } else { "-" };
             let underline_color = styled(&underline, label_color);
             writeln!(w, "{gutter}{underline_color}")?;
 
@@ -270,8 +270,7 @@ pub fn diagnose_anyhow_error(err: &anyhow::Error) -> Diagnostic {
             }
         }
 
-        diag = diag
-            .help("Check that the file exists and you have permission to read it.");
+        diag = diag.help("Check that the file exists and you have permission to read it.");
         return diag;
     }
 
@@ -283,14 +282,19 @@ pub fn diagnose_anyhow_error(err: &anyhow::Error) -> Diagnostic {
     }
 
     if msg.contains("unsupported output format") {
-        let candidates: &[&str] = &["pdf", "html", "epub", "txt", "docx", "sir2", "ldir", "gir"];
+        let candidates: &[&str] = &[
+            "pdf", "html", "epub", "txt", "docx", "odt", "sir2", "ldir", "gir", "pandoc", "ipynb",
+        ];
         let mut diag = Diagnostic::error(&msg).code("E0002");
         if let Some(fmt) = extract_format_from_message(&msg, "unsupported output format: ")
             && let Some(suggestion) = suggest_alternatives(fmt, candidates)
         {
             diag = diag.suggestion(format!("Did you mean '{}'?", suggestion));
         }
-        diag = diag.help(format!("Supported output formats: {}", candidates.join(", ")));
+        diag = diag.help(format!(
+            "Supported output formats: {}",
+            candidates.join(", ")
+        ));
         return diag;
     }
 
@@ -489,8 +493,7 @@ mod tests {
         let _ = suggestions;
 
         let err = std::fs::read(missing.as_os_str()).unwrap_err();
-        let err = anyhow::Error::from(err)
-            .context(format!("failed to read {}", missing.display()));
+        let err = anyhow::Error::from(err).context(format!("failed to read {}", missing.display()));
 
         let diag = diagnose_anyhow_error(&err);
 
@@ -500,7 +503,9 @@ mod tests {
 
     #[test]
     fn test_unknown_format_diagnostic() {
-        let candidates: &[&str] = &["pdf", "html", "epub", "txt", "docx", "sir2", "ldir", "gir"];
+        let candidates: &[&str] = &[
+            "pdf", "html", "epub", "txt", "docx", "odt", "sir2", "ldir", "gir", "pandoc", "ipynb",
+        ];
         let err = anyhow::anyhow!("unsupported output format: pdff");
         let diag = diagnose_anyhow_error(&err);
 

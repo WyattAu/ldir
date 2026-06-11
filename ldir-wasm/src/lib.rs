@@ -62,10 +62,12 @@ pub fn compile(input: &str, format: &str) -> String {
 ///
 /// Returns raw RGBA pixel data (width * height * 4 bytes).
 ///
-/// **Unstable:** This function is not yet implemented. Enable with
-/// `features = ["unstable"]` to access the API surface.
+/// **Unstable:** This function is a placeholder for future GPU renderer
+/// integration. Currently returns an empty buffer.
 #[cfg(feature = "unstable")]
 #[wasm_bindgen]
 pub fn compile_and_render(_sir_bytes: &[u8]) -> Vec<u8> {
-    todo!("compile_and_render requires GPU renderer integration (ldir-vello)")
+    // Placeholder: full implementation requires ldir-vello GPU renderer
+    // integration in WASM. See ROADMAP_NEXT.md Phase W for status.
+    Vec::new()
 }

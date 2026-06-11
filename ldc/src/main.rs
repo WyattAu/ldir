@@ -14,6 +14,7 @@
 //! ldc input.md input.typ -o output.html
 //! ```
 
+mod diagnostic;
 mod status;
 
 use std::fs::File;
@@ -554,7 +555,15 @@ fn source_location_from_error(module: &SIRModuleV2, err: &LdirError) -> String {
     String::new()
 }
 
-fn main() -> Result<()> {
+fn main() {
+    if let Err(err) = run() {
+        let diag = diagnostic::diagnose_anyhow_error(&err);
+        diagnostic::emit(&diag);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<()> {
     let mut cli = Cli::parse();
 
     let cfg = config::LdirConfig::load(cli.config.as_deref(), cli.no_config)?;

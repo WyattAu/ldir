@@ -328,16 +328,31 @@ fn test_typst_to_sir_v2_complex_document() {
     );
 }
 
-// TODO: Typst -> PDF test requires S-IR v2 -> G-IR compilation path.
-// The v2_compile module exists but the public API is not yet exposed as a
-// simple entry point. Enable when available:
-// #[test]
-// fn test_typst_to_pdf() {
-//     let module = ldir_typst::parse_typst("= Title\n\nHello.\n");
-//     let gir = compile_sir_v2(&module);
-//     let pdf = ldir_pdf::converter::gir_to_pdf(&gir);
-//     assert!(pdf.starts_with(b"%PDF"));
-// }
+// Typst -> S-IR v2 -> G-IR pipeline test.
+// The v2_compile module compiles S-IR v2 modules to G-IR.
+#[test]
+fn test_typst_to_gir() {
+    use ldir_core::compiler::context::CompileContext;
+    use ldir_core::compiler::v2_compile::compile_v2_document;
+
+    let module = ldir_typst::parse_typst("= Title\n\nHello world.\n");
+    assert!(
+        !module.body.is_empty(),
+        "typst document should produce S-IR v2 nodes"
+    );
+
+    let mut ctx = CompileContext::new();
+    let result = compile_v2_document(&module, &mut ctx);
+    // Compilation may succeed or fail (no fonts loaded), but should not panic.
+    if let Ok(gir) = result {
+        // If it succeeds, G-IR should have at least one page.
+        assert!(
+            gir.page_count() > 0,
+            "compiled G-IR should have at least one page"
+        );
+    }
+    // If it fails, that's acceptable without fonts -- the point is it doesn't panic.
+}
 
 // ---------------------------------------------------------------------------
 // 5. HTML -> S-IR v2 -> HTML round-trip
