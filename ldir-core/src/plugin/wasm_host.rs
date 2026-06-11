@@ -114,7 +114,7 @@ impl ResourceLimitEnforcer {
 
     /// Inject fuel into a wasmtime Store.
     pub fn configure_store<T>(&self, store: &mut wasmtime::Store<T>) {
-        store.add_fuel(self.max_fuel).unwrap_or(());
+        store.set_fuel(self.max_fuel).unwrap_or(());
     }
 
     /// Check if output exceeds the configured size limit.
@@ -137,10 +137,10 @@ impl ResourceLimitEnforcer {
         let result = f();
         let elapsed = start.elapsed();
 
-        if elapsed.as_millis() > self.max_time_ms {
+        if elapsed.as_millis() > self.max_time_ms as u128 {
             return Err(PluginError::Timeout {
                 limit_ms: self.max_time_ms,
-                actual_ms: elapsed.as_millis(),
+                actual_ms: elapsed.as_millis() as u64,
             });
         }
 
