@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 [![MSRV](https://img.shields.io/badge/MSRV-1.88-orange.svg)](https://github.com/rust-lang/rust/releases)
 [![Lean4](https://img.shields.io/badge/formal%20verification-Lean4-purple.svg)](ldir-proofs/)
-[![Tests](https://img.shields.io/badge/tests-1909%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2127%20passing-brightgreen.svg)]()
 
 A universal intermediate representation (IR) for documents with multiple
 frontends and backends. Compiles Markdown, LaTeX, Typst, HTML, and more to
@@ -14,7 +14,7 @@ PDF, HTML, EPUB, and other formats through a formally verified IR pipeline.
 ## Features
 
 - **9 input formats**: Markdown, LaTeX, Typst, HTML, Asciidoc, Org, DOCX, SIR2, LDIR
-- **8 output formats**: PDF, HTML, EPUB, TXT, DOCX, GIR, SIR2, LDIR
+- **11 output formats**: PDF, HTML, EPUB, TXT, DOCX, ODT, Pandoc AST, Jupyter, GIR, SIR2, LDIR
 - **Three-layer IR**: S-IR (semantic) -> L-IR (layout) -> G-IR (rendering)
 - **Formal verification**: Lean4 proofs for IR well-formedness (0 sorry)
 - **PDF/A compliance**: PDF/A-1b, 2b, 3b output modes with veraPDF validation
@@ -24,8 +24,9 @@ PDF, HTML, EPUB, and other formats through a formally verified IR pipeline.
 - **Multi-column layout**: Balanced column reflow with full-width spanning
 - **CJK support**: CmapIterator covering 7 CJK Unicode ranges, compact glyph ID remapping
 - **Multilingual hyphenation**: 5 languages (EN, DE, FR, ES, PT) + Liou pattern engine
-- **Bibliography**: IEEE, APA, Chicago citation styles with year disambiguation
+- **Bibliography**: IEEE, APA, Chicago, MLA citation styles with year disambiguation
 - **Font subsetting**: Compact TrueType embedding with glyph ID remapping and CIDToGIDMap
+- **Tracked changes**: Insert/delete with author, date, revision metadata (DOCX, HTML)
 - **Rich CLI**: Progress indicators, gcc/rustc-style diagnostics, ldir.toml config, shell completions
 
 ## Architecture
@@ -136,6 +137,10 @@ Shell completions for bash, zsh, fish, and PowerShell are available via `clap-co
 | `ldir-docx-reader` | DOCX reader frontend |
 | `ldir-adoc` | Asciidoc parser |
 | `ldir-org` | Org-mode parser |
+| `ldir-odt` | ODT generator (ISO 26300) |
+| `ldir-pandoc` | Pandoc JSON AST writer |
+| `ldir-jupyter` | Jupyter notebook exporter |
+| `ldir-bench` | Criterion.rs benchmarks with tracing-chrome |
 | `ldir-wasm` | WASM playground |
 | `ldir-vello` | GPU renderer (Vello/WGPU) |
 | `ldir-lsp` | Language Server Protocol server |
@@ -173,7 +178,7 @@ not suitable for WASM without a WASI-based HarfBuzz build.
 # Build all crates
 cargo build --workspace
 
-# Run tests (1,909 tests)
+# Run tests (2,127 tests)
 cargo test --workspace
 
 # Lint (0 warnings)
@@ -189,7 +194,7 @@ Minimum Supported Rust Version: **1.88** (edition 2024, resolver 3)
 
 ### CI
 
-GitHub Actions runs on every push and PR with 12 jobs:
+GitHub Actions runs on every push and PR with 13+ jobs:
 - `rust-check` (ubuntu, macos, windows matrix)
 - `msrv-check`, `feature-gates`, `bench-check`
 - `lean4-check`, `completions-check`, `pdfa-check`

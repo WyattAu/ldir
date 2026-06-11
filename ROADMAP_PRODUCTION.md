@@ -102,7 +102,7 @@ Publish all 25 public crates to crates.io.
 - [x] Ensure all public types implement `Debug`, `Clone` where appropriate -- DONE (32 types across 20 crates)
 3. [x] Verify all crate-level `//!` documentation is complete (ldir-link and ldir-opt now done)
 4. [x] Ensure `cargo doc --workspace --no-deps` produces zero warnings
-5. [ ] Add `#[doc(alias = "...")]` for common alternative names
+5. [x] Add `#[doc(alias = "...")]` for common alternative names (NodeType, Node, Fp266, SIRModuleV2, LIRDocument, GIRDocument, CompileContext)
 
 ### B-2: Publication Dry-Run (2-3 days) -- PARTIALLY DONE
 

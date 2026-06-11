@@ -346,6 +346,7 @@ impl fmt::Display for LIRNode {
 
 /// Top-level laid-out document (DEF-LIR-DOCUMENT).
 #[derive(Debug, Clone, PartialEq)]
+#[doc(alias = "LayoutDocument")]
 pub struct LIRDocument {
     /// Unique node ID.
     pub id: u32,

@@ -34,6 +34,8 @@ pub const MAX_RAW: i64 = i32::MAX as i64 * SCALE + (SCALE - 1);
 /// being represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 #[repr(transparent)]
+#[doc(alias = "FixedPoint")]
+#[doc(alias = "Fixed26_6")]
 pub struct Fp266 {
     raw: i64,
 }

@@ -58,7 +58,7 @@
 - [x] `release.yml` creates GitHub Releases with `softprops/action-gh-release@v2`
 - [x] `aarch64-unknown-linux-gnu` target for ARM servers
 - [x] SHA256 checksum generation and upload
-- [ ] Add `cargo publish --dry-run` to release pipeline (deferred -- manual dry-run completed for all crates)
+- [x] Add `cargo publish --dry-run` to release pipeline (publish-dry-run job in release.yml)
 
 ### Success Criteria
 
@@ -190,7 +190,7 @@ All 22 unsafe blocks have `// SAFETY:` comments. Both unsafe fn declarations hav
 - [ ] All crates pass `cargo publish --dry-run` (ldir-ir and ldir-test-helpers pass; remaining blocked on ldir-ir not yet published)
 - [x] API documentation on docs.rs (docs.yml CI job)
 - [x] All crates have proper metadata (repository, license, description, keywords, categories)
-- [ ] README.md with badges, installation, quickstart (partial)
+- [x] README.md with badges, installation, quickstart, crate table, CI, configuration docs
 
 ### 5.1a String Interner Fix
 

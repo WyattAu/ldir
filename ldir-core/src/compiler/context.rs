@@ -77,6 +77,8 @@ pub struct PrecomputedLine {
 }
 
 /// Mutable compilation state.
+#[doc(alias = "CompilerState")]
+#[doc(alias = "CompileState")]
 pub struct CompileContext {
     /// Current cursor X position (26.6 fixed-point).
     pub x: Fp266,

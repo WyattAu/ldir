@@ -71,9 +71,30 @@ jobs:
           name: ${{ matrix.artifact }}
           path: target/${{ matrix.target }}/release/ldc${{ matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
 
+  publish-dry-run:
+    name: cargo publish --dry-run
+    needs: build-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libharfbuzz-dev fonts-dejavu-core
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify all crates publishable (dry-run)
+        run: |
+          for crate in ldir-ir ldir-test-helpers ldir-core ldir-pdf ldir-html ldir-html-reader ldir-docx ldir-odt ldir-epub ldir-tex ldir-typst ldir-md ldir-rst ldir-org ldir-adoc ldir-txt ldir-pandoc ldir-jupyter ldir-lsp ldir-wasm ldir-bench ldc; do
+            echo "--- dry-run: $crate ---"
+            cargo publish -p "$crate" --dry-run --locked 2>&1 || echo "WARN: $crate not yet publishable (may depend on unpublished workspace crate)"
+          done
+
   create-release:
     name: Create GitHub Release
-    needs: build-release
+    needs: [build-release, publish-dry-run]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

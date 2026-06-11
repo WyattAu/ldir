@@ -62,6 +62,8 @@ pub struct GIRImage {
 /// assert!(doc.is_well_formed());
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[doc(alias = "GraphicsDocument")]
+#[doc(alias = "RenderDocument")]
 pub struct GIRDocument {
     pages: Vec<GIRPage>,
     images: Vec<GIRImage>,

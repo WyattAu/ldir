@@ -12,6 +12,9 @@ use crate::sir::v2::source_span::SourceSpan;
 
 /// Node type enumeration.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[doc(alias = "SIRNode")]
+#[doc(alias = "SemanticNode")]
+#[doc(alias = "ASTNode")]
 pub enum NodeType {
     // === Document structure ===
     Document,
@@ -185,6 +188,8 @@ pub enum ColumnAlign {
 
 /// A single document node.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[doc(alias = "SIRNode")]
+#[doc(alias = "SemanticNode")]
 pub struct Node {
     pub id: u32,
     pub node_type: NodeType,

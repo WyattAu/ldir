@@ -55,6 +55,8 @@ impl Default for ModuleHeader {
 /// }
 /// ```
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[doc(alias = "SIRModule")]
+#[doc(alias = "Module")]
 pub struct SIRModuleV2 {
     pub header: ModuleHeader,
     pub metadata: DocumentMetadata,
