@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 [![MSRV](https://img.shields.io/badge/MSRV-1.88-orange.svg)](https://github.com/rust-lang/rust/releases)
 [![Lean4](https://img.shields.io/badge/formal%20verification-Lean4-purple.svg)](ldir-proofs/)
-[![Tests](https://img.shields.io/badge/tests-2127%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2140%20passing-brightgreen.svg)]()
 
 A universal intermediate representation (IR) for documents with multiple
 frontends and backends. Compiles Markdown, LaTeX, Typst, HTML, and more to
@@ -178,7 +178,7 @@ not suitable for WASM without a WASI-based HarfBuzz build.
 # Build all crates
 cargo build --workspace
 
-# Run tests (2,127 tests)
+# Run tests (2,140 tests)
 cargo test --workspace
 
 # Lint (0 warnings)
