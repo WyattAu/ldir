@@ -19,10 +19,16 @@
 <a href=#19 id=19 data-nosnippet>19</a><span class="doccomment">/// CRDT-based collaborative editing support.
 <a href=#20 id=20 data-nosnippet>20</a></span><span class="kw">pub mod </span>crdt;
 <a href=#21 id=21 data-nosnippet>21</a>
-<a href=#22 id=22 data-nosnippet>22</a><span class="doccomment">/// Document symbol extraction from headings and environments.
-<a href=#23 id=23 data-nosnippet>23</a></span><span class="kw">pub mod </span>symbols;
+<a href=#22 id=22 data-nosnippet>22</a><span class="doccomment">/// Folding range computation for collapsible document regions.
+<a href=#23 id=23 data-nosnippet>23</a></span><span class="kw">pub mod </span>folding;
 <a href=#24 id=24 data-nosnippet>24</a>
-<a href=#25 id=25 data-nosnippet>25</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>detect_extension(path: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span>str {
-<a href=#26 id=26 data-nosnippet>26</a>    path.rsplit(<span class="string">'.'</span>).next().map_or(<span class="string">""</span>, |s| s)
-<a href=#27 id=27 data-nosnippet>27</a>}
+<a href=#25 id=25 data-nosnippet>25</a><span class="doccomment">/// Semantic token computation for syntax highlighting.
+<a href=#26 id=26 data-nosnippet>26</a></span><span class="kw">pub mod </span>semantic_tokens;
+<a href=#27 id=27 data-nosnippet>27</a>
+<a href=#28 id=28 data-nosnippet>28</a><span class="doccomment">/// Document symbol extraction from headings and environments.
+<a href=#29 id=29 data-nosnippet>29</a></span><span class="kw">pub mod </span>symbols;
+<a href=#30 id=30 data-nosnippet>30</a>
+<a href=#31 id=31 data-nosnippet>31</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>detect_extension(path: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span>str {
+<a href=#32 id=32 data-nosnippet>32</a>    path.rsplit(<span class="string">'.'</span>).next().map_or(<span class="string">""</span>, |s| s)
+<a href=#33 id=33 data-nosnippet>33</a>}
 </code></pre></div></section></main></body></html>

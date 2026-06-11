@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["EpubBuilder","EpubOptions","MediaOverlay","OverlayParam"]};
+window.SIDEBAR_ITEMS = {"enum":["EpubError","NavLandmarkType"],"struct":["EpubBuilder","EpubOptions","LandmarkEntry","MediaOverlay","OverlayParam"]};

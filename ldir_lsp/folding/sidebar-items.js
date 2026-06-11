@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compute_folding_ranges"]};

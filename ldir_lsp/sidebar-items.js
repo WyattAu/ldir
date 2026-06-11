@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["backend","crdt","diagnostics","preview","symbols"]};
+window.SIDEBAR_ITEMS = {"mod":["backend","crdt","diagnostics","folding","preview","semantic_tokens","symbols"]};
