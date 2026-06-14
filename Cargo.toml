@@ -101,7 +101,7 @@ pdf-writer = "0.11"
 
 # GPU rendering
 vello = "0.3"
-parley = "0.3"
+parley = "0.10"
 wgpu = "22.1"
 
 # WASM
