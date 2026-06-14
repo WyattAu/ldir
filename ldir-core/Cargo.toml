@@ -27,7 +27,7 @@ fontdb = { workspace = true }
 bumpalo = { version = "3.16", features = ["collections"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-toml = "0.8"
+toml = "1.1"
 wasmtime = { workspace = true, optional = true }
 wasmtime-wasi = { version = "28", optional = true }
 
