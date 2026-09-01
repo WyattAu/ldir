@@ -12,9 +12,8 @@ ldir-pdf = { workspace = true }
 ldir-ir = { workspace = true }
 ldir-test-helpers = { workspace = true }
 criterion = { workspace = true }
+ldir-otelkit = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing-chrome = { workspace = true }
 
 [[bench]]
 name = "compile"

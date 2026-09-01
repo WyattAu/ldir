@@ -64,6 +64,7 @@ ldir-docx-reader = { path = "ldir-docx-reader", version = "0.1.0" }
 ldir-odt = { path = "ldir-odt", version = "0.1.0" }
 ldir-pandoc = { path = "ldir-pandoc", version = "0.1.0" }
 ldir-jupyter = { path = "ldir-jupyter", version = "0.1.0" }
+ldir-otelkit = { path = "ldir-otelkit", version = "0.1.0" }
 
 # Serialization (REQ-2.3)
 rkyv = { version = "0.8", features = ["bytecheck"] }
@@ -105,7 +106,7 @@ parley = "0.3"
 wgpu = "22.1"
 
 # WASM
-wasmtime = "38"
+wasmtime = "42"
 
 # ECS reference
 shipyard = "0.11"
