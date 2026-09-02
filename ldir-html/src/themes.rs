@@ -1,5 +1,6 @@
 use std::fs;
 
+/// Default HTML theme CSS.
 pub const DEFAULT_CSS: &str = r#"
 :root {
     --color-text: #1a1a1a;
@@ -141,6 +142,7 @@ figcaption { font-size: 0.9em; color: #555; margin-top: 0.5em; }
 :hover > .anchor-link { opacity: 1; }
 "#;
 
+/// GitHub-flavored markdown theme CSS.
 pub const GITHUB_CSS: &str = r#"
 :root {
     --color-text: #24292f;
@@ -291,6 +293,7 @@ li { margin: 0.25em 0; }
 :hover > .anchor-link { opacity: 1; }
 "#;
 
+/// LaTeX-style theme CSS.
 pub const LATEX_CSS: &str = r#"
 :root {
     --color-text: #000;
@@ -425,6 +428,7 @@ li { margin: 0.3em 0; }
 :hover > .anchor-link { opacity: 1; }
 "#;
 
+/// Minimal theme CSS.
 pub const MINIMAL_CSS: &str = r#"
 body {
     max-width: 720px;
@@ -444,6 +448,7 @@ img { max-width: 100%; }
 hr { margin: 2em 0; }
 "#;
 
+/// Dark theme CSS.
 pub const DARK_CSS: &str = r#"
 :root {
     --color-text: #c9d1d9;
@@ -591,29 +596,36 @@ li { margin: 0.25em 0; }
 :hover > .anchor-link { opacity: 1; }
 "#;
 
+/// HTML theme resolver.
 pub struct HtmlTheme;
 
 impl HtmlTheme {
+    /// Get the default theme CSS.
     pub fn default_theme() -> &'static str {
         DEFAULT_CSS
     }
 
+    /// Get the GitHub theme CSS.
     pub fn github() -> &'static str {
         GITHUB_CSS
     }
 
+    /// Get the LaTeX theme CSS.
     pub fn latex() -> &'static str {
         LATEX_CSS
     }
 
+    /// Get the minimal theme CSS.
     pub fn minimal() -> &'static str {
         MINIMAL_CSS
     }
 
+    /// Get the dark theme CSS.
     pub fn dark() -> &'static str {
         DARK_CSS
     }
 
+    /// Resolve a theme name to its CSS content.
     pub fn resolve(name: &str) -> Option<&'static str> {
         match name {
             "default" | "" => Some(DEFAULT_CSS),
@@ -626,6 +638,7 @@ impl HtmlTheme {
     }
 }
 
+/// Convert text to a URL-safe slug for HTML anchor IDs.
 pub fn slugify(text: &str) -> String {
     let mut slug = String::with_capacity(text.len());
     for c in text.chars() {
@@ -644,10 +657,12 @@ pub fn slugify(text: &str) -> String {
     }
 }
 
+/// Load custom CSS from a file path.
 pub fn load_custom_css(path: &str) -> Result<String, std::io::Error> {
     fs::read_to_string(path)
 }
 
+/// Generate an HTML table of contents from heading levels and text.
 pub fn generate_toc(headings: &[(u32, String)], max_depth: u32) -> String {
     let mut html = String::from("<nav class=\"toc\">\n<h2>Table of Contents</h2>\n<ul>\n");
     let mut current_depth = 0u32;

@@ -5,6 +5,7 @@
 //! ToUnicode CMaps for text extraction, and FlateDecode compression.
 
 #![warn(clippy::unwrap_used, clippy::expect_used)]
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 //!
 //! ## Key Types
