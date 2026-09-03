@@ -65,10 +65,14 @@ pub fn load_image(path: &Path) -> Result<ImageData, Error> {
     decode_image(&data, format)
 }
 
+/// Magic-byte format detection, zero dependencies.
+///
+/// Checks mirror `media_kit::sniff` for the formats this backend supports:
+/// PNG via the full 8-byte signature, JPEG via `FF D8 FF`.
 pub fn detect_format(data: &[u8]) -> Option<ImageFormat> {
-    if data.len() >= 4 && data[0..4] == [0x89, 0x50, 0x4E, 0x47] {
+    if data.len() >= 8 && data[..8] == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
         Some(ImageFormat::Png)
-    } else if data.len() >= 3 && data[0..3] == [0xFF, 0xD8, 0xFF] {
+    } else if data.len() >= 3 && data[..3] == [0xFF, 0xD8, 0xFF] {
         Some(ImageFormat::Jpeg)
     } else {
         None
@@ -380,6 +384,12 @@ mod tests {
     fn test_detect_format_empty() {
         let empty: &[u8] = &[];
         assert_eq!(detect_format(empty), None);
+    }
+
+    #[test]
+    fn test_detect_format_rejects_truncated_png_signature() {
+        let truncated: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x00, 0x00];
+        assert_eq!(detect_format(truncated), None);
     }
 
     #[test]
