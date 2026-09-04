@@ -3,11 +3,17 @@
 pub struct PageHeaderPlugin;
 
 #[derive(Debug, Clone)]
+/// Running header configuration; slots support `{page}`/`{chapter}` placeholders.
 pub struct HeaderConfig {
+    /// Left header slot, rendered verbatim.
     pub left: String,
+    /// Center header slot; supports the `{chapter}` placeholder.
     pub center: String,
+    /// Right header slot; supports the `{page}` placeholder.
     pub right: String,
+    /// Whether to draw a rule under the header.
     pub line: bool,
+    /// Whether the header appears on the first page.
     pub first_page: bool,
 }
 
@@ -24,10 +30,12 @@ impl Default for HeaderConfig {
 }
 
 impl PageHeaderPlugin {
+    /// Creates the plugin.
     pub fn new() -> Self {
         Self
     }
 
+    /// Renders the header for one page, substituting `{page}` and `{chapter}`.
     pub fn generate_header(&self, config: &HeaderConfig, page: u32, chapter: &str) -> String {
         let center = config.center.replace("{chapter}", chapter);
         let right = config.right.replace("{page}", &page.to_string());

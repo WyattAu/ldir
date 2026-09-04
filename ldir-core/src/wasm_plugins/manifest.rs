@@ -31,6 +31,7 @@ pub struct PluginManifest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// A single capability declared by a plugin.
 pub struct PluginCapability {
     /// Capability type
     pub kind: CapabilityKind,
@@ -44,6 +45,7 @@ pub struct PluginCapability {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// The pipeline stage a plugin capability hooks into.
 pub enum CapabilityKind {
     /// Transforms text before parsing (macro expansion, include resolution)
     PreProcessor,
@@ -62,6 +64,7 @@ pub enum CapabilityKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Resource limits a plugin may consume; defaults are conservative.
 pub struct ResourceLimits {
     /// Maximum fuel (WASM instructions) per execution
     pub max_fuel: u64,
@@ -95,10 +98,13 @@ pub fn serialize_manifest(manifest: &PluginManifest) -> String {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Errors from parsing or validating a plugin manifest.
 pub enum ManifestError {
     #[error("Parse error: {0}")]
+    /// The manifest is not valid JSON. Contains the serde error message.
     ParseError(String),
     #[error("Validation error: {0}")]
+    /// The manifest is well-formed but invalid. Contains a description.
     ValidationError(String),
 }
 

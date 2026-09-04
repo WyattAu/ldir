@@ -24,6 +24,7 @@ pub struct TableOfContents {
 }
 
 impl TableOfContents {
+    /// Creates an empty table of contents.
     pub fn new() -> Self {
         Self::default()
     }
@@ -68,6 +69,7 @@ impl TableOfContents {
     pub fn len(&self) -> usize {
         self.entries.len()
     }
+    /// Returns whether the TOC has no entries.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }

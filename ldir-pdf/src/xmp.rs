@@ -1,5 +1,6 @@
 use crate::conformance::PdfConformance;
 
+/// Generates an XMP packet declaring PDF/A identification (`pdfaid:part`, `pdfaid:conformance`) plus Dublin Core title and author.
 pub fn generate_pdfa_xmp(conformance: PdfConformance, title: &str, author: &str) -> Vec<u8> {
     let part = conformance.pdfaid_part();
     let conf = conformance.pdfaid_conformance();

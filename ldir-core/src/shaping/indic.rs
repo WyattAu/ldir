@@ -6,19 +6,31 @@
 #![deny(unsafe_code)]
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The ten major Indic scripts defined in Unicode.
 pub enum IndicScript {
+    /// Devanagari (U+0900-U+097F).
     Devanagari,
+    /// Bengali (U+0980-U+09FF).
     Bengali,
+    /// Gurmukhi (U+0A00-U+0A7F).
     Gurmukhi,
+    /// Gujarati (U+0A80-U+0AFF).
     Gujarati,
+    /// Oriya (U+0B00-U+0B7F).
     Oriya,
+    /// Tamil (U+0B80-U+0BFF).
     Tamil,
+    /// Telugu (U+0C00-U+0C7F).
     Telugu,
+    /// Kannada (U+0C80-U+0CFF).
     Kannada,
+    /// Malayalam (U+0D00-U+0D7F).
     Malayalam,
+    /// Sinhala (U+0D80-U+0DFF).
     Sinhala,
 }
 
+/// Returns whether the character belongs to one of the ten Indic Unicode blocks.
 pub fn is_indic_char(ch: char) -> bool {
     matches!(
         ch,
@@ -35,6 +47,7 @@ pub fn is_indic_char(ch: char) -> bool {
     )
 }
 
+/// Detects which Indic script the character belongs to, or `None` if not Indic.
 pub fn detect_indic_script(ch: char) -> Option<IndicScript> {
     match ch {
         '\u{0900}'..='\u{097F}' => Some(IndicScript::Devanagari),
@@ -52,17 +65,27 @@ pub fn detect_indic_script(ch: char) -> Option<IndicScript> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Classification of a character for Indic syllable clustering.
 pub enum IndicCharCategory {
+    /// A consonant.
     Consonant,
+    /// An independent vowel.
     Vowel,
+    /// A dependent vowel sign (matra).
     VowelSign,
+    /// A virama (halant) that joins consonants.
     Virama,
+    /// A nukta diacritic.
     Nukta,
+    /// A danda (`|`) or double danda (`||`) punctuation mark.
     Danda,
+    /// A decimal digit.
     Digit,
+    /// Any other character.
     Other,
 }
 
+/// Classifies a character into an [`IndicCharCategory`].
 pub fn indic_char_category(ch: char) -> IndicCharCategory {
     let cp = ch as u32;
 
@@ -353,12 +376,17 @@ fn classify_sinhala(cp: u32) -> IndicCharCategory {
 }
 
 #[derive(Debug, Clone)]
+/// An orthographic syllable cluster that must not be split across lines.
 pub struct IndicCluster {
+    /// Characters of the cluster, in order.
     pub chars: Vec<char>,
+    /// Byte offset of the cluster start in the source text.
     pub start: usize,
+    /// Byte offset just past the cluster end.
     pub end: usize,
 }
 
+/// Segments Indic text into orthographic syllable clusters.
 pub fn cluster_indic_text(text: &str) -> Vec<IndicCluster> {
     let chars: Vec<(usize, char)> = text.char_indices().collect();
     if chars.is_empty() {
@@ -436,6 +464,7 @@ pub fn cluster_indic_text(text: &str) -> Vec<IndicCluster> {
     clusters
 }
 
+/// Returns whether a line break is allowed at the given byte index; breaks inside a cluster are forbidden.
 pub fn indic_break_allowed(text: &str, index: usize) -> bool {
     if index == 0 || index == text.len() {
         return true;

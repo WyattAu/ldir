@@ -6,6 +6,7 @@ fn fp266_to_i32(v: Fp266) -> i32 {
     v.raw() as i32
 }
 
+/// Lowers a positioned L-IR document into G-IR draw commands for the PDF backend.
 pub fn render_lir_to_gir(lir_doc: &LIRDocument) -> GIRDocument {
     let mut gir_doc = GIRDocument::with_capacity(lir_doc.pages.len());
 

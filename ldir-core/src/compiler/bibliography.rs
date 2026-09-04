@@ -13,12 +13,14 @@ use crate::compiler::bibtex::{
     format_citation_mla, parse_bib,
 };
 
+/// Loads `.bib` entries and formats citations and reference lists in a configurable style.
 pub struct BibliographyResolver {
     entries: HashMap<String, BibEntry>,
     citation_style: String,
 }
 
 impl BibliographyResolver {
+    /// Creates a resolver for the given citation style (`ieee`, `apa`, `chicago`, `mla`).
     pub fn new(style: &str) -> Self {
         Self {
             entries: HashMap::new(),
@@ -26,6 +28,7 @@ impl BibliographyResolver {
         }
     }
 
+    /// Parses and loads entries from a `.bib` file on disk.
     pub fn load_bib_file(&mut self, path: &str) -> Result<(), String> {
         let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
         let entries = parse_bib(&content)?;
@@ -35,6 +38,7 @@ impl BibliographyResolver {
         Ok(())
     }
 
+    /// Parses and loads entries from BibTeX text.
     pub fn load_bib_content(&mut self, content: &str) -> Result<(), String> {
         let entries = parse_bib(content)?;
         for (key, entry) in entries {
@@ -43,6 +47,7 @@ impl BibliographyResolver {
         Ok(())
     }
 
+    /// Formats the citation for a key, or `None` if the key is unknown.
     pub fn resolve_citation(&self, key: &str) -> Option<String> {
         let _entry = self.entries.get(key)?;
         let formatted = match self.citation_style.as_str() {
@@ -55,6 +60,7 @@ impl BibliographyResolver {
         Some(formatted)
     }
 
+    /// Builds a numbered `References` section for the cited keys, deduplicating while preserving order.
     pub fn generate_bibliography(&self, cited_keys: &[String]) -> String {
         let mut seen: std::collections::HashSet<&String> = std::collections::HashSet::new();
         let mut unique_keys: Vec<&String> = Vec::new();
@@ -97,14 +103,17 @@ impl BibliographyResolver {
         lines.join("\n")
     }
 
+    /// The configured citation style name.
     pub fn style(&self) -> &str {
         &self.citation_style
     }
 
+    /// Returns whether an entry with this citation key is loaded.
     pub fn contains_key(&self, key: &str) -> bool {
         self.entries.contains_key(key)
     }
 
+    /// Number of loaded bibliography entries.
     pub fn entry_count(&self) -> usize {
         self.entries.len()
     }

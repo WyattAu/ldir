@@ -1,33 +1,48 @@
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
+/// Errors from parsing ICC color profiles.
 pub enum IccProfileError {
     #[error("ICC profile data too small: {0} bytes")]
+    /// The data is shorter than the 132-byte ICC header; contains its length.
     TooSmall(usize),
     #[error("invalid ICC profile: {0}")]
+    /// The data is not a valid ICC profile (missing `acsp` signature).
     InvalidProfile(String),
     #[error("unknown ICC color space: {0}")]
+    /// The profile declares an unsupported data color space.
     UnknownColorSpace(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Color spaces recognized in ICC profiles.
 pub enum IccColorSpace {
+    /// RGB (3 components).
     Rgb,
+    /// CMYK (4 components).
     Cmyk,
+    /// Grayscale (1 component).
     Gray,
+    /// CIE Lab (3 components).
     Lab,
 }
 
 #[derive(Debug, Clone)]
+/// An embedded ICC color profile.
 pub struct IccProfile {
+    /// Raw profile bytes, embedded in the PDF as a stream.
     pub data: Vec<u8>,
+    /// Profile description extracted from the data.
     pub name: String,
+    /// Data color space declared by the profile.
     pub color_space: IccColorSpace,
+    /// Number of color components for the space.
     pub components: u8,
 }
 
 impl IccProfile {
     #[must_use = "parsing ICC profile can fail; check the result"]
+    /// Validates and parses ICC profile bytes (checks the `acsp` signature and data color space).
     pub fn from_bytes(data: Vec<u8>) -> Result<Self, IccProfileError> {
         if data.len() < 132 {
             return Err(IccProfileError::TooSmall(data.len()));
@@ -63,6 +78,7 @@ impl IccProfile {
         })
     }
 
+    /// Returns a built-in minimal sRGB profile.
     pub fn srgb() -> Self {
         Self {
             data: build_srgb_icc(),
@@ -72,6 +88,7 @@ impl IccProfile {
         }
     }
 
+    /// Returns a built-in generic CMYK profile.
     pub fn cmyk() -> Self {
         Self {
             data: build_cmyk_icc(),
@@ -81,6 +98,7 @@ impl IccProfile {
         }
     }
 
+    /// Returns a built-in grayscale (gamma 2.2) profile.
     pub fn gray() -> Self {
         Self {
             data: build_gray_icc(),
@@ -91,6 +109,7 @@ impl IccProfile {
     }
 }
 
+/// Converts an 8-bit RGB triple to CMYK (naive conversion with black generation).
 pub fn srgb_to_cmyk(r: u8, g: u8, b: u8) -> (u8, u8, u8, u8) {
     let rf = f32::from(r) / 255.0;
     let gf = f32::from(g) / 255.0;
@@ -108,6 +127,7 @@ pub fn srgb_to_cmyk(r: u8, g: u8, b: u8) -> (u8, u8, u8, u8) {
     (c, m, y, kv)
 }
 
+/// Converts an 8-bit CMYK quad to RGB.
 pub fn cmyk_to_srgb(c: u8, m: u8, y: u8, k: u8) -> (u8, u8, u8) {
     let cf = f32::from(c) / 255.0;
     let mf = f32::from(m) / 255.0;

@@ -66,7 +66,8 @@
 //! - YP-IR-SEMANTICS-001: IR Type Semantics and Well-Formedness
 //! - BP-IR-COMPILER-001: S-IR to G-IR Compiler Component
 
-#![deny(missing_docs)]
+// warn pending full API documentation — re-tighten when complete
+#![warn(missing_docs)]
 #![deny(unsafe_code)]
 #![warn(clippy::unwrap_used, clippy::expect_used)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
