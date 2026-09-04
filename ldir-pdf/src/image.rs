@@ -4,25 +4,39 @@ use std::fmt;
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Color spaces supported for decoded images.
 pub enum ColorSpace {
+    /// 8-bit RGB, 3 channels.
     RGB,
+    /// 8-bit grayscale, 1 channel.
     Gray,
 }
 
 #[derive(Debug, Clone)]
+/// A fully decoded raster image.
 pub struct ImageData {
+    /// Image width in pixels.
     pub width: u32,
+    /// Image height in pixels.
     pub height: u32,
+    /// Color space of [`data`].
     pub color_space: ColorSpace,
+    /// Bits per sample (always 8 after decoding).
     pub bits_per_component: u8,
+    /// Raw sample data, row-major without padding.
     pub data: Vec<u8>,
 }
 
 #[derive(Debug)]
+/// Errors from image loading and decoding.
 pub enum Error {
+    /// File I/O failed.
     Io(std::io::Error),
+    /// Magic bytes did not match any supported format.
     UnsupportedFormat,
+    /// PNG decoding failed; contains the decoder message.
     PngDecode(String),
+    /// JPEG decoding failed; contains the decoder message.
     JpegDecode(String),
 }
 
@@ -53,22 +67,30 @@ impl From<std::io::Error> for Error {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Raster image formats supported by this backend.
 pub enum ImageFormat {
+    /// PNG (full 8-byte signature).
     Png,
+    /// JPEG (`FF D8 FF`).
     Jpeg,
 }
 
 #[must_use = "loading an image can fail; check the result"]
+/// Reads and decodes an image file, detecting the format from magic bytes.
 pub fn load_image(path: &Path) -> Result<ImageData, Error> {
     let data = std::fs::read(path)?;
     let format = detect_format(&data).ok_or(Error::UnsupportedFormat)?;
     decode_image(&data, format)
 }
 
+/// Magic-byte format detection, zero dependencies.
+///
+/// Checks mirror `media_kit::sniff` for the formats this backend supports:
+/// PNG via the full 8-byte signature, JPEG via `FF D8 FF`.
 pub fn detect_format(data: &[u8]) -> Option<ImageFormat> {
-    if data.len() >= 4 && data[0..4] == [0x89, 0x50, 0x4E, 0x47] {
+    if data.len() >= 8 && data[..8] == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] {
         Some(ImageFormat::Png)
-    } else if data.len() >= 3 && data[0..3] == [0xFF, 0xD8, 0xFF] {
+    } else if data.len() >= 3 && data[..3] == [0xFF, 0xD8, 0xFF] {
         Some(ImageFormat::Jpeg)
     } else {
         None
@@ -76,6 +98,7 @@ pub fn detect_format(data: &[u8]) -> Option<ImageFormat> {
 }
 
 #[must_use = "decoding an image can fail; check the result"]
+/// Decodes an in-memory image of the given format.
 pub fn decode_image(data: &[u8], format: ImageFormat) -> Result<ImageData, Error> {
     match format {
         ImageFormat::Png => decode_png(data),
@@ -84,6 +107,7 @@ pub fn decode_image(data: &[u8], format: ImageFormat) -> Result<ImageData, Error
 }
 
 #[must_use = "decoding PNG can fail; check the result"]
+/// Decodes a PNG into 8-bit RGB or gray samples (16-bit is stripped, palettes expanded).
 pub fn decode_png(data: &[u8]) -> Result<ImageData, Error> {
     let mut decoder = png::Decoder::new(std::io::Cursor::new(data));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
@@ -134,6 +158,7 @@ pub fn decode_png(data: &[u8]) -> Result<ImageData, Error> {
 }
 
 #[must_use = "decoding JPEG can fail; check the result"]
+/// Decodes a baseline JPEG into 8-bit RGB or gray samples.
 pub fn decode_jpeg(data: &[u8]) -> Result<ImageData, Error> {
     let mut decoder = jpeg_decoder::Decoder::new(data);
     let pixels = decoder
@@ -176,11 +201,15 @@ pub fn decode_jpeg(data: &[u8]) -> Result<ImageData, Error> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Pixel dimensions of an image, obtained without decoding pixel data.
 pub struct ImageDimensions {
+    /// Image width in pixels.
     pub width: u32,
+    /// Image height in pixels.
     pub height: u32,
 }
 
+/// Reads PNG dimensions from the IHDR chunk, or `None` if malformed.
 pub fn detect_png_dimensions(data: &[u8]) -> Option<ImageDimensions> {
     if data.len() < 24 {
         return None;
@@ -196,6 +225,7 @@ pub fn detect_png_dimensions(data: &[u8]) -> Option<ImageDimensions> {
     Some(ImageDimensions { width, height })
 }
 
+/// Scans JPEG SOF markers for dimensions, or `None` if malformed.
 pub fn detect_jpeg_dimensions(data: &[u8]) -> Option<ImageDimensions> {
     if data.len() < 4 {
         return None;
@@ -233,6 +263,7 @@ pub fn detect_jpeg_dimensions(data: &[u8]) -> Option<ImageDimensions> {
     None
 }
 
+/// Scales `(width, height)` down to fit the given point box, preserving aspect ratio; never scales up.
 pub fn scale_to_fit(width: u32, height: u32, max_width_pt: f64, max_height_pt: f64) -> (f64, f64) {
     let w = width as f64;
     let h = height as f64;
@@ -380,6 +411,12 @@ mod tests {
     fn test_detect_format_empty() {
         let empty: &[u8] = &[];
         assert_eq!(detect_format(empty), None);
+    }
+
+    #[test]
+    fn test_detect_format_rejects_truncated_png_signature() {
+        let truncated: &[u8] = &[0x89, 0x50, 0x4E, 0x47, 0x00, 0x00];
+        assert_eq!(detect_format(truncated), None);
     }
 
     #[test]

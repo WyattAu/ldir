@@ -6,9 +6,12 @@ use ldir_ir::sir::v2::module::SIRModuleV2;
 use ldir_ir::sir::v2::nodes::*;
 
 #[derive(Debug, Clone, thiserror::Error)]
+/// Errors that can occur during DOCX generation.
 pub enum DocxError {
+    /// A general build error occurred.
     #[error("DOCX build error: {0}")]
     BuildError(String),
+    /// An image reference could not be resolved.
     #[error("image not found: {0}")]
     ImageNotFound(String),
 }
@@ -57,6 +60,7 @@ struct CollectedNotes {
 }
 
 #[derive(Debug, Clone)]
+/// Builder for generating DOCX documents from S-IR.
 pub struct DocxBuilder;
 
 impl Default for DocxBuilder {
@@ -66,15 +70,18 @@ impl Default for DocxBuilder {
 }
 
 impl DocxBuilder {
+    /// Create a new `DocxBuilder`.
     pub fn new() -> Self {
         Self
     }
 
+    /// Build a DOCX document from an S-IR module.
     #[must_use = "building DOCX can fail; check the result"]
     pub fn build(&self, module: &SIRModuleV2) -> Result<Vec<u8>, DocxError> {
         self.build_with_base_dir(module, ".")
     }
 
+    /// Build a DOCX document with a specified base directory for resolving image paths.
     #[must_use = "building DOCX can fail; check the result"]
     pub fn build_with_base_dir(
         &self,

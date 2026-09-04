@@ -3,29 +3,43 @@
 pub struct ParagraphStylePlugin;
 
 #[derive(Debug, Clone, Default)]
+/// Style properties a selector may override; `None` leaves a property unchanged.
 pub struct StyleOverride {
+    /// Override for the font size.
     pub font_size: Option<f32>,
+    /// Override for the line height.
     pub line_height: Option<f32>,
+    /// Override for paragraph alignment.
     pub text_align: Option<TextAlign>,
+    /// Override for the text color (CSS string).
     pub color: Option<String>,
+    /// Override for the top margin.
     pub margin_top: Option<f32>,
+    /// Override for the bottom margin.
     pub margin_bottom: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// Horizontal paragraph alignment.
 pub enum TextAlign {
     #[default]
+    /// Flush left (ragged right).
     Left,
+    /// Centered.
     Center,
+    /// Flush right (ragged left).
     Right,
+    /// Fully justified with stretched inter-word space.
     Justify,
 }
 
 impl ParagraphStylePlugin {
+    /// Creates the plugin.
     pub fn new() -> Self {
         Self
     }
 
+    /// Returns indices of paragraphs matching `selector`; only `"first"` is supported.
     pub fn apply_style(
         &self,
         selector: &str,

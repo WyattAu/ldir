@@ -3,12 +3,16 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PdfConformance {
     #[default]
+    /// PDF/A-4 (PDF 2.0), the default.
     PdfA4,
+    /// PDF/A-2b (PDF 1.7).
     PdfA2b,
+    /// PDF/A-3b (PDF 1.7).
     PdfA3b,
 }
 
 impl PdfConformance {
+    /// The PDF header version string for this conformance level.
     pub fn pdf_version_str(self) -> &'static str {
         match self {
             Self::PdfA4 => "2.0",
@@ -16,6 +20,7 @@ impl PdfConformance {
         }
     }
 
+    /// The `pdfaid:part` value for XMP metadata.
     pub fn pdfaid_part(self) -> u8 {
         match self {
             Self::PdfA4 => 4,
@@ -24,6 +29,7 @@ impl PdfConformance {
         }
     }
 
+    /// The `pdfaid:conformance` value for XMP metadata (empty when none applies).
     pub fn pdfaid_conformance(self) -> &'static str {
         match self {
             Self::PdfA4 => "",

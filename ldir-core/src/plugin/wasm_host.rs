@@ -240,9 +240,9 @@ impl WasmPlugin {
         let mut linker = wasmtime::Linker::new(engine);
 
         if config.enable_wasi {
-            wasmtime_wasi::preview1::add_to_linker_sync(
+            wasmtime_wasi::p1::add_to_linker_sync(
                 &mut linker,
-                |s: &mut wasmtime_wasi::preview1::WasiP1Ctx| s,
+                |s: &mut wasmtime_wasi::p1::WasiP1Ctx| s,
             )
             .map_err(|e| WasmHostError::LoadFailed(format!("WASI setup failed: {e}")))?;
         }

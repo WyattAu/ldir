@@ -1,4 +1,2 @@
 [advisories]
-ignore = [
-    "RUSTSEC-2026-0086", # wasmtime 28: host data leakage with 64-bit tables and Winch (low severity, Winch backend not used)
-]
+ignore = []

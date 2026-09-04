@@ -6,19 +6,30 @@
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KPBox {
+    /// A content box (a character or word) of fixed width.
     Content {
+        /// Width of the box in fixed-point units.
         width: i32,
     },
+    /// Flexible white space that can stretch or shrink.
     Glue {
+        /// Natural width in fixed-point units.
         width: i32,
+        /// Maximum extra width the glue can absorb.
         stretch: i32,
+        /// Maximum width the glue can give up.
         shrink: i32,
     },
+    /// A legal break point with an associated badness cost.
     Penalty {
+        /// Cost of breaking here; `INFINITY_PENALTY` forbids the break.
         penalty: i32,
+        /// Width consumed by the break (e.g., a hyphen).
         width: i32,
+        /// Whether the previous item was also a penalty (flagged demerits apply).
         flagged: bool,
     },
+    /// A mandatory line break (end of paragraph).
     ForcedBreak,
 }
 
@@ -87,6 +98,7 @@ fn compute_ratio(
     }
 }
 
+/// Finds optimal line breaks for one paragraph and returns the item indices at which to break.
 pub fn knuth_plass_break(boxes: &[KPBox], line_width: i32) -> Vec<usize> {
     if boxes.is_empty() {
         return Vec::new();

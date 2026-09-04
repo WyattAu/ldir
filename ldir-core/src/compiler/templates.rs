@@ -17,14 +17,23 @@ use serde::Deserialize;
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
+/// Legacy per-page header/footer template (retained for backward compatibility).
 pub struct PageTemplate {
+    /// Left header template text.
     pub header_left: String,
+    /// Center header template text.
     pub header_center: String,
+    /// Right header template text.
     pub header_right: String,
+    /// Left footer template text.
     pub footer_left: String,
+    /// Center footer template text.
     pub footer_center: String,
+    /// Right footer template text.
     pub footer_right: String,
+    /// Whether to draw a rule below the header.
     pub header_rule: bool,
+    /// Whether to draw a rule above the footer.
     pub footer_rule: bool,
 }
 
@@ -44,13 +53,21 @@ impl Default for PageTemplate {
 }
 
 #[derive(Debug, Clone)]
+/// Values substituted into `%`-placeholders during template expansion.
 pub struct TemplateContext {
+    /// Current page number (1-indexed).
     pub page: usize,
+    /// Total page count.
     pub pages: usize,
+    /// Document title.
     pub title: String,
+    /// Current chapter title or number.
     pub chapter: String,
+    /// Current section number.
     pub section: String,
+    /// Formatted document date.
     pub date: String,
+    /// Source file name.
     pub file: String,
 }
 
@@ -81,6 +98,7 @@ fn expand_template(template: &str, ctx: &TemplateContext) -> String {
 }
 
 impl PageTemplate {
+    /// Expands the header templates; returns `(left, center, right)`.
     pub fn expand_header(&self, ctx: &TemplateContext) -> (String, String, String) {
         (
             expand_template(&self.header_left, ctx),
@@ -89,6 +107,7 @@ impl PageTemplate {
         )
     }
 
+    /// Expands the footer templates; returns `(left, center, right)`.
     pub fn expand_footer(&self, ctx: &TemplateContext) -> (String, String, String) {
         (
             expand_template(&self.footer_left, ctx),
@@ -105,62 +124,106 @@ impl PageTemplate {
 /// A reusable document template that defines styles, page layout, and preamble.
 #[derive(Debug, Clone)]
 pub struct DocumentTemplate {
+    /// Template name.
     pub name: String,
+    /// Default page size.
     pub page_size: PageSize,
+    /// Page margins.
     pub margins: Margins,
+    /// Body font family name.
     pub font_family: String,
+    /// Body font size in points.
     pub font_size: i32,
+    /// Line spacing multiplier.
     pub line_spacing: f64,
+    /// First-line paragraph indent in points, if any.
     pub paragraph_indent: Option<i32>,
+    /// Space between paragraphs in points.
     pub paragraph_spacing: i32,
+    /// Style overrides per heading level (1-6).
     pub heading_styles: HashMap<u8, HeadingStyle>,
+    /// Header template, if the page has one.
     pub header: Option<HeaderFooterTemplate>,
+    /// Footer template, if the page has one.
     pub footer: Option<HeaderFooterTemplate>,
+    /// First-page overrides, if any.
     pub first_page: Option<FirstPageTemplate>,
 }
 
 #[derive(Debug, Clone)]
+/// Typographic style for one heading level.
 pub struct HeadingStyle {
+    /// Heading font size in points.
     pub font_size: i32,
+    /// Whether the heading is bold.
     pub bold: bool,
+    /// Whether the heading is italic.
     pub italic: bool,
+    /// Space above the heading in points.
     pub spacing_before: i32,
+    /// Space below the heading in points.
     pub spacing_after: i32,
 }
 
 #[derive(Debug, Clone)]
+/// Page margins in points.
 pub struct Margins {
+    /// Top margin.
     pub top: i32,
+    /// Bottom margin.
     pub bottom: i32,
+    /// Left margin.
     pub left: i32,
+    /// Right margin.
     pub right: i32,
 }
 
 #[derive(Debug, Clone)]
+/// Named page sizes plus a custom option.
 pub enum PageSize {
+    /// ISO A4 (595 x 842 pt).
     A4,
+    /// US Letter (612 x 792 pt).
     Letter,
+    /// US Legal (612 x 1008 pt).
     Legal,
-    Custom { width: i32, height: i32 },
+    /// Caller-specified size in points.
+    Custom {
+        /// Page width in points.
+        width: i32,
+        /// Page height in points.
+        height: i32,
+    },
 }
 
 #[derive(Debug, Clone)]
+/// Header/footer template with left/center/right slots and an optional rule.
 pub struct HeaderFooterTemplate {
+    /// Left slot template text.
     pub left: String,
+    /// Center slot template text.
     pub center: String,
+    /// Right slot template text.
     pub right: String,
+    /// Whether to draw the rule.
     pub rule: bool,
 }
 
 #[derive(Debug, Clone)]
+/// Overrides applied to the first page of the document.
 pub struct FirstPageTemplate {
+    /// Whether the first page uses a different header.
     pub different_header: bool,
+    /// Whether the first page uses a different footer.
     pub different_footer: bool,
+    /// Whether the header is suppressed on the first page.
     pub suppress_header: bool,
+    /// Whether the page number is suppressed on the first page.
     pub suppress_page_number: bool,
 }
 
 impl PageSize {
+    /// Returns `(width, height)` in points.
     pub fn dimensions(&self) -> (i32, i32) {
         match self {
             PageSize::A4 => (595, 842),
@@ -170,6 +233,7 @@ impl PageSize {
         }
     }
 
+    /// Looks up a page size by case-insensitive name (`a4`, `letter`, `legal`).
     pub fn from_name(name: &str) -> Option<Self> {
         match name.to_lowercase().as_str() {
             "a4" => Some(PageSize::A4),
@@ -185,6 +249,7 @@ impl PageSize {
 // ---------------------------------------------------------------------------
 
 impl DocumentTemplate {
+    /// Returns the built-in `academic` template (serif body, numbered headings, tight line spacing).
     pub fn academic() -> Self {
         let mut heading_styles = HashMap::new();
         heading_styles.insert(
@@ -264,6 +329,7 @@ impl DocumentTemplate {
         }
     }
 
+    /// Returns the built-in `report` template (sans headings, generous spacing).
     pub fn report() -> Self {
         let mut heading_styles = HashMap::new();
         heading_styles.insert(
@@ -343,6 +409,7 @@ impl DocumentTemplate {
         }
     }
 
+    /// Returns the built-in `book` template (larger margins, running headers).
     pub fn book() -> Self {
         let mut heading_styles = HashMap::new();
         heading_styles.insert(
@@ -422,6 +489,7 @@ impl DocumentTemplate {
         }
     }
 
+    /// Returns the built-in `letter` template (business-letter defaults).
     pub fn letter() -> Self {
         let mut heading_styles = HashMap::new();
         heading_styles.insert(
@@ -496,6 +564,7 @@ impl DocumentTemplate {
         }
     }
 
+    /// Returns the built-in `minimal` template (plain defaults, no headers/footers).
     pub fn minimal() -> Self {
         let mut heading_styles = HashMap::new();
         heading_styles.insert(
@@ -565,6 +634,7 @@ impl DocumentTemplate {
         }
     }
 
+    /// Looks up a built-in template by name (`academic`, `report`, `book`, `letter`, `minimal`).
     pub fn builtin(name: &str) -> Option<Self> {
         match name {
             "academic" => Some(Self::academic()),
@@ -582,12 +652,16 @@ impl DocumentTemplate {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, thiserror::Error)]
+/// Errors from parsing or applying document templates.
 pub enum TemplateError {
     #[error("TOML parse error: {0}")]
+    /// The TOML could not be deserialized; contains the parser error.
     TomlParse(#[from] toml::de::Error),
     #[error("unknown page size: {0}")]
+    /// The template names a page size that is not built in.
     UnknownPageSize(String),
     #[error("invalid heading level: {0}")]
+    /// A heading level outside 1-6 was configured.
     InvalidHeadingLevel(u8),
 }
 
@@ -642,6 +716,7 @@ struct TomlFirstPage {
     suppress_page_number: Option<bool>,
 }
 
+/// Parses a TOML document template into a [`DocumentTemplate`].
 pub fn parse_template(toml: &str) -> Result<DocumentTemplate, TemplateError> {
     let raw: TomlTemplate = toml::from_str(toml)?;
     let defaults = DocumentTemplate::minimal();
@@ -759,23 +834,39 @@ pub fn parse_template(toml: &str) -> Result<DocumentTemplate, TemplateError> {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Default)]
+/// A flat snapshot of a [`DocumentTemplate`] used to seed the compiler context.
 pub struct CompileContextPartial {
+    /// Page width in points.
     pub page_width_pt: i32,
+    /// Page height in points.
     pub page_height_pt: i32,
+    /// Top margin in points.
     pub margin_top_pt: i32,
+    /// Bottom margin in points.
     pub margin_bottom_pt: i32,
+    /// Left margin in points.
     pub margin_left_pt: i32,
+    /// Right margin in points.
     pub margin_right_pt: i32,
+    /// Body font family name.
     pub font_family: String,
+    /// Body font size in points.
     pub font_size_pt: i32,
+    /// Line spacing multiplier.
     pub line_spacing: f64,
+    /// First-line paragraph indent in points, if any.
     pub paragraph_indent_pt: Option<i32>,
+    /// Space between paragraphs in points.
     pub paragraph_spacing_pt: i32,
+    /// Style overrides per heading level (1-6).
     pub heading_styles: HashMap<u8, HeadingStyle>,
+    /// Legacy page template, if present.
     pub page_template: Option<PageTemplate>,
+    /// First-page overrides, if any.
     pub first_page: Option<FirstPageTemplate>,
 }
 
+/// Converts a document template into the partial context used to seed compilation.
 pub fn template_to_context(template: &DocumentTemplate) -> CompileContextPartial {
     let (pw, ph) = template.page_size.dimensions();
 

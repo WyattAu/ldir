@@ -9,6 +9,7 @@ use std::arch::x86_64::*;
 
 /// SIMD configuration for penalty evaluation
 pub struct SimdConfig {
+    /// Whether to use the AVX2 path when available.
     pub use_simd: bool,
 }
 
@@ -79,10 +80,15 @@ fn evaluate_demerits_scalar(
 /// A candidate break point for line breaking.
 #[derive(Debug, Clone, Copy)]
 pub struct BreakPoint {
+    /// Index of the potential break in the item list.
     pub position: usize,
+    /// Fitness class of the line ending at this break.
     pub fitness: f32,
+    /// Badness of the line ending at this break.
     pub badness: f32,
+    /// Accumulated width of content up to this break.
     pub total_width: f32,
+    /// Width of the shortest line considered so far.
     pub shortest_line: f32,
 }
 

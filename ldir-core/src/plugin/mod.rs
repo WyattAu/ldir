@@ -82,9 +82,19 @@ pub enum PluginError {
     /// An I/O error occurred.
     IoError(String),
     /// Plugin output exceeds the configured size limit.
-    OutputTooLarge { requested: usize, limit: usize },
+    OutputTooLarge {
+        /// Number of bytes the plugin attempted to output.
+        requested: usize,
+        /// Configured output size limit in bytes.
+        limit: usize,
+    },
     /// Plugin execution exceeded the configured time limit.
-    Timeout { limit_ms: u64, actual_ms: u64 },
+    Timeout {
+        /// Configured time limit in milliseconds.
+        limit_ms: u64,
+        /// Actual execution time in milliseconds.
+        actual_ms: u64,
+    },
     /// Plugin exhausted its fuel (instruction count) limit.
     OutOfFuel(u64),
     /// Plugin exceeded its memory allocation limit.
