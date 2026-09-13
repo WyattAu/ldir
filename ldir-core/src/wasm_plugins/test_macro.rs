@@ -3,10 +3,12 @@
 pub struct MacroExpansionPlugin;
 
 impl MacroExpansionPlugin {
+    /// Creates the plugin.
     pub fn new() -> Self {
         Self
     }
 
+    /// Expands `{{name}}` macros (`greeting`, `date`, `version`, `project`) in the text.
     pub fn expand(&self, text: &str) -> String {
         let macros = [
             ("{{greeting}}", "Hello, World!"),

@@ -3,51 +3,89 @@
 use pdf_writer::types::StructRole;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Logical structure element types for PDF tagged (accessible) structure trees.
 pub enum StructureType {
+    /// The document root.
     Document,
+    /// A part (grouping) element.
     Part,
+    /// A chapter grouping (custom role).
     Chapter,
+    /// A section grouping.
     Section,
+    /// A subsection grouping (custom role).
     Subsection,
+    /// A level-1 heading.
     H1,
+    /// A level-2 heading.
     H2,
+    /// A level-3 heading.
     H3,
+    /// A level-4 heading.
     H4,
+    /// A level-5 heading.
     H5,
+    /// A level-6 heading.
     H6,
+    /// A paragraph.
     Paragraph,
+    /// A list container.
     List,
+    /// A single list entry.
     ListItem,
+    /// The label (bullet or number) of a list entry.
     ListLabel,
+    /// The content of a list entry.
     ListBody,
+    /// A table.
     Table,
+    /// A table header row group.
     TableHeader,
+    /// A table body row group.
     TableBody,
+    /// A table row.
     TableRow,
+    /// A header cell.
     TableHeaderCell,
+    /// A data cell.
     TableDataCell,
+    /// A figure.
     Figure,
+    /// A caption.
     Caption,
+    /// A code block (custom role).
     CodeBlock,
+    /// A block quotation.
     BlockQuote,
+    /// A display math block (custom role).
     MathBlock,
+    /// A footnote.
     Footnote,
+    /// An in-text footnote reference.
     FootnoteRef,
+    /// The body of a footnote (custom role).
     FootnoteBody,
+    /// A table of contents.
     TOC,
+    /// A thematic break (custom role, non-structural).
     ThematicBreak,
+    /// An inline span.
     Span,
+    /// Decorative content excluded from reading order.
     Artifact,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A heading level 1-6, clamped on construction.
 pub struct HeadingLevel(pub u8);
 
 impl HeadingLevel {
+    /// Creates a heading level, clamping to 1-6.
     pub fn new(level: u8) -> Self {
         Self(level.clamp(1, 6))
     }
 
+    /// The corresponding [`StructureType`] heading variant.
     pub fn to_structure_type(self) -> StructureType {
         match self.0 {
             1 => StructureType::H1,
@@ -59,6 +97,7 @@ impl HeadingLevel {
         }
     }
 
+    /// The `pdf-writer` [`StructRole`] for this heading level.
     pub fn to_struct_role(self) -> StructRole {
         match self.0 {
             1 => StructRole::H1,
@@ -72,6 +111,7 @@ impl HeadingLevel {
 }
 
 impl StructureType {
+    /// Maps to the standard PDF [`StructRole`], using `NonStruct` when none exists.
     pub fn to_struct_role(self) -> StructRole {
         match self {
             Self::Document => StructRole::Document,
@@ -111,6 +151,7 @@ impl StructureType {
         }
     }
 
+    /// Custom role name for types with no exact standard counterpart (`Chapter`, `CodeBlock`, ...).
     pub fn custom_role_name(self) -> Option<&'static [u8]> {
         match self {
             Self::Chapter => Some(b"Chapter"),
@@ -124,6 +165,7 @@ impl StructureType {
         }
     }
 
+    /// Whether this is one of the `H1`-`H6` heading types.
     pub fn is_heading(self) -> bool {
         matches!(
             self,
@@ -131,20 +173,27 @@ impl StructureType {
         )
     }
 
+    /// Whether this is an artifact (excluded from reading order).
     pub fn is_artifact(self) -> bool {
         self == Self::Artifact
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
+/// A bounding box on the page.
 pub struct BBox {
+    /// Left edge.
     pub x: f32,
+    /// Bottom edge.
     pub y: f32,
+    /// Width.
     pub width: f32,
+    /// Height.
     pub height: f32,
 }
 
 impl BBox {
+    /// Creates a box from position and size.
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
         Self {
             x,
@@ -156,27 +205,43 @@ impl BBox {
 }
 
 #[derive(Debug, Clone)]
+/// A run of text with a specific language.
 pub struct LanguageSpan {
+    /// The span text.
     pub text: String,
+    /// BCP 47 language tag.
     pub lang: String,
 }
 
 #[derive(Debug, Clone)]
+/// A node in the tagged-PDF structure tree.
 pub struct StructureNode {
+    /// Logical type of the element.
     pub element_type: StructureType,
+    /// Child nodes.
     pub children: Vec<StructureNode>,
+    /// Alternative description (e.g., for figures).
     pub alt_text: Option<String>,
+    /// Exact text replacing descendants during extraction.
     pub actual_text: Option<String>,
+    /// Expanded form of an acronym or abbreviation.
     pub expanded_text: Option<String>,
+    /// Language override for the whole element (BCP 47).
     pub language: Option<String>,
+    /// Sub-runs with their own language.
     pub language_spans: Vec<LanguageSpan>,
+    /// Page the element is marked on.
     pub page: u32,
+    /// Marked-content ID within the page content stream.
     pub mcid: u32,
+    /// Position in logical reading order among leaves.
     pub reading_order: u32,
+    /// Bounding box on the page, if known.
     pub bbox: Option<BBox>,
 }
 
 impl StructureNode {
+    /// Creates a leaf node of the given type on a page with an MCID.
     pub fn new(element_type: StructureType, page: u32, mcid: u32) -> Self {
         Self {
             element_type,
@@ -193,6 +258,7 @@ impl StructureNode {
         }
     }
 
+    /// Creates a container node with children (page and MCID unset).
     pub fn with_children(element_type: StructureType, children: Vec<StructureNode>) -> Self {
         Self {
             element_type,
@@ -209,26 +275,31 @@ impl StructureNode {
         }
     }
 
+    /// Builder: sets the alternative description.
     pub fn with_alt_text(mut self, text: impl Into<String>) -> Self {
         self.alt_text = Some(text.into());
         self
     }
 
+    /// Builder: sets the exact text.
     pub fn with_actual_text(mut self, text: impl Into<String>) -> Self {
         self.actual_text = Some(text.into());
         self
     }
 
+    /// Builder: sets the expanded form.
     pub fn with_expanded_text(mut self, text: impl Into<String>) -> Self {
         self.expanded_text = Some(text.into());
         self
     }
 
+    /// Builder: sets the element language.
     pub fn with_language(mut self, lang: impl Into<String>) -> Self {
         self.language = Some(lang.into());
         self
     }
 
+    /// Builder: appends a language-specific sub-run.
     pub fn with_language_span(mut self, text: impl Into<String>, lang: impl Into<String>) -> Self {
         self.language_spans.push(LanguageSpan {
             text: text.into(),
@@ -237,20 +308,24 @@ impl StructureNode {
         self
     }
 
+    /// Builder: sets the bounding box.
     pub fn with_bbox(mut self, bbox: BBox) -> Self {
         self.bbox = Some(bbox);
         self
     }
 
+    /// Builder: sets the reading order explicitly.
     pub fn with_reading_order(mut self, order: u32) -> Self {
         self.reading_order = order;
         self
     }
 
+    /// Whether the node has no children.
     pub fn is_leaf(&self) -> bool {
         self.children.is_empty()
     }
 
+    /// Numbers leaf nodes in document order, skipping artifacts; returns the number of leaves.
     pub fn assign_reading_order(&mut self) -> u32 {
         let mut counter = 0u32;
         self.assign_reading_order_inner(&mut counter);
@@ -270,6 +345,7 @@ impl StructureNode {
         }
     }
 
+    /// Concatenates the subtree text, preferring `actual_text` and language spans.
     pub fn collect_text(&self) -> String {
         let mut parts = Vec::new();
         self.collect_text_inner(&mut parts);
@@ -297,15 +373,18 @@ impl StructureNode {
     }
 }
 
+/// Builds a heading leaf with actual text.
 pub fn heading(level: u8, text: &str, page: u32, mcid: u32) -> StructureNode {
     StructureNode::new(HeadingLevel::new(level).to_structure_type(), page, mcid)
         .with_actual_text(text.to_string())
 }
 
+/// Builds a paragraph leaf with actual text.
 pub fn paragraph(text: &str, page: u32, mcid: u32) -> StructureNode {
     StructureNode::new(StructureType::Paragraph, page, mcid).with_actual_text(text.to_string())
 }
 
+/// Builds a list entry with a labeled marker and body.
 pub fn list_item(
     label: &str,
     body: &str,
@@ -324,6 +403,7 @@ pub fn list_item(
     )
 }
 
+/// Builds a table row from `(cell type, text)` pairs with sequential MCIDs.
 pub fn table_row(cells: Vec<(StructureType, &str)>, page: u32, mcid_start: u32) -> StructureNode {
     let children: Vec<StructureNode> = cells
         .into_iter()
@@ -336,6 +416,7 @@ pub fn table_row(cells: Vec<(StructureType, &str)>, page: u32, mcid_start: u32) 
     StructureNode::with_children(StructureType::TableRow, children)
 }
 
+/// Builds a full table with a header row group and body rows.
 pub fn table_with_header(
     headers: Vec<&str>,
     rows: Vec<Vec<&str>>,
@@ -388,6 +469,7 @@ pub fn table_with_header(
     StructureNode::with_children(StructureType::Table, children)
 }
 
+/// Builds a figure with alternative text and a caption.
 pub fn figure_with_caption(
     alt: &str,
     caption: &str,
@@ -405,6 +487,7 @@ pub fn figure_with_caption(
     )
 }
 
+/// Builds a footnote reference and its body.
 pub fn footnote_pair(
     ref_text: &str,
     body_text: &str,
@@ -419,6 +502,7 @@ pub fn footnote_pair(
     (footnote_ref, footnote_body)
 }
 
+/// Builds an inline span tagged with a language.
 pub fn language_span_node(text: &str, lang: &str, page: u32, mcid: u32) -> StructureNode {
     StructureNode::new(StructureType::Span, page, mcid)
         .with_language(lang)
@@ -426,6 +510,7 @@ pub fn language_span_node(text: &str, lang: &str, page: u32, mcid: u32) -> Struc
         .with_language_span(text, lang)
 }
 
+/// Builds an artifact node (decorative, excluded from reading order).
 pub fn artifact_node() -> StructureNode {
     StructureNode::new(StructureType::Artifact, 0, 0)
 }

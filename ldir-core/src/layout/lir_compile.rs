@@ -33,8 +33,11 @@ use crate::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq)]
+/// Errors produced while compiling S-IR to L-IR.
 pub enum LirError {
+    /// A referenced node does not exist; contains the node ID.
     NodeNotFound(u32),
+    /// A compilation-context error; contains a description.
     ContextError(String),
 }
 

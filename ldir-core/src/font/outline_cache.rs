@@ -9,29 +9,40 @@ use std::collections::HashMap;
 /// A single point in a glyph outline.
 #[derive(Debug, Clone)]
 pub struct OutlinePoint {
+    /// X coordinate of the point.
     pub x: f32,
+    /// Y coordinate of the point.
     pub y: f32,
+    /// Whether the point is on-curve or a control point.
     pub kind: OutlinePointKind,
 }
 
 /// Classification of an outline point.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutlinePointKind {
+    /// A point on the curve.
     OnCurve,
+    /// Quadratic Bezier control point (TrueType).
     OffCurveQuad,
+    /// Cubic Bezier control point (CFF).
     OffCurveCubic,
 }
 
 /// A contour (closed or open path) within a glyph outline.
 #[derive(Debug, Clone)]
 pub struct Contour {
+    /// The points of the contour, in order.
     pub points: Vec<OutlinePoint>,
+    /// Whether the contour forms a closed loop.
     pub is_closed: bool,
 }
 
 #[derive(Debug, Clone, Default)]
+/// A complete glyph outline: an ordered set of contours.
 pub struct GlyphOutline {
+    /// Contours of the outline.
     pub contours: Vec<Contour>,
+    /// Whether any contour contains off-curve points requiring curve flattening.
     pub has_bezier: bool,
 }
 

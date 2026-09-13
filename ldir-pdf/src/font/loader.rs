@@ -9,10 +9,13 @@ use ttf_parser::GlyphId;
 use ttf_parser::Rect as TtfRect;
 
 #[derive(Debug, Clone, thiserror::Error)]
+/// Errors from loading and parsing font data.
 pub enum FontLoadError {
     #[error("font data is empty")]
+    /// The font data is empty.
     EmptyData,
     #[error("failed to parse font: {0}")]
+    /// The font data could not be parsed; contains the parser message.
     ParseError(String),
 }
 

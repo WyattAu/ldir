@@ -33,13 +33,18 @@ use crate::shaping::{ShapedGlyph, ShapedRun};
 /// OpenType feature to enable/disable during shaping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Feature {
+    /// 4-byte OpenType feature tag (e.g., `kern`).
     pub tag: [u8; 4],
+    /// Feature value (1 = enable, 0 = disable).
     pub value: u32,
+    /// Cluster index the feature starts at.
     pub start: u32,
+    /// Cluster index the feature ends at.
     pub end: u32,
 }
 
 impl Feature {
+    /// Creates a feature enabled over the whole run.
     pub fn enable(tag: &[u8; 4]) -> Self {
         Self {
             tag: *tag,
@@ -49,6 +54,7 @@ impl Feature {
         }
     }
 
+    /// Creates a feature disabled over the whole run.
     pub fn disable(tag: &[u8; 4]) -> Self {
         Self {
             tag: *tag,
@@ -58,6 +64,7 @@ impl Feature {
         }
     }
 
+    /// Parses a 2-4 ASCII tag (right-padded with spaces); a leading `-` is stripped.
     pub fn parse_tag(tag_str: &str) -> Option<[u8; 4]> {
         let bytes = tag_str.as_bytes();
         if bytes.len() < 2 || bytes.len() > 5 {
@@ -74,6 +81,7 @@ impl Feature {
         Some(tag)
     }
 
+    /// Parses a single feature string such as `kern` or `-liga`.
     pub fn parse_feature_string(s: &str) -> Option<Self> {
         let s = s.trim();
         let disable = s.starts_with('-');
@@ -86,6 +94,7 @@ impl Feature {
         }
     }
 
+    /// Parses a comma-separated feature list, skipping invalid entries.
     pub fn parse_features(input: &str) -> Vec<Self> {
         input
             .split(',')
@@ -94,35 +103,65 @@ impl Feature {
     }
 }
 
+/// Kerning feature tag.
 pub const KERN: &[u8; 4] = b"kern";
+/// Standard ligatures feature tag.
 pub const LIGA: &[u8; 4] = b"liga";
+/// Contextual alternates feature tag.
 pub const CALT: &[u8; 4] = b"calt";
+/// Discretionary ligatures feature tag.
 pub const DLIG: &[u8; 4] = b"dlig";
+/// Historical ligatures feature tag.
 pub const HLIG: &[u8; 4] = b"hlig";
+/// Tabular figures feature tag.
 pub const TNUM: &[u8; 4] = b"tnum";
+/// Old-style figures feature tag.
 pub const ONUM: &[u8; 4] = b"onum";
+/// Lining figures feature tag.
 pub const LNUM: &[u8; 4] = b"lnum";
+/// Stylistic alternates feature tag.
 pub const SALT: &[u8; 4] = b"salt";
+/// Slashed zero feature tag.
 pub const ZERO: &[u8; 4] = b"zero";
+/// Stylistic set 1 feature tag.
 pub const SS01: &[u8; 4] = b"ss01";
+/// Stylistic set 2 feature tag.
 pub const SS02: &[u8; 4] = b"ss02";
+/// Stylistic set 3 feature tag.
 pub const SS03: &[u8; 4] = b"ss03";
+/// Stylistic set 4 feature tag.
 pub const SS04: &[u8; 4] = b"ss04";
+/// Stylistic set 5 feature tag.
 pub const SS05: &[u8; 4] = b"ss05";
+/// Stylistic set 6 feature tag.
 pub const SS06: &[u8; 4] = b"ss06";
+/// Stylistic set 7 feature tag.
 pub const SS07: &[u8; 4] = b"ss07";
+/// Stylistic set 8 feature tag.
 pub const SS08: &[u8; 4] = b"ss08";
+/// Stylistic set 9 feature tag.
 pub const SS09: &[u8; 4] = b"ss09";
+/// Stylistic set 10 feature tag.
 pub const SS10: &[u8; 4] = b"ss10";
+/// Stylistic set 11 feature tag.
 pub const SS11: &[u8; 4] = b"ss11";
+/// Stylistic set 12 feature tag.
 pub const SS12: &[u8; 4] = b"ss12";
+/// Stylistic set 13 feature tag.
 pub const SS13: &[u8; 4] = b"ss13";
+/// Stylistic set 14 feature tag.
 pub const SS14: &[u8; 4] = b"ss14";
+/// Stylistic set 15 feature tag.
 pub const SS15: &[u8; 4] = b"ss15";
+/// Stylistic set 16 feature tag.
 pub const SS16: &[u8; 4] = b"ss16";
+/// Stylistic set 17 feature tag.
 pub const SS17: &[u8; 4] = b"ss17";
+/// Stylistic set 18 feature tag.
 pub const SS18: &[u8; 4] = b"ss18";
+/// Stylistic set 19 feature tag.
 pub const SS19: &[u8; 4] = b"ss19";
+/// Stylistic set 20 feature tag.
 pub const SS20: &[u8; 4] = b"ss20";
 
 /// Shapes text using HarfBuzz with optional script, language, direction, and feature overrides.

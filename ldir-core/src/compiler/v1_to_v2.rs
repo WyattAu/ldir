@@ -60,6 +60,7 @@ fn is_labelable_type(node_type: &NodeType) -> bool {
     )
 }
 
+/// Converts a legacy S-IR v1 document into the v2 module representation, preserving node structure and styles.
 pub fn convert_v1_to_v2(doc: &SIRDocument) -> SIRModuleV2 {
     let mut module = SIRModuleV2::new();
 

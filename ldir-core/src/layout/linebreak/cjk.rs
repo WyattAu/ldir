@@ -14,6 +14,7 @@ use bumpalo::collections::Vec as BumpVec;
 use super::types::LineBreakItem;
 
 #[inline]
+/// Returns whether the character belongs to a CJK block (ideographs, kana, hangul, fullwidth forms).
 pub fn is_cjk_char(ch: char) -> bool {
     matches!(
         ch,
@@ -28,11 +29,13 @@ pub fn is_cjk_char(ch: char) -> bool {
     )
 }
 
+/// Returns whether the text contains at least one CJK character.
 pub fn is_cjk_text(text: &str) -> bool {
     text.chars().any(is_cjk_char)
 }
 
 #[inline]
+/// Returns whether the character is forbidden at the start of a line (closing punctuation, commas, periods).
 pub fn is_prohibited_at_line_start(ch: char) -> bool {
     matches!(
         ch,
@@ -62,10 +65,12 @@ pub fn is_prohibited_at_line_start(ch: char) -> bool {
 }
 
 #[inline]
+/// Returns whether the character is forbidden at the end of a line (opening brackets).
 pub fn is_prohibited_at_line_end(ch: char) -> bool {
     matches!(ch, '（' | '【' | '「' | '『' | '《' | '(' | '[' | '{')
 }
 
+/// Inserts break opportunities between CJK characters while observing kinsoku (line-start/line-end) rules.
 pub fn insert_cjk_breaks<'bump>(
     text: &str,
     items: &[LineBreakItem],

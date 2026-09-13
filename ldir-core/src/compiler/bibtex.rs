@@ -11,12 +11,17 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
+/// A single bibliography entry parsed from a `.bib` file.
 pub struct BibEntry {
+    /// Entry type such as `article`, `book`, or `inproceedings`.
     pub entry_type: String,
+    /// Citation key used in references.
     pub key: String,
+    /// BibTeX fields (author, title, year, ...).
     pub fields: HashMap<String, String>,
 }
 
+/// Parses BibTeX content into a map of citation keys to entries.
 pub fn parse_bib(bib_content: &str) -> Result<HashMap<String, BibEntry>, String> {
     let mut entries = HashMap::new();
     let chars: Vec<char> = bib_content.chars().collect();
@@ -228,6 +233,7 @@ fn find_matching_brace(chars: &[char], start: usize) -> usize {
     i
 }
 
+/// Formats a bibliography entry in IEEE style.
 pub fn format_citation_ieee(entry: &BibEntry) -> String {
     let author = entry
         .fields
@@ -304,6 +310,7 @@ pub fn format_citation_ieee(entry: &BibEntry) -> String {
     }
 }
 
+/// Formats a bibliography entry in APA style.
 pub fn format_citation_apa(entry: &BibEntry) -> String {
     let author = entry
         .fields
@@ -364,6 +371,7 @@ pub fn format_citation_apa(entry: &BibEntry) -> String {
     }
 }
 
+/// Formats a bibliography entry in Chicago style.
 pub fn format_citation_chicago(entry: &BibEntry) -> String {
     let author = entry
         .fields
@@ -477,6 +485,7 @@ fn format_mla_authors(author_str: &str) -> String {
     }
 }
 
+/// Formats a bibliography entry in MLA style.
 pub fn format_citation_mla(entry: &BibEntry) -> String {
     let author_raw = entry
         .fields
@@ -565,6 +574,7 @@ pub fn format_citation_mla(entry: &BibEntry) -> String {
     }
 }
 
+/// Takes `(key, author, year)` tuples and returns a map from citation key to disambiguated year (e.g., `"1996a"`) for same-author same-year entries.
 pub fn disambiguate_year(entries: &[(String, String, String)]) -> HashMap<String, String> {
     let mut author_year_groups: HashMap<(String, String), Vec<&str>> = HashMap::new();
     for (key, author, year) in entries {
@@ -594,6 +604,7 @@ pub fn disambiguate_year(entries: &[(String, String, String)]) -> HashMap<String
     map
 }
 
+/// Formats a citation in the given style, applying a disambiguation map from [`disambiguate_year`].
 pub fn format_citation_with_disambiguation(
     style: &str,
     entry: &BibEntry,

@@ -72,6 +72,7 @@
 //! - REQ-3.1.x: S-IR specification
 //! - REQ-3.2.x: G-IR specification
 
+#![deny(missing_docs)]
 #![deny(unsafe_code)]
 
 /// S-IR (Source Intermediate Representation) type definitions.
