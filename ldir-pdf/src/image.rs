@@ -133,15 +133,15 @@ pub fn decode_png(data: &[u8]) -> Result<ImageData, Error> {
         png::ColorType::Rgb => (ColorSpace::RGB, buf),
         png::ColorType::GrayscaleAlpha => {
             let mut gray = Vec::with_capacity(width as usize * height as usize);
-            for chunk in buf.chunks_exact(2) {
-                gray.push(chunk[0]);
+            for [luma, _a] in buf.as_chunks::<2>().0 {
+                gray.push(*luma);
             }
             (ColorSpace::Gray, gray)
         }
         png::ColorType::Rgba => {
             let mut rgb = Vec::with_capacity(width as usize * height as usize * 3);
-            for chunk in buf.chunks_exact(4) {
-                rgb.extend_from_slice(&chunk[..3]);
+            for [r, g, b, _a] in buf.as_chunks::<4>().0 {
+                rgb.extend_from_slice(&[*r, *g, *b]);
             }
             (ColorSpace::RGB, rgb)
         }
@@ -176,11 +176,11 @@ pub fn decode_jpeg(data: &[u8]) -> Result<ImageData, Error> {
         jpeg_decoder::PixelFormat::L8 => (ColorSpace::Gray, pixels),
         jpeg_decoder::PixelFormat::CMYK32 => {
             let mut rgb = Vec::with_capacity(width as usize * height as usize * 3);
-            for chunk in pixels.chunks_exact(4) {
-                let c = f32::from(chunk[0]) / 255.0;
-                let m = f32::from(chunk[1]) / 255.0;
-                let y = f32::from(chunk[2]) / 255.0;
-                let k = f32::from(chunk[3]) / 255.0;
+            for [c, m, y, k] in pixels.as_chunks::<4>().0 {
+                let c = f32::from(*c) / 255.0;
+                let m = f32::from(*m) / 255.0;
+                let y = f32::from(*y) / 255.0;
+                let k = f32::from(*k) / 255.0;
                 let r = (255.0 * (1.0 - c) * (1.0 - k)) as u8;
                 let g = (255.0 * (1.0 - m) * (1.0 - k)) as u8;
                 let b = (255.0 * (1.0 - y) * (1.0 - k)) as u8;
