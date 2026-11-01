@@ -32,7 +32,13 @@ jobs:
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install harfbuzz
+        run: |
+          brew install harfbuzz
+          # Bust the cargo cache when homebrew moves the harfbuzz Cellar
+          # path: cached build-script output embeds the versioned link
+          # search path, and a brew upgrade orphans it (ld: library
+          # 'harfbuzz' not found).
+          echo "HB_VER=$(brew list --versions harfbuzz | awk '{print $2}')" >> "$GITHUB_ENV"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -46,8 +52,10 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo-hb${{ env.HB_VER }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-hb${{ env.HB_VER }}-
+            ${{ runner.os }}-cargo-
 
       - name: Clippy
         run: cargo clippy --workspace --exclude ldir-wasm --locked -- -D warnings
