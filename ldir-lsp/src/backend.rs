@@ -607,23 +607,16 @@ fn find_key_at_position(line: &str, col: u32, prefixes: &[&str]) -> Option<(Stri
 
 fn extract_md_heading_text(line: &str) -> Option<String> {
     let trimmed = line.trim_start();
-    let hashes: &str;
-    if let Some(h) = trimmed.strip_prefix("#### ") {
-        hashes = h;
-    } else if let Some(h) = trimmed.strip_prefix("### ") {
-        hashes = h;
-    } else if let Some(h) = trimmed.strip_prefix("## ") {
-        hashes = h;
-    } else if let Some(h) = trimmed.strip_prefix("# ") {
-        hashes = h;
-    } else {
-        return None;
-    }
+    let hashes = trimmed
+        .strip_prefix("#### ")
+        .or_else(|| trimmed.strip_prefix("### "))
+        .or_else(|| trimmed.strip_prefix("## "))
+        .or_else(|| trimmed.strip_prefix("# "))?;
     let heading = hashes.trim().to_string();
-    if !heading.is_empty() {
-        Some(heading)
-    } else {
+    if heading.is_empty() {
         None
+    } else {
+        Some(heading)
     }
 }
 
