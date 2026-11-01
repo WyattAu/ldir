@@ -45,12 +45,23 @@ pub enum WasmHostError {
     MissingExport(String),
 
     /// ABI version mismatch.
+    ///
+    /// `guest` is the version the module was compiled against; `host` is
+    /// the version this build of ldir speaks.
     #[error("ABI version mismatch: guest={guest}, host={host}")]
-    AbiVersionMismatch { guest: i32, host: i32 },
+    AbiVersionMismatch {
+        /// ABI version carried by the plugin module.
+        guest: i32,
+        /// ABI version implemented by the host.
+        host: i32,
+    },
 
     /// The plugin exceeded its fuel limit.
     #[error("plugin exceeded fuel limit ({limit} instructions)")]
-    FuelExhausted { limit: u64 },
+    FuelExhausted {
+        /// The fuel limit that was exceeded, in Wasm instructions.
+        limit: u64,
+    },
 
     /// The plugin trapped during execution.
     #[error("plugin trapped: {0}")]
@@ -96,6 +107,7 @@ pub struct ResourceLimitEnforcer {
 }
 
 impl ResourceLimitEnforcer {
+    /// Build an enforcer from the plugin manifest's declared limits.
     pub fn new(limits: &ResourceLimits) -> Self {
         Self {
             max_fuel: limits.max_fuel,
@@ -147,18 +159,22 @@ impl ResourceLimitEnforcer {
         Ok(result)
     }
 
+    /// The configured fuel limit, in Wasm instructions.
     pub fn max_fuel(&self) -> u64 {
         self.max_fuel
     }
 
+    /// The configured memory limit, in bytes.
     pub fn max_memory_bytes(&self) -> u64 {
         self.max_memory_bytes
     }
 
+    /// The configured wall-clock limit, in milliseconds.
     pub fn max_time_ms(&self) -> u64 {
         self.max_time_ms
     }
 
+    /// The configured plugin output limit, in bytes.
     pub fn max_output_bytes(&self) -> u64 {
         self.max_output_bytes
     }
@@ -240,9 +256,9 @@ impl WasmPlugin {
         let mut linker = wasmtime::Linker::new(engine);
 
         if config.enable_wasi {
-            wasmtime_wasi::preview1::add_to_linker_sync(
+            wasmtime_wasi::p1::add_to_linker_sync(
                 &mut linker,
-                |s: &mut wasmtime_wasi::preview1::WasiP1Ctx| s,
+                |s: &mut wasmtime_wasi::p1::WasiP1Ctx| s,
             )
             .map_err(|e| WasmHostError::LoadFailed(format!("WASI setup failed: {e}")))?;
         }

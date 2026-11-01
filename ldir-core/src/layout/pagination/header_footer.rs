@@ -24,29 +24,47 @@ use crate::page_numbers::{PageNumberStyle, format_page_number};
 /// Where to place the page number within header or footer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PageNumberPlacement {
+    /// Page number at the left of the header.
     HeaderLeft,
+    /// Page number centered in the header.
     HeaderCenter,
+    /// Page number at the right of the header.
     HeaderRight,
+    /// Page number at the left of the footer.
     FooterLeft,
     #[default]
+    /// Page number centered in the footer (default).
     FooterCenter,
+    /// Page number at the right of the footer.
     FooterRight,
 }
 
 /// Header and footer configuration for paginated documents.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HeaderFooterConfig {
+    /// Where the page number is placed.
     pub page_number_placement: PageNumberPlacement,
+    /// Numbering style (arabic, roman, letters).
     pub page_number_style: PageNumberStyle,
+    /// Template text for the header left slot; `None` leaves it empty.
     pub header_left: Option<String>,
+    /// Template text for the header center slot; `None` leaves it empty.
     pub header_center: Option<String>,
+    /// Template text for the header right slot; `None` leaves it empty.
     pub header_right: Option<String>,
+    /// Template text for the footer left slot; `None` leaves it empty.
     pub footer_left: Option<String>,
+    /// Template text for the footer center slot; `None` leaves it empty.
     pub footer_center: Option<String>,
+    /// Template text for the footer right slot; `None` leaves it empty.
     pub footer_right: Option<String>,
+    /// Whether to draw a rule below the header.
     pub header_line: bool,
+    /// Whether to draw a rule above the footer.
     pub footer_line: bool,
+    /// Whether the first page suppresses headers/footers.
     pub first_page_different: bool,
+    /// Whether odd and even pages use different layouts.
     pub odd_even_different: bool,
 }
 
@@ -70,35 +88,42 @@ impl Default for HeaderFooterConfig {
 }
 
 impl HeaderFooterConfig {
+    /// Creates a config with default values.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Sets the page number style.
     pub fn with_page_number_style(mut self, style: PageNumberStyle) -> Self {
         self.page_number_style = style;
         self
     }
 
+    /// Sets the page number placement.
     pub fn with_page_number_placement(mut self, placement: PageNumberPlacement) -> Self {
         self.page_number_placement = placement;
         self
     }
 
+    /// Enables or disables the header rule.
     pub fn with_header_line(mut self, enabled: bool) -> Self {
         self.header_line = enabled;
         self
     }
 
+    /// Enables or disables the footer rule.
     pub fn with_footer_line(mut self, enabled: bool) -> Self {
         self.footer_line = enabled;
         self
     }
 
+    /// Enables or disables first-page suppression.
     pub fn with_first_page_different(mut self, enabled: bool) -> Self {
         self.first_page_different = enabled;
         self
     }
 
+    /// Enables or disables different odd/even layouts.
     pub fn with_odd_even_different(mut self, enabled: bool) -> Self {
         self.odd_even_different = enabled;
         self
@@ -108,14 +133,20 @@ impl HeaderFooterConfig {
 /// Running pagination state maintained during layout.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PaginationState {
+    /// Current page number (1-indexed).
     pub current_page: u32,
+    /// Total page count from pass 1 (0 until known).
     pub total_pages: u32,
+    /// Current chapter number.
     pub chapter: u32,
+    /// Current section number.
     pub section: u32,
+    /// Header/footer configuration in effect.
     pub config: HeaderFooterConfig,
 }
 
 impl PaginationState {
+    /// Creates initial state for page 1 with no known total.
     pub fn new(config: HeaderFooterConfig) -> Self {
         Self {
             current_page: 1,
@@ -126,10 +157,12 @@ impl PaginationState {
         }
     }
 
+    /// Current page number formatted in the configured style.
     pub fn formatted_page_number(&self) -> String {
         format_page_number(self.current_page, self.config.page_number_style).unwrap_or_default()
     }
 
+    /// Total pages formatted in the configured style; empty when unknown.
     pub fn formatted_total_pages(&self) -> String {
         if self.total_pages == 0 {
             String::new()
@@ -138,14 +171,17 @@ impl PaginationState {
         }
     }
 
+    /// Whether the current page is page 1.
     pub fn is_first_page(&self) -> bool {
         self.current_page == 1
     }
 
+    /// Whether the current page number is odd.
     pub fn is_odd_page(&self) -> bool {
         self.current_page % 2 == 1
     }
 
+    /// Whether header/footer should be shown on the current page.
     pub fn should_show_header_footer(&self) -> bool {
         if self.config.first_page_different && self.is_first_page() {
             return false;
@@ -157,8 +193,11 @@ impl PaginationState {
 /// Lightweight metadata needed for template substitution.
 #[derive(Debug, Clone, Default)]
 pub struct TemplateMetadata {
+    /// Document title.
     pub title: String,
+    /// Document author.
     pub author: String,
+    /// Document date.
     pub date: String,
 }
 
@@ -185,18 +224,26 @@ pub fn substitute_template(
 /// Resolved header content for a single page.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResolvedHeader {
+    /// Resolved left header text.
     pub left: String,
+    /// Resolved center header text.
     pub center: String,
+    /// Resolved right header text.
     pub right: String,
+    /// Whether to draw the header rule.
     pub has_line: bool,
 }
 
 /// Resolved footer content for a single page.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResolvedFooter {
+    /// Resolved left footer text.
     pub left: String,
+    /// Resolved center footer text.
     pub center: String,
+    /// Resolved right footer text.
     pub right: String,
+    /// Whether to draw the footer rule.
     pub has_line: bool,
 }
 

@@ -443,8 +443,13 @@ mod tests {
         out
     }
 
+    /// Serializes tests that flip the global `COLOR_ENABLED` flag: parallel
+    /// store() races make the color assertions flaky (seen in CI).
+    static COLOR_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn test_diagnostic_formatting() {
+        let _color_guard = COLOR_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         COLOR_ENABLED.store(false, Ordering::Relaxed);
         let mut buf = Vec::new();
 
@@ -468,6 +473,7 @@ mod tests {
 
     #[test]
     fn test_diagnostic_formatting_with_colors() {
+        let _color_guard = COLOR_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         COLOR_ENABLED.store(true, Ordering::Relaxed);
         let mut buf = Vec::new();
 

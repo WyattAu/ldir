@@ -14,12 +14,19 @@ pub struct ResolvedRef {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The kind of target a reference points at.
 pub enum RefType {
+    /// A reference to a label within the same document.
     Internal,
+    /// A reference to an external resource (URL).
     External,
+    /// A citation into the bibliography.
     Bibliography,
+    /// A numbered equation.
     Equation,
+    /// A numbered figure.
     Figure,
+    /// A numbered table.
     Table,
 }
 
@@ -30,14 +37,20 @@ pub struct LabelRegistry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// A single registered label definition.
 pub struct LabelEntry {
+    /// The label name.
     pub label: String,
+    /// Page where the target appears (1-indexed).
     pub page: u32,
+    /// Section number if the target is a heading.
     pub section: Option<String>,
+    /// The S-IR node type of the target.
     pub node_type: String,
 }
 
 impl LabelRegistry {
+    /// Creates an empty registry.
     pub fn new() -> Self {
         Self::default()
     }

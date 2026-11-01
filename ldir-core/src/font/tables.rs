@@ -15,13 +15,28 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TableParseError {
     /// Not enough bytes to read a field.
-    UnexpectedEof { offset: usize, needed: usize },
+    UnexpectedEof {
+        /// Byte offset where the data ended.
+        offset: usize,
+        /// Number of additional bytes required.
+        needed: usize,
+    },
     /// A table offset or count is out of bounds.
-    OutOfBounds { offset: usize, len: usize },
+    OutOfBounds {
+        /// The offending offset.
+        offset: usize,
+        /// Length of the table data.
+        len: usize,
+    },
     /// The font data is not a valid sfnt container.
     InvalidFontData,
     /// An unexpected lookup type or subtable format.
-    UnsupportedFormat { lookup_type: u16, format: u16 },
+    UnsupportedFormat {
+        /// The GPOS/GSUB lookup type.
+        lookup_type: u16,
+        /// The subtable format.
+        format: u16,
+    },
 }
 
 impl std::fmt::Display for TableParseError {
@@ -207,9 +222,13 @@ fn parse_coverage(data: &[u8], offset: usize) -> Result<Vec<u16>, TableParseErro
 /// A single kerning pair extracted from a GPOS PairPos table.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KernPair {
+    /// Glyph ID of the left glyph.
     pub left: u16,
+    /// Glyph ID of the right glyph.
     pub right: u16,
+    /// Horizontal kerning adjustment.
     pub x_advance: i16,
+    /// Vertical kerning adjustment (usually 0).
     pub y_advance: i16,
 }
 
@@ -460,7 +479,9 @@ fn parse_class_def(data: &[u8], offset: usize) -> Result<HashMap<u16, u16>, Tabl
 /// A ligature substitution extracted from a GSUB LigatureSubst table.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ligature {
+    /// Glyph IDs of the component sequence, in order.
     pub components: Vec<u16>,
+    /// Glyph ID of the resulting ligature.
     pub replacement: u16,
 }
 

@@ -29,42 +29,51 @@ pub struct DirtySet {
 }
 
 impl DirtySet {
+    /// Creates an empty dirty set.
     pub fn new() -> Self {
         Self {
             dirty: HashSet::new(),
         }
     }
 
+    /// Marks a single node as needing re-layout.
     pub fn mark_dirty(&mut self, node_id: u32) {
         self.dirty.insert(node_id);
     }
 
+    /// Returns whether the node is marked dirty.
     pub fn is_dirty(&self, node_id: u32) -> bool {
         self.dirty.contains(&node_id)
     }
 
+    /// Removes all dirty marks.
     pub fn clear(&mut self) {
         self.dirty.clear();
     }
 
+    /// Number of dirty nodes.
     pub fn len(&self) -> usize {
         self.dirty.len()
     }
 
+    /// Returns whether no nodes are dirty.
     pub fn is_empty(&self) -> bool {
         self.dirty.is_empty()
     }
 
+    /// Iterates over dirty node IDs.
     pub fn iter(&self) -> impl Iterator<Item = u32> + '_ {
         self.dirty.iter().copied()
     }
 
+    /// Marks every node ID in `start..=end` dirty.
     pub fn mark_dirty_range(&mut self, start: u32, end: u32) {
         for id in start..=end {
             self.dirty.insert(id);
         }
     }
 
+    /// Marks all given node IDs dirty.
     pub fn mark_dirty_all(&mut self, ids: impl IntoIterator<Item = u32>) {
         for id in ids {
             self.dirty.insert(id);

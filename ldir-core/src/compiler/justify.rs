@@ -11,14 +11,18 @@ use crate::shaping::ShapedGlyph;
 /// A group of contiguous non-space glyphs forming a word.
 #[derive(Clone, Debug)]
 pub struct WordGroup {
+    /// Glyphs of the word in shaping order.
     pub glyphs: Vec<ShapedGlyph>,
+    /// Total advance width of the word.
     pub width: Fp266,
 }
 
 /// A glyph with its (possibly adjusted) advance width for emission.
 #[derive(Clone, Debug)]
 pub struct JustifiedGlyph {
+    /// Font glyph identifier.
     pub glyph_id: u32,
+    /// Adjusted advance width in fixed-point units.
     pub x_advance: i32,
 }
 

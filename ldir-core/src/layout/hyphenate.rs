@@ -28,11 +28,17 @@ pub enum HyphenQuality {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Languages supported by the pattern hyphenator.
 pub enum HyphenationLang {
+    /// English patterns.
     English,
+    /// German patterns.
     German,
+    /// French patterns.
     French,
+    /// Spanish patterns.
     Spanish,
+    /// Portuguese patterns.
     Portuguese,
     /// Use language-agnostic syllable heuristic only
     Unknown,

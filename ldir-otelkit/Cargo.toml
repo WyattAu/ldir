@@ -1,0 +1,15 @@
+[package]
+name = "ldir-otelkit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Shared tracing subscriber initialization for LDIR binaries"
+keywords = ["tracing", "opentelemetry", "subscriber", "diagnostics"]
+categories = ["development-tools"]
+
+[dependencies]
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-chrome = { workspace = true }

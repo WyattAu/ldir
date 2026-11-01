@@ -9,21 +9,35 @@ use ldir_ir::sir::v2::annotations::LabelCategory;
 use ldir_ir::sir::v2::nodes::NodeType;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Category of a resolvable label.
 pub enum LabelKind {
-    Section { level: u8 },
+    /// A section heading.
+    Section {
+        /// Heading level (1-6).
+        level: u8,
+    },
+    /// A numbered equation.
     Equation,
+    /// A numbered figure.
     Figure,
+    /// A numbered table.
     Table,
+    /// A numbered theorem.
     Theorem,
 }
 
 #[derive(Debug, Clone)]
+/// A label with its assigned display number.
 pub struct ResolvedLabel {
+    /// The label name.
     pub label: String,
+    /// What kind of target the label is.
     pub kind: LabelKind,
+    /// Assigned number such as `2.3.1` or `7`.
     pub number: String,
 }
 
+/// Walks the module body and assigns numbers to every labelled section, equation, figure, table, and theorem.
 pub fn collect_labels(module: &SIRModuleV2) -> Vec<ResolvedLabel> {
     let mut labels = Vec::new();
     let mut section_counters: IndexMap<u8, u32> = IndexMap::new();
@@ -198,6 +212,7 @@ fn section_number_string(section_number: &[u32]) -> String {
         .join(".")
 }
 
+/// Maps each numbered label to its display number, preserving encounter order.
 pub fn resolve_references(labels: &[ResolvedLabel]) -> IndexMap<String, String> {
     labels
         .iter()
@@ -206,6 +221,7 @@ pub fn resolve_references(labels: &[ResolvedLabel]) -> IndexMap<String, String> 
         .collect()
 }
 
+/// Maps each label to its kind, preserving encounter order.
 pub fn resolve_kind_map(labels: &[ResolvedLabel]) -> IndexMap<String, LabelKind> {
     labels
         .iter()
@@ -213,6 +229,7 @@ pub fn resolve_kind_map(labels: &[ResolvedLabel]) -> IndexMap<String, LabelKind>
         .collect()
 }
 
+/// Resolves `\ref{label}` and `\autoref{label}` occurrences in `text` to their numbers, using the supplied number and kind maps.
 pub fn resolve_text_references(
     text: &str,
     numbers: &IndexMap<String, String>,
@@ -309,6 +326,7 @@ fn try_parse_cmd(text: &str, prefix: &str, prefix_len: usize) -> Option<(String,
     Some((label, prefix_len + end + 1))
 }
 
+/// Human-readable prefix for a kind (e.g., `Section`, `Equation`).
 pub fn kind_prefix(kind: &LabelKind) -> &'static str {
     match kind {
         LabelKind::Section { .. } => "Section",
@@ -319,6 +337,7 @@ pub fn kind_prefix(kind: &LabelKind) -> &'static str {
     }
 }
 
+/// Guesses the display prefix for a label from its naming convention (e.g., `eq:` implies `Equation`).
 pub fn infer_autoref_prefix(label: &str) -> &'static str {
     let prefix = label.split(':').next().unwrap_or("");
     match prefix {

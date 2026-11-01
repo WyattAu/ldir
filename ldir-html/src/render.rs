@@ -7,16 +7,27 @@ use crate::themes::{self, HtmlTheme};
 /// Extended HTML rendering options with theme and CSS support.
 #[derive(Debug, Clone)]
 pub struct HtmlRenderOptions {
+    /// Theme name for CSS styling.
     pub theme: Option<String>,
+    /// Custom CSS string to embed.
     pub custom_css: Option<String>,
+    /// CSS to inline in HTML tags.
     pub inline_css: Option<String>,
+    /// Whether to embed CSS in a `<style>` block.
     pub embed_css: bool,
+    /// Enable syntax highlighting for code blocks.
     pub syntax_highlighting: bool,
+    /// Include a table of contents.
     pub include_toc: bool,
+    /// Maximum depth for table of contents.
     pub toc_max_depth: u32,
+    /// Document title.
     pub title: Option<String>,
+    /// HTML language attribute.
     pub lang: String,
+    /// Math rendering format.
     pub math_format: MathFormat,
+    /// Indentation width for HTML output.
     pub indent: usize,
 }
 
@@ -41,17 +52,26 @@ impl Default for HtmlRenderOptions {
 /// Legacy HTML rendering options (preserved for backward compatibility).
 #[derive(Debug, Clone)]
 pub struct HtmlOptions {
+    /// Include a table of contents.
     pub include_toc: bool,
+    /// Include default CSS styles.
     pub include_styles: bool,
+    /// Math rendering format.
     pub math_format: MathFormat,
+    /// Indentation width.
     pub indent: usize,
 }
 
+/// Math rendering format for equations.
 #[derive(Debug, Clone, Copy)]
 pub enum MathFormat {
+    /// MathML format.
     MathML,
+    /// LaTeX format.
     LaTeX,
+    /// Plain text fallback.
     Text,
+    /// HTML with CSS styling.
     Html,
 }
 
@@ -79,10 +99,12 @@ pub struct HtmlRenderer {
 }
 
 impl HtmlRenderer {
+    /// Create a new renderer with default options.
     pub fn new() -> Self {
         Self::with_options(HtmlOptions::default())
     }
 
+    /// Create a new renderer with legacy options.
     pub fn with_options(options: HtmlOptions) -> Self {
         Self {
             render_options: None,
@@ -95,6 +117,7 @@ impl HtmlRenderer {
         }
     }
 
+    /// Create a new renderer with extended options.
     pub fn with_render_options(render_options: HtmlRenderOptions) -> Self {
         let legacy = HtmlOptions {
             include_toc: render_options.include_toc,

@@ -1,0 +1,58 @@
+# cargo-audit configuration.
+#
+# The Wasm host is pinned to wasmtime 42 (see commit "pin wasmtime 42
+# resource-limit seam"): 43+ reworked the resource-limit/fuel API the
+# plugin host is built on. Every advisory below is unfixable while a
+# pin holds or has no fix at all (unmaintained transitive deps).
+# Remove entries when the underlying pin moves or the dep is replaced.
+[advisories]
+ignore = [
+    # --- wasmtime 42 pin: fixed in 43+ / 48+; wasm-plugins is off by
+    # --- default and plugins are first-party build-time artifacts.
+    "RUSTSEC-2026-0114",
+    "RUSTSEC-2026-0149",
+    "RUSTSEC-2026-0182",
+    "RUSTSEC-2026-0188",
+    "RUSTSEC-2026-0222",
+    "RUSTSEC-2026-0269",
+    "RUSTSEC-2026-0314",
+    "RUSTSEC-2026-0316",
+    "RUSTSEC-2026-0321",
+    "RUSTSEC-2026-0322",
+    "RUSTSEC-2026-0323",
+    "RUSTSEC-2026-0327",
+    "RUSTSEC-2026-0352",
+    "RUSTSEC-2026-0359",
+    "RUSTSEC-2026-0362",
+    "RUSTSEC-2026-0363",
+    "RUSTSEC-2026-0379",
+    "RUSTSEC-2026-0380",
+    "RUSTSEC-2026-0424",
+    # --- zstd chain: wasmtime-internal-cache pins zstd 0.13.3 /
+    # --- zstd-safe 7.x exactly; fixes are the 0.14/8.2 major bump.
+    # --- Exposure is the module cache (trusted, first-party modules),
+    # --- not adversarial network input.
+    "RUSTSEC-2026-0391",
+    "RUSTSEC-2026-0395",
+    "RUSTSEC-2026-0396",
+    "RUSTSEC-2026-0397",
+    "RUSTSEC-2026-0398",
+    "RUSTSEC-2026-0399",
+    "RUSTSEC-2026-0400",
+    "RUSTSEC-2026-0401",
+    "RUSTSEC-2026-0402",
+    "RUSTSEC-2026-0403",
+    "RUSTSEC-2026-0404",
+    "RUSTSEC-2026-0405",
+    "RUSTSEC-2026-0406",
+    # --- unmaintained transitive deps (no fix exists):
+    # --- im-rc stack via rkyv; ttf-parser via fontd; unsafe-libyaml via serde_yaml.
+    "RUSTSEC-2026-0247", # bitmaps (im-rc stack)
+    "RUSTSEC-2026-0250", # im-rc
+    "RUSTSEC-2026-0251", # sized-chunks
+    "RUSTSEC-2026-0255", # sized-chunks
+    "RUSTSEC-2025-0119", # number_prefix
+    "RUSTSEC-2024-0436", # paste
+    "RUSTSEC-2026-0192", # ttf-parser
+    "RUSTSEC-2024-0449", # unsafe-libyaml
+]

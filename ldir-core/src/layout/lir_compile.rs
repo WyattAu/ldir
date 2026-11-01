@@ -33,8 +33,11 @@ use crate::layout::linebreak::{LineBreakItem, LineBreakOptions, linebreak};
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq)]
+/// Errors produced while compiling S-IR to L-IR.
 pub enum LirError {
+    /// A referenced node does not exist; contains the node ID.
     NodeNotFound(u32),
+    /// A compilation-context error; contains a description.
     ContextError(String),
 }
 
@@ -1019,7 +1022,7 @@ impl<'a> LirCompiler<'a> {
                 block.id = self.alloc_id();
                 block.source_node_id = source_id;
 
-                let footnotes: Vec<(u32, String)> = self.pending_footnotes.drain(..).collect();
+                let footnotes: Vec<(u32, String)> = std::mem::take(&mut self.pending_footnotes);
                 for (fn_id, content) in &footnotes {
                     block.footnote_ids.push(*fn_id);
                     let fn_text = format!("{} {}", fn_id, content);
