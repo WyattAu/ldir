@@ -1,0 +1,9 @@
+# Pinned so local gates and the CI gate lint identically. CI's
+# dtolnay/rust-toolchain@stable installs the action's stable, but cargo
+# reads this file and selects the pinned toolchain — without it, local
+# stable vs CI stable drift (clippy 1.99.1 locally did not fire
+# chunks_exact_to_as_chunks; CI's 1.99.0 did, red across three OS jobs).
+# Bump deliberately: new clippy lints arrive with every toolchain.
+[toolchain]
+channel = "1.99.0"
+components = ["clippy", "rustfmt"]
