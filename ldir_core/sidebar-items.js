@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["trace_phase"],"mod":["arena","compiler","cross_ref","emitter","error","font","fp266","interner","layout","page_numbers","parser","plugin","shaping","solver","toc","validator","verifier","wasm_plugins"]};
+window.SIDEBAR_ITEMS = {"macro":[["trace_phase",1]],"mod":["arena","compiler","cross_ref","emitter","error","font","fp266","interner","layout","page_numbers","parser","plugin","shaping","solver","toc","validator","verifier","wasm_plugins"]};
