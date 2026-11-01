@@ -1022,7 +1022,7 @@ impl<'a> LirCompiler<'a> {
                 block.id = self.alloc_id();
                 block.source_node_id = source_id;
 
-                let footnotes: Vec<(u32, String)> = self.pending_footnotes.drain(..).collect();
+                let footnotes: Vec<(u32, String)> = std::mem::take(&mut self.pending_footnotes);
                 for (fn_id, content) in &footnotes {
                     block.footnote_ids.push(*fn_id);
                     let fn_text = format!("{} {}", fn_id, content);
